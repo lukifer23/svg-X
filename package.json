@@ -1,7 +1,7 @@
 {
   "name": "svg-bolt",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "main": "electron.cjs",
   "description": "A desktop application for converting images to SVG with customizable tracing options",

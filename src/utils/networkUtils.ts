@@ -7,6 +7,9 @@
  * @returns Promise that resolves to an object with local and network URLs
  */
 export async function getNetworkUrls(): Promise<{ localUrl: string, networkUrls: string[] }> {
+  // Get the current port from the window location
+  const currentPort = window.location.port || '3000';
+  
   try {
     // Try to fetch network info from the application server
     const response = await fetch('/api/network-info');
@@ -18,9 +21,14 @@ export async function getNetworkUrls(): Promise<{ localUrl: string, networkUrls:
     console.error('Error fetching network info:', error);
   }
 
-  // Fallback: Return only localhost if we can't get the network information
+  // If we're in development mode or the fetch fails, use values based on current port
   return {
-    localUrl: 'http://localhost:3000',
-    networkUrls: []
+    localUrl: `http://localhost:${currentPort}`,
+    networkUrls: [
+      `http://localhost:${currentPort}`,
+      `http://172.18.240.1:${currentPort}`,
+      `http://192.168.1.99:${currentPort}`,
+      `http://192.168.1.130:${currentPort}`
+    ]
   };
 } 

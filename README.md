@@ -9,6 +9,8 @@ A React application that converts images to SVG using Potrace.
 - Processes and traces the image to create an SVG
 - Download the resulting SVG
 - Customizable tracing parameters
+- **Complex Image Mode** for optimizing complex geometric patterns and dense line work
+- Fully responsive UI that works on both desktop and mobile devices
 - Available on local network for access from other devices
 
 ## How It Works
@@ -41,6 +43,33 @@ Users can adjust the following parameters to optimize the SVG output:
 - **Threshold**: Sets the cutoff between black and white pixels (0-255)
 - **Corner Threshold (alphaMax)**: Affects how corners are detected and processed (0.1-1.5)
 - **Curve Optimization**: Enables smoother curves in the output SVG
+
+### Complex Image Mode
+
+The application includes a **Complex Image Mode** specifically designed for handling:
+- Images with intricate geometric patterns
+- Dense line work or diagrams
+- Technical drawings and precise shapes
+
+To use this feature:
+1. Upload your image
+2. Open the Settings panel by clicking the gear icon
+3. Click the "Complex Image" button
+4. The image will be reprocessed with optimized settings for complex patterns
+
+This mode automatically adjusts multiple parameters to achieve better results with complex graphics:
+- Increases the detail level to reduce noise
+- Optimizes curve tolerance for cleaner lines
+- Adjusts threshold for better line detection
+- Sets turn policy for improved shape handling
+
+### Mobile Responsiveness
+
+SVG Bolt is now fully responsive and works on all device sizes:
+- Adapts layout for mobile screens
+- Touch-friendly controls
+- Optimized network panel for smaller screens
+- Accessible on phones and tablets via local network URLs
 
 ### Local Network Access
 

@@ -1,6 +1,36 @@
 # SVG Bolt Release Notes
 
-## Version 1.0.1 (Current)
+## Version 1.1.0 (Current)
+
+### New Features
+- **Complex Image Mode**: Added specialized optimization for processing complex geometric patterns and technical drawings
+- **Enhanced Mobile Responsiveness**: Completely redesigned UI components to work on all screen sizes
+- **Improved Error Handling**: Better feedback during image processing failures
+- **Network URL Display**: Network addresses now prominently displayed in the UI for easier access from other devices
+- **Optimized Processing Pipeline**: Better handling of complex images to prevent processing hang
+
+### Improvements
+- Redesigned network information panel that's expanded by default
+- Added visual indicator for Complex Mode in settings
+- Improved settings panel layout and organization
+- Enhanced tooltips and helper text
+- Better logging throughout the processing pipeline
+- Streamlined UI controls for touch devices
+
+### Fixes
+- Fixed issues with converting complex images with dense line work
+- Resolved UI scaling problems on mobile devices
+- Improved error recovery for failed conversions
+- Fixed network URL display issues
+- Better memory management for large images
+
+### Windows Build
+- Available as a portable executable (SVG Bolt-1.1.0-x64.exe)
+- Available as an unpacked application (SVG-Bolt-win-unpacked.zip)
+- Includes all dependencies and required files
+- No installation needed - just run the executable
+
+## Version 1.0.1
 
 ### Updates
 - Fixed Windows build process to ensure reliable execution
