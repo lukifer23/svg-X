@@ -5,16 +5,16 @@ import https from 'https';
 
 // Configuration - update these values
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Set your GitHub token as an environment variable
-const REPO_OWNER = 'your-github-username'; // Replace with your GitHub username or organization
-const REPO_NAME = 'svg-bolt'; // Replace with your repository name
+const REPO_OWNER = 'lukifer23'; // Your GitHub username
+const REPO_NAME = 'svg-bolt'; // Your repository name
 const TAG_NAME = 'v1.0.0';
 const RELEASE_NAME = 'SVG Bolt v1.0.0 Windows Release';
 const RELEASE_BODY = fs.readFileSync('RELEASE_NOTES.md', 'utf8');
 const ASSETS = [
   {
-    path: 'release/SVG-Bolt-win-unpacked.zip',
-    name: 'SVG-Bolt-win-unpacked.zip',
-    contentType: 'application/zip'
+    path: 'dist/SVG Bolt Setup 1.0.0.exe',
+    name: 'SVG-Bolt-Setup-1.0.0.exe',
+    contentType: 'application/octet-stream'
   }
 ];
 
