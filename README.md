@@ -261,4 +261,46 @@ Potential enhancements to build upon this foundation:
 4. **Performance Issues**
    - Large or complex images will take longer to process
    - Consider implementing a worker thread for processing to avoid UI freezing
-   - Implement progress callbacks from Potrace for better user feedback 
+   - Implement progress callbacks from Potrace for better user feedback
+
+### Windows Build Issues
+
+#### Code Signing Errors
+
+When building the Windows application, you may encounter code signing errors, especially if you don't have a code signing certificate. These errors can include:
+
+```
+Cannot use 'in' operator to search for 'file' in undefined failedTask=build
+```
+
+To build without code signing:
+
+1. Use the `build:win-no-sign` script:
+   ```
+   npm run build:win-no-sign
+   ```
+
+2. This script explicitly disables all code signing by setting the following environment variables:
+   ```
+   CSC_IDENTITY_AUTO_DISCOVERY=false
+   WIN_CSC_IDENTITY_AUTO_DISCOVERY=false
+   CSC_IDENTITY_NAME=null
+   WIN_CSC_IDENTITY_NAME=null
+   WIN_CSC_LINK=null
+   CSC_LINK=null
+   ```
+
+3. The built application will be available in `release\win-unpacked\`.
+
+4. To create a zip file of the unpacked application:
+   ```
+   npm run create-zip
+   ```
+
+#### Running the Application After Building
+
+The application can be run directly from the `release\win-unpacked\` directory by executing `SVG Bolt.exe`.
+
+For network access, the application will automatically start an Express server on port 3000 and will be available at:
+- `http://localhost:3000` (local access)
+- `http://[your-ip-address]:3000` (network access) 
