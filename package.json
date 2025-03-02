@@ -13,6 +13,13 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"electron .\"",
     "electron:build": "vite build && electron-builder build --publish never",
+    "electron:build:windows-no-sign": "vite build && electron-builder build --win --config.win.signAndEditExecutable=false --config.win.verifyUpdateCodeSignature=false --config.mac.identity=null --config.afterSign=null",
+    "electron:build:portable": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64",
+    "electron:build:dir": "vite build && electron-builder --win dir",
+    "electron:build:win-portable": "vite build && electron-builder --win portable",
+    "electron:preview-win": "vite build && electron-builder --dir",
+    "create-zip": "powershell Compress-Archive -Path \"release\\win-unpacked\\*\" -DestinationPath \"release\\SVG-Bolt-win-unpacked.zip\" -Force",
+    "github-release": "node create-release.js",
     "preelectron:build": "node create-electron-cjs.js"
   },
   "dependencies": {
@@ -30,6 +37,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "electron": "^30.0.6",
     "electron-builder": "^24.13.3",
     "eslint": "^9.9.1",
@@ -49,8 +57,18 @@
     "files": [
       "dist/**/*",
       "electron.cjs",
-      "icon.png"
+      "electron.js",
+      "icon.png",
+      "src/**/*",
+      "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
+    "asar": true,
     "directories": {
       "buildResources": "assets",
       "output": "release"
@@ -64,11 +82,15 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "win": {
+      "sign": false,
+      "signDlls": false,
+      "publisherName": "SVG Bolt Team",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false,
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "target": [
-        "nsis",
         "portable"
-      ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      ]
     },
     "linux": {
       "target": [

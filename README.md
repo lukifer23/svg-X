@@ -44,11 +44,17 @@ Users can adjust the following parameters to optimize the SVG output:
 
 ### Local Network Access
 
-The application can be accessed from other devices on the same network. When running the development server, it listens on all network interfaces (0.0.0.0), allowing access via:
+The application can be accessed from other devices on the same network. When running the development server or the desktop application, it listens on all network interfaces (0.0.0.0), allowing access via:
 
 ```
 http://[your-computer-ip]:3000
 ```
+
+Currently, the local network URL is displayed in the application console when it starts. You can see these URLs by:
+- In development mode: Check the terminal where you started the app
+- In the desktop app: The URLs are logged in the background (not visible to end users)
+
+We're working on adding this information directly to the user interface in a future update.
 
 ## Installation
 
@@ -56,16 +62,24 @@ http://[your-computer-ip]:3000
 
 SVG Bolt is available as a standalone desktop application for Windows, macOS, and Linux. The desktop version offers the same functionality as the web version, but runs locally without requiring a browser.
 
-1. Download the appropriate installer for your platform:
-   - Windows: `SVG-Bolt-1.0.0-x64.exe` (64-bit) or `SVG-Bolt-1.0.0-arm64.exe` (ARM)
-   - macOS: `SVG-Bolt-1.0.0-x64.dmg` (Intel) or `SVG-Bolt-1.0.0-arm64.dmg` (Apple Silicon)
-   - Linux: `SVG-Bolt-1.0.0-x64.AppImage` or `SVG-Bolt-1.0.0-arm64.AppImage`
+#### Windows Installation
 
-2. Run the installer and follow the on-screen instructions.
+Two options are available for Windows:
 
-3. Launch the application from your desktop or applications menu.
+1. **Unpacked Application (Recommended)**:
+   - Download `SVG-Bolt-win-unpacked.zip` from the latest release
+   - Extract the zip file to a location of your choice
+   - Run `SVG Bolt.exe` from the extracted directory
 
-The desktop application provides access on the local network automatically. When the app starts, it will display the URL for both local and network access.
+2. **Portable Executable**:
+   - Download `SVG Bolt-1.0.0-x64.exe` from the latest release
+   - Run the executable directly - no installation required
+
+Both versions automatically provide access on your local network when running.
+
+#### macOS and Linux
+
+Coming soon! We're working on builds for these platforms.
 
 ### Development Setup
 
@@ -92,7 +106,25 @@ npm run electron:dev
 npm run build
 ```
 
-### Desktop Application (All Platforms)
+### Desktop Application
+
+#### Windows Builds
+
+Build an unpacked directory (recommended):
+```
+npm run electron:build:dir
+```
+
+Create a zip file of the unpacked directory:
+```
+npm run create-zip
+```
+
+The built application will be available in the `release` directory:
+- Unpacked application: `release\win-unpacked\`
+- Zip file: `release\SVG-Bolt-win-unpacked.zip`
+
+#### All Platforms (may require additional configuration)
 
 ```
 npm run electron:build

@@ -46,11 +46,44 @@ function createWindow() {
     // Open DevTools
     mainWindow.webContents.openDevTools();
   } else {
-    // In production, serve the built files using Express
-    expressApp.use(express.static(path.join(__dirname, 'dist')));
+    // In production, determine the correct path to the built files
+    let distPath;
+    
+    // Check if running from packaged app (resources directory)
+    if (process.resourcesPath) {
+      distPath = path.join(process.resourcesPath, 'dist');
+      console.log(`Looking for dist in resources: ${distPath}`);
+    } else {
+      // Fallback to the standard dist directory
+      distPath = path.join(__dirname, 'dist');
+      console.log(`Looking for dist in __dirname: ${distPath}`);
+    }
+    
+    // Check if the dist directory exists
+    if (!fs.existsSync(distPath)) {
+      console.error(`Error: ${distPath} does not exist!`);
+      // Try alternate locations
+      const altPaths = [
+        path.join(__dirname, 'dist'),
+        path.join(__dirname, '..', 'dist'),
+        path.join(app.getAppPath(), 'dist')
+      ];
+      
+      for (const altPath of altPaths) {
+        console.log(`Trying alternate path: ${altPath}`);
+        if (fs.existsSync(altPath)) {
+          distPath = altPath;
+          console.log(`Using alternate path: ${distPath}`);
+          break;
+        }
+      }
+    }
+    
+    // Serve the static files
+    expressApp.use(express.static(distPath));
     
     expressApp.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.join(distPath, 'index.html'));
     });
     
     const server = expressApp.listen(PORT, '0.0.0.0', () => {
