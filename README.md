@@ -50,11 +50,11 @@ The application can be accessed from other devices on the same network. When run
 http://[your-computer-ip]:3000
 ```
 
-Currently, the local network URL is displayed in the application console when it starts. You can see these URLs by:
-- In development mode: Check the terminal where you started the app
-- In the desktop app: The URLs are logged in the background (not visible to end users)
+The application displays network URLs in the bottom-right corner of the interface. Click on the "Network Access" button to see all available network addresses. You can copy these URLs to easily share access with other devices on your network.
 
-We're working on adding this information directly to the user interface in a future update.
+For developers and advanced users, these URLs are also logged to the console when the application starts:
+- In development mode: Check the terminal where you started the app
+- In the desktop app: The URLs are logged in the background console
 
 ## Installation
 
