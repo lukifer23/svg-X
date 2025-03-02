@@ -1,7 +1,7 @@
 {
   "name": "svg-bolt",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "electron.cjs",
   "description": "A desktop application for converting images to SVG with customizable tracing options",
@@ -20,7 +20,9 @@
     "electron:preview-win": "vite build && electron-builder --dir",
     "create-zip": "powershell Compress-Archive -Path \"release\\win-unpacked\\*\" -DestinationPath \"release\\SVG-Bolt-win-unpacked.zip\" -Force",
     "github-release": "node create-release.js",
-    "preelectron:build": "node create-electron-cjs.js"
+    "preelectron:build": "node create-electron-cjs.js",
+    "build:win-simple": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never",
+    "build:win-no-sign": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false CSC_IDENTITY_NAME=null WIN_CSC_IDENTITY_NAME=null WIN_CSC_LINK=null CSC_LINK=null electron-builder --win dir --publish never"
   },
   "dependencies": {
     "express": "^4.18.2",
