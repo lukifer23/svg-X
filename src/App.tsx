@@ -4,6 +4,7 @@ import FileUpload from './components/FileUpload';
 import ImagePreview from './components/ImagePreview';
 import SettingsPanel from './components/SettingsPanel';
 import DownloadButton from './components/DownloadButton';
+import NetworkInfo from './components/NetworkInfo';
 import { processImage as processImageWithPotrace, DEFAULT_PARAMS, PROGRESS_STEPS, getOptimizedFilename, TracingParams, TurnPolicy } from './utils/imageProcessor';
 
 type ConversionStatus = 'idle' | 'loading' | 'processing' | 'tracing' | 'done' | 'error';
@@ -177,6 +178,9 @@ function App() {
 
       {/* Download Button */}
       {svg && <DownloadButton svg={svg} filename={fileName} />}
+
+      {/* Network Info */}
+      <NetworkInfo />
 
       <footer className="max-w-5xl mx-auto mt-12 pt-6 border-t border-gray-200 text-center text-gray-500 text-sm animate-fade-in">
         <p>SVG Bolt &copy; {new Date().getFullYear()}</p>

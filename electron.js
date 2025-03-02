@@ -14,15 +14,16 @@ let serverProcess;
 
 function getLocalIpAddress() {
   const interfaces = os.networkInterfaces();
+  const ipAddresses = [];
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       // Skip internal and non-IPv4 addresses
       if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
+        ipAddresses.push(iface.address);
       }
     }
   }
-  return 'localhost'; // Fallback
+  return ipAddresses.length > 0 ? ipAddresses : ['localhost']; // Fallback
 }
 
 function createWindow() {
@@ -88,8 +89,8 @@ function createWindow() {
     
     const server = expressApp.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running at http://localhost:${PORT}`);
-      const ipAddress = getLocalIpAddress();
-      console.log(`Available on your network at http://${ipAddress}:${PORT}`);
+      const ipAddresses = getLocalIpAddress();
+      console.log(`Available on your network at http://${ipAddresses[0]}:${PORT}`);
       
       // Load the app from the Express server
       mainWindow.loadURL(`http://localhost:${PORT}`);
@@ -100,6 +101,15 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  // Add API endpoint for network information
+  expressApp.get('/api/network-info', (req, res) => {
+    const ipAddresses = getLocalIpAddress();
+    res.json({
+      localUrl: `http://localhost:${PORT}`,
+      networkUrls: ipAddresses.map(ip => `http://${ip}:${PORT}`)
+    });
   });
 }
 
@@ -124,8 +134,8 @@ app.on('activate', () => {
 
 // Display local network access info on app start
 app.on('ready', () => {
-  const ipAddress = getLocalIpAddress();
+  const ipAddresses = getLocalIpAddress();
   console.log(`SVG Bolt is running!`);
   console.log(`Local access: http://localhost:${PORT}`);
-  console.log(`Network access: http://${ipAddress}:${PORT}`);
+  console.log(`Network access: http://${ipAddresses[0]}:${PORT}`);
 }); 
