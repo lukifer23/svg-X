@@ -1,13 +1,22 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, FileText } from 'lucide-react';
 import FileUpload from './components/FileUpload';
 import ImagePreview from './components/ImagePreview';
 import SettingsPanel from './components/SettingsPanel';
 import DownloadButton from './components/DownloadButton';
 import NetworkInfo from './components/NetworkInfo';
-import { processImage as processImageWithPotrace, DEFAULT_PARAMS, PROGRESS_STEPS, getOptimizedFilename, TracingParams, TurnPolicy, simplifyForComplexImages } from './utils/imageProcessor';
+import ProcessingLogs from './components/ProcessingLogs';
+import { processImage as processImageWithPotrace, DEFAULT_PARAMS, PROGRESS_STEPS, getOptimizedFilename, TracingParams, TurnPolicy, simplifyForComplexImages, isNetworkClient, simplifyForNetworkClients } from './utils/imageProcessor';
 
 type ConversionStatus = 'idle' | 'loading' | 'processing' | 'tracing' | 'done' | 'error';
+
+// Define the LogEntry interface
+interface LogEntry {
+  step: string;
+  message: string;
+  isError: boolean;
+  timestamp: string;
+}
 
 function App() {
   const [image, setImage] = useState<string | null>(null);
@@ -20,6 +29,10 @@ function App() {
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [isMobileView, setIsMobileView] = useState<boolean>(window.innerWidth < 768);
   const [isComplexMode, setIsComplexMode] = useState<boolean>(false);
+  
+  // Add state for processing logs
+  const [processingLogs, setProcessingLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
@@ -63,22 +76,71 @@ function App() {
     setIsComplexMode(false);
   };
 
+  // Add a function to handle log entries
+  const handleLogEntry = useCallback((step: string, message: string, isError: boolean, timestamp: string) => {
+    setProcessingLogs(prevLogs => [...prevLogs, { step, message, isError, timestamp }]);
+  }, []);
+
   // Apply complex image optimization settings
   const applyComplexSettings = async () => {
-    setPotraceParams(prev => simplifyForComplexImages(prev));
+    // Clear previous logs when starting a new process
+    setProcessingLogs([]);
+    
+    // Check if this is a network client
+    const isNetwork = isNetworkClient();
+    
+    // Apply different settings based on whether it's a network client
+    let complexParams;
+    if (isNetwork) {
+      complexParams = simplifyForNetworkClients({...potraceParams});
+      console.log('Applying network-optimized complex settings:', complexParams);
+    } else {
+      complexParams = simplifyForComplexImages({...potraceParams});
+      console.log('Applying complex image settings:', complexParams);
+    }
+    
+    setPotraceParams(complexParams);
     setIsComplexMode(true);
     
     // Apply the changes immediately if an image is loaded
     if (image) {
       try {
         setStatus('processing');
-        const svgData = await processImageWithPotrace(
-          image,
-          simplifyForComplexImages(potraceParams),
-          (newStatus) => setStatus(newStatus as ConversionStatus)
-        );
-        setSvg(svgData);
-        setStatus('done');
+        setError(''); // Clear any previous errors
+        
+        // Add a UI delay to update the status
+        setTimeout(async () => {
+          try {
+            const svgData = await processImageWithPotrace(
+              image,
+              complexParams,
+              (newStatus) => {
+                setStatus(newStatus as ConversionStatus);
+                console.log(`Status update: ${newStatus}`);
+              },
+              handleLogEntry // Pass the log handler
+            );
+            setSvg(svgData);
+            setStatus('done');
+          } catch (err) {
+            console.error('Error processing image with complex settings:', err);
+            
+            // Provide more specific error messages for network users
+            if (isNetwork) {
+              const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+              if (errorMsg.includes('timed out')) {
+                setError(`Network processing timed out. This image may be too complex to process over the network. 
+                  Try downloading the app and running it locally for better performance.`);
+              } else {
+                setError(`Network error: ${errorMsg}. Network processing is more limited than local processing.`);
+              }
+            } else {
+              setError(err instanceof Error ? err.message : 'Unknown error');
+            }
+            
+            setStatus('error');
+          }
+        }, 300);
       } catch (err) {
         console.error('Error processing image with complex settings:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -91,18 +153,42 @@ function App() {
   const applyParams = async () => {
     if (!image) return;
     
+    // Clear previous logs when starting a new process
+    setProcessingLogs([]);
+    
+    // Check if this is a network client
+    const isNetwork = isNetworkClient();
+    
     try {
       setStatus('processing');
+      setError(''); // Clear any previous errors
+      
       const svgData = await processImageWithPotrace(
         image,
         potraceParams,
-        (newStatus) => setStatus(newStatus as ConversionStatus)
+        (newStatus) => setStatus(newStatus as ConversionStatus),
+        handleLogEntry // Pass the log handler
       );
       setSvg(svgData);
       setStatus('done');
     } catch (err) {
       console.error('Error processing image:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      
+      // Provide more specific error messages for network users
+      if (isNetwork) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        if (errorMsg.includes('timed out')) {
+          setError(`Network processing timed out. For complex images over the network, try:
+            1. Using the "Complex Image Mode" button in settings
+            2. Using a smaller/simpler image
+            3. Running the app locally instead of over the network`);
+        } else {
+          setError(`Network error: ${errorMsg}. Try using Complex Image Mode for better results over the network.`);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      }
+      
       setStatus('error');
     }
   };
@@ -136,7 +222,7 @@ function App() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gradient">
-              SVG Bolt
+              SVG-X
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
               Convert images to SVG with ease
@@ -166,19 +252,49 @@ function App() {
           />
         )}
 
+        {/* Error Messages */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg animate-fade-in shadow-soft mt-4">
             <h3 className="text-base sm:text-lg font-semibold mb-1">Error</h3>
             <p className="text-sm sm:text-base">{error}</p>
             <div className="mt-2 text-xs sm:text-sm">
               <p className="font-medium">Suggestions:</p>
-              <ul className="list-disc list-inside mt-1">
-                <li>Try a smaller or less complex image</li>
-                <li>Adjust threshold settings to improve contrast</li>
-                <li>Increase turdSize to remove small details</li>
-                <li>Try a different turn policy</li>
+              <ul className="list-disc pl-4 mt-1">
+                <li>Try using Complex Image Mode in settings</li>
+                <li>Use a simpler image with fewer details</li>
+                <li>Try a different image format (PNG often works best)</li>
               </ul>
+              
+              <div className="mt-3 flex justify-between items-center">
+                <button 
+                  onClick={() => setShowLogs(true)}
+                  className="flex items-center text-blue-600 hover:text-blue-800 gap-1 text-xs"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View Processing Logs
+                </button>
+                
+                <button
+                  onClick={isComplexMode ? applyParams : applyComplexSettings}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                >
+                  {isComplexMode ? 'Try Standard Mode' : 'Try Complex Mode'}
+                </button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Processing Logs Button - show only during/after processing */}
+        {(status !== 'idle' && !error) && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => setShowLogs(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              View Processing Logs
+            </button>
           </div>
         )}
 
@@ -225,6 +341,13 @@ function App() {
 
       {/* Network Info Component */}
       <NetworkInfo isMobile={isMobileView} />
+
+      {/* Processing Logs Component */}
+      <ProcessingLogs
+        logs={processingLogs}
+        visible={showLogs}
+        onClose={() => setShowLogs(false)}
+      />
     </div>
   );
 }

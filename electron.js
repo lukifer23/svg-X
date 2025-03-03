@@ -34,7 +34,7 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    title: 'SVG Bolt',
+    title: 'SVG-X',
     icon: path.join(__dirname, 'icon.png')
   });
 
@@ -135,7 +135,7 @@ app.on('activate', () => {
 // Display local network access info on app start
 app.on('ready', () => {
   const ipAddresses = getLocalIpAddress();
-  console.log(`SVG Bolt is running!`);
+  console.log(`SVG-X is running!`);
   console.log(`Local access: http://localhost:${PORT}`);
   console.log(`Network access: http://${ipAddresses[0]}:${PORT}`);
 }); 

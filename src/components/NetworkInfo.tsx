@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Globe, Copy, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { getNetworkUrls } from '../utils/networkUtils';
 
 interface NetworkInfoProps {
@@ -14,8 +14,8 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
     localUrl: `http://localhost:${currentPort}`,
     networkUrls: []
   });
-  // Start expanded by default
-  const [expanded, setExpanded] = useState(true);
+  // Start completely collapsed by default
+  const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,30 +51,36 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
     });
   };
 
-  const getPositionClasses = () => {
-    if (isMobile) {
-      return "fixed left-2 right-2 bottom-2 bg-white shadow-lg rounded-md p-2 border border-gray-200 animate-fade-in z-50";
-    }
-    return "fixed bottom-4 right-4 bg-white shadow-lg rounded-md p-3 border border-gray-200 max-w-md animate-fade-in z-50";
-  };
-
-  // Always show the component, even if we don't have network URLs
-  return (
-    <div className={getPositionClasses()}>
-      <div 
-        className="flex items-center cursor-pointer" 
-        onClick={() => setExpanded(!expanded)}
+  // If not expanded, just show a small button in the top right
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className={`fixed top-4 right-4 z-50 ${isMobile ? 'p-2' : 'p-3'} rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300`}
+        title="Network Access"
       >
-        <Globe className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-500 mr-2`} />
-        <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium flex-1`}>Network Access</span>
-        {expanded ? (
-          <ChevronUp className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-500`} />
-        ) : (
-          <ChevronDown className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-gray-500`} />
-        )}
-      </div>
+        <Globe className={`${isMobile ? 'w-3.5 h-3.5' : 'w-4 h-4'}`} />
+      </button>
+    );
+  }
 
-      {expanded && (
+  // When expanded, show a modal-like popup
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className={`relative bg-white rounded-lg shadow-xl ${isMobile ? 'w-full max-w-sm' : 'max-w-md'} p-4`}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium flex items-center`}>
+            <Globe className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-500 mr-2`} />
+            Network Access
+          </h3>
+          <button 
+            onClick={() => setExpanded(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'}`} />
+          </button>
+        </div>
+        
         <div className="mt-2 space-y-2">
           <div className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 font-medium`}>
             Access this app from other devices on your network:
@@ -107,7 +113,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
             </div>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -5,7 +5,7 @@ export default {
   win: {
     sign: false,
     signDlls: false,
-    publisherName: "SVG Bolt Team",
+    publisherName: "Luke S",
     verifyUpdateCodeSignature: false,
     signAndEditExecutable: false,
     target: [
@@ -17,7 +17,7 @@ export default {
   },
   afterSign: undefined,
   appId: "com.svgbolt.app",
-  productName: "SVG Bolt",
+  productName: "SVG-X",
   files: [
     "dist/**/*",
     "electron.cjs",
