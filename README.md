@@ -1,6 +1,6 @@
-# SVG Bolt - Image to SVG Converter
+# SVG-X - Image to SVG Converter
 
-A React application that converts images to SVG using Potrace.
+A desktop application that converts raster images to SVG using Potrace.
 
 ## Features
 
@@ -11,7 +11,8 @@ A React application that converts images to SVG using Potrace.
 - Customizable tracing parameters
 - **Complex Image Mode** for optimizing complex geometric patterns and dense line work
 - Fully responsive UI that works on both desktop and mobile devices
-- Available on local network for access from other devices
+- **Network Mode** - Access from other devices on the local network with optimized processing
+- **Memory Optimization** - Improved handling of large images with reduced memory footprint
 
 ## How It Works
 
@@ -65,7 +66,7 @@ This mode automatically adjusts multiple parameters to achieve better results wi
 
 ### Mobile Responsiveness
 
-SVG Bolt is now fully responsive and works on all device sizes:
+SVG-X is now fully responsive and works on all device sizes:
 - Adapts layout for mobile screens
 - Touch-friendly controls
 - Optimized network panel for smaller screens
@@ -89,19 +90,19 @@ For developers and advanced users, these URLs are also logged to the console whe
 
 ### As a Desktop Application
 
-SVG Bolt is available as a standalone desktop application for Windows, macOS, and Linux. The desktop version offers the same functionality as the web version, but runs locally without requiring a browser.
+SVG-X is available as a standalone desktop application for Windows, macOS, and Linux. The desktop version offers the same functionality as the web version, but runs locally without requiring a browser.
 
 #### Windows Installation
 
 Two options are available for Windows:
 
 1. **Unpacked Application (Recommended)**:
-   - Download `SVG-Bolt-win-unpacked.zip` from the latest release
+   - Download `SVG-X-win-unpacked.zip` from the latest release
    - Extract the zip file to a location of your choice
-   - Run `SVG Bolt.exe` from the extracted directory
+   - Run `SVG-X.exe` from the extracted directory
 
 2. **Portable Executable**:
-   - Download `SVG Bolt-1.0.0-x64.exe` from the latest release
+   - Download `SVG-X-1.1.0-x64.exe` from the latest release
    - Run the executable directly - no installation required
 
 Both versions automatically provide access on your local network when running.
@@ -139,7 +140,12 @@ npm run build
 
 #### Windows Builds
 
-Build an unpacked directory (recommended):
+Build a portable executable:
+```
+npm run build:portable-exe
+```
+
+Build an unpacked directory:
 ```
 npm run electron:build:dir
 ```
@@ -150,8 +156,9 @@ npm run create-zip
 ```
 
 The built application will be available in the `release` directory:
+- Portable executable: `release\SVG-X-1.1.0-x64.exe`
 - Unpacked application: `release\win-unpacked\`
-- Zip file: `release\SVG-Bolt-win-unpacked.zip`
+- Zip file: `release\SVG-X-win-unpacked.zip`
 
 #### All Platforms (may require additional configuration)
 
@@ -208,13 +215,16 @@ const dataUrl = canvas.toDataURL('image/png');
 - Potrace for image tracing
 - Tailwind CSS for styling
 - Vite for build and development
+- Electron for desktop application
 
 ### Recent Fixes
 
-- Fixed Potrace implementation to properly use the library's `trace` function
+- Fixed Potrace implementation to properly use the library's `trace` function with enhanced error handling
 - Corrected image data formatting for Potrace compatibility
 - Improved conversion parameters for better SVG quality
-- Fixed validation and error handling for image processing
+- Optimized memory usage during image processing for better performance with large images
+- Enhanced network client handling for improved remote access performance
+- Streamlined Windows build process with portable executable option
 
 ## Development
 
@@ -304,22 +314,14 @@ Cannot use 'in' operator to search for 'file' in undefined failedTask=build
 
 To build without code signing:
 
-1. Use the `build:win-no-sign` script:
+1. Use the portable executable build script:
    ```
-   npm run build:win-no-sign
-   ```
-
-2. This script explicitly disables all code signing by setting the following environment variables:
-   ```
-   CSC_IDENTITY_AUTO_DISCOVERY=false
-   WIN_CSC_IDENTITY_AUTO_DISCOVERY=false
-   CSC_IDENTITY_NAME=null
-   WIN_CSC_IDENTITY_NAME=null
-   WIN_CSC_LINK=null
-   CSC_LINK=null
+   npm run build:portable-exe
    ```
 
-3. The built application will be available in `release\win-unpacked\`.
+2. This script explicitly disables all code signing by setting the necessary environment variables.
+
+3. The built application will be available as a standalone executable in `release\` and the unpacked version in `release\win-unpacked\`.
 
 4. To create a zip file of the unpacked application:
    ```
@@ -328,7 +330,9 @@ To build without code signing:
 
 #### Running the Application After Building
 
-The application can be run directly from the `release\win-unpacked\` directory by executing `SVG Bolt.exe`.
+The application can be run directly from:
+- The portable executable `SVG-X-1.1.0-x64.exe`
+- The unpacked directory by executing `SVG-X.exe` from `release\win-unpacked\`
 
 For network access, the application will automatically start an Express server on port 3000 and will be available at:
 - `http://localhost:3000` (local access)

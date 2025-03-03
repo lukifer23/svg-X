@@ -6,14 +6,14 @@ import https from 'https';
 // Configuration - update these values
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Set your GitHub token as an environment variable
 const REPO_OWNER = 'lukifer23'; // Your GitHub username
-const REPO_NAME = 'svg-bolt'; // Your repository name
-const TAG_NAME = 'v1.0.1';
-const RELEASE_NAME = 'SVG Bolt v1.0.1 Windows Release';
+const REPO_NAME = 'svg-x'; // Your repository name
+const TAG_NAME = 'v1.1.0';
+const RELEASE_NAME = 'SVG-X v1.1.0 Windows Release';
 const RELEASE_BODY = fs.readFileSync('RELEASE_NOTES.md', 'utf8');
 const ASSETS = [
   {
-    path: 'release/SVG Bolt-1.0.1-x64.exe',
-    name: 'SVG-Bolt-1.0.1-x64.exe',
+    path: 'release/SVG-X-1.1.0-x64.exe',
+    name: 'SVG-X-1.1.0-x64.exe',
     contentType: 'application/octet-stream'
   }
 ];

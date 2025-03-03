@@ -1,4 +1,4 @@
-# SVG Bolt Release Notes
+# SVG-X Release Notes
 
 ## Version 1.1.0 (Current)
 
@@ -25,8 +25,8 @@
 - Better memory management for large images
 
 ### Windows Build
-- Available as a portable executable (SVG Bolt-1.1.0-x64.exe)
-- Available as an unpacked application (SVG-Bolt-win-unpacked.zip)
+- Available as a portable executable (SVG-X-1.1.0-x64.exe)
+- Available as an unpacked application (SVG-X-win-unpacked.zip)
 - Includes all dependencies and required files
 - No installation needed - just run the executable
 
@@ -48,7 +48,7 @@
 
 ### Windows Build
 - Successfully built and tested on Windows 10/11
-- Available as a portable executable (SVG Bolt-1.0.1-x64.exe)
+- Available as a portable executable (SVG-X-1.0.1-x64.exe)
 - Includes all dependencies and required files
 - No installation needed - just run the executable
 
@@ -68,8 +68,8 @@
 
 ### Windows Build
 - Successfully built and tested on Windows 10/11
-- Available as an unpacked application (SVG-Bolt-win-unpacked.zip)
-- Available as a portable executable (SVG Bolt-1.0.0-x64.exe)
+- Available as an unpacked application (SVG-X-win-unpacked.zip)
+- Available as a portable executable (SVG-X-1.0.0-x64.exe)
 - Includes all dependencies and required files
 - No installation needed - extract and run
 

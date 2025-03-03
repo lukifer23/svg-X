@@ -92,6 +92,12 @@ const trace = (
       logCallback('IMAGE_RECEIPT', `Image received: ${imageSize} bytes, type: ${imageType}`, false, new Date().toISOString().split('T')[1].split('.')[0]);
     }
     
+    // Check if this is a network client to add additional logging and handling
+    const isNetwork = isNetworkClient();
+    if (isNetwork && logCallback) {
+      logCallback('NETWORK_TRACE', 'Processing trace over network - this might take longer', false, new Date().toISOString().split('T')[1].split('.')[0]);
+    }
+    
     // Log memory usage before tracing
     if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
       const memUsage = (window as any).performance.memory;
@@ -101,7 +107,9 @@ const trace = (
     }
     
     // Start heartbeat to monitor tracing
-    const heartbeat = createHeartbeat('Potrace image tracing', 2000, logCallback);
+    // Use more frequent heartbeats for network clients to ensure UI responsiveness
+    const heartbeatInterval = isNetwork ? 1000 : 2000;
+    const heartbeat = createHeartbeat('Potrace image tracing', heartbeatInterval, logCallback);
     
     // Track start time
     const startTime = performance.now();
@@ -109,61 +117,50 @@ const trace = (
       logCallback('TRACE_START', `Starting Potrace at ${startTime}ms`, false, new Date().toISOString().split('T')[1].split('.')[0]);
     }
     
-    // Call Potrace with our options
-    const traceInstance = new Potrace.Potrace();
-    Object.keys(options).forEach(key => {
-      (traceInstance as any)[key] = options[key];
-    });
+    // Use the Potrace.trace function directly instead of creating a Potrace instance
+    // This is the correct way to use Potrace with a data URL
+    if (logCallback) {
+      logCallback('TRACE_METHOD', 'Using Potrace.trace with data URL', false, new Date().toISOString().split('T')[1].split('.')[0]);
+    }
     
-    // Use the proper API for Potrace
-    // Note: For data URIs, we're using a workaround since the TypeScript types are incorrect
-    (traceInstance as any).loadFromDataUrl(image, (err: Error | null) => {
-      if (err) {
-        heartbeat.stop();
-        if (logCallback) {
-          logCallback('LOAD_ERROR', `Failed to load image in Potrace: ${err.message}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
-        }
-        callback(err);
-        return;
-      }
-      
-      if (logCallback) {
-        logCallback('IMAGE_LOADED', 'Image successfully loaded into Potrace', false, new Date().toISOString().split('T')[1].split('.')[0]);
-      }
-      
-      // Track when the actual tracing starts
-      const traceStartTime = performance.now();
-      if (logCallback) {
-        logCallback('TRACING', `Beginning Potrace algorithm at ${traceStartTime}ms (${Math.round(traceStartTime - startTime)}ms since start)`, false, new Date().toISOString().split('T')[1].split('.')[0]);
-      }
-      
-      // This is the blocking call where we lose visibility
+    // Call the trace function from the Potrace library directly
+    // Wrap in a setTimeout to ensure the UI can update before intensive processing starts
+    setTimeout(() => {
       try {
-        const svg = traceInstance.getSVG();
-        
-        // Tracing completed
-        const endTime = performance.now();
-        heartbeat.stop();
-        
-        if (logCallback) {
-          logCallback('TRACE_COMPLETE', `Completed in ${Math.round(endTime - traceStartTime)}ms, total time: ${Math.round(endTime - startTime)}ms`, false, new Date().toISOString().split('T')[1].split('.')[0]);
-          
-          // Log memory usage after tracing
-          if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
-            const memUsage = (window as any).performance.memory;
-            logCallback('MEMORY', `After tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+        (Potrace as any).trace(image, options, (err: Error | null, svg?: string) => {
+          if (err) {
+            heartbeat.stop();
+            if (logCallback) {
+              logCallback('TRACE_ERROR', `Error during Potrace tracing: ${err.message}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
+            }
+            callback(err);
+            return;
           }
-        }
-        
-        callback(null, svg);
+          
+          // Tracing completed
+          const endTime = performance.now();
+          heartbeat.stop();
+          
+          if (logCallback) {
+            logCallback('TRACE_COMPLETE', `Completed in ${Math.round(endTime - startTime)}ms`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+            
+            // Log memory usage after tracing
+            if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
+              const memUsage = (window as any).performance.memory;
+              logCallback('MEMORY', `After tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+            }
+          }
+          
+          callback(null, svg);
+        });
       } catch (error) {
         heartbeat.stop();
         if (logCallback) {
-          logCallback('TRACE_ERROR', `Exception during Potrace algorithm: ${error}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
+          logCallback('TRACE_SETUP_ERROR', `Exception during Potrace execution: ${error}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
         }
         callback(error instanceof Error ? error : new Error(String(error)));
       }
-    });
+    }, isNetwork ? 300 : 0); // Add a small delay for network clients to ensure UI responsiveness
   } catch (error) {
     if (logCallback) {
       logCallback('TRACE_SETUP_ERROR', `Failed to initialize tracing: ${error}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
@@ -283,143 +280,114 @@ export const processImage = (
       logProcessingStep('START', `Beginning image processing with data length: ${imageData.length}`, false, detailedLogCallback);
       progressCallback('loading');
 
-      // Longer timeout for network clients
-      setTimeout(() => {
+      // Check if this is a network client
+      const isNetwork = isNetworkClient();
+      
+      // For network clients, apply more aggressive downscaling
+      let processedImageData = imageData;
+      
+      const processNextStep = () => {
         progressCallback('processing');
         logProcessingStep('PROCESS', 'Processing image data', false, detailedLogCallback);
         
-        // Longer timeout for network clients
         setTimeout(() => {
           progressCallback('analyzing');
           
           // Analyze image complexity
-          const complexityResult = analyzeImageComplexity(imageData);
+          const complexityResult = analyzeImageComplexity(processedImageData);
           logProcessingStep('ANALYZE', `Complexity analysis result: ${JSON.stringify(complexityResult)}`, false, detailedLogCallback);
           
-          // Check if this is a network client
-          const isNetwork = isNetworkClient();
           if (isNetwork) {
             logProcessingStep('NETWORK', 'Processing as network client - applying enhanced optimizations', false, detailedLogCallback);
-          }
-          
-          // Handle complex images with different strategy
-          const processWithParams = async (imgData: string, processingParams: TracingParams) => {
-            progressCallback('tracing');
-            logProcessingStep('TRACE', `Starting image tracing with data length: ${imgData.length}`, false, detailedLogCallback);
             
-            // Add a timeout to give the UI time to update before intensive processing
-            setTimeout(() => {
-              try {
-                // Set a longer timeout for the tracing operation
-                const traceTimeout = setTimeout(() => {
-                  logProcessingStep('ERROR', 'Image tracing is taking too long, possibly stuck', true, detailedLogCallback);
-                  progressCallback('error');
-                  reject(new Error('Image tracing timed out. The image may be too complex. Try using Complex Image Mode or simplifying the image.'));
-                }, 180000); // Increased from 60000 (1 minute) to 180000 (3 minutes)
-
-                trace(imgData, processingParams, (err: Error | null, svg?: string) => {
-                  clearTimeout(traceTimeout); // Clear the timeout if tracing completes
-                  if (err) {
-                    logProcessingStep('ERROR', `Error during tracing: ${err.message}`, true, detailedLogCallback);
-                    progressCallback('error');
-                    reject(new Error(`Failed to trace image: ${err.message}`));
-                    return;
-                  }
-                  
-                  if (!svg) {
-                    logProcessingStep('ERROR', 'Potrace returned empty SVG', true, detailedLogCallback);
-                    progressCallback('error');
-                    reject(new Error('Potrace returned empty SVG'));
-                    return;
-                  }
-                  
-                  progressCallback('optimizing');
-                  logProcessingStep('OPTIMIZE', `SVG generated, size: ${svg.length} characters`, false, detailedLogCallback);
-                  
-                  // Add a short delay before showing the result for better UX
-                  setTimeout(() => {
-                    progressCallback('done');
-                    logProcessingStep('DONE', 'Image processing complete', false, detailedLogCallback);
-                    resolve(svg);
-                  }, 300);
-                }, detailedLogCallback); // Pass the detailed log callback to the trace function
-              } catch (error) {
-                logProcessingStep('ERROR', `Exception during tracing: ${error}`, true, detailedLogCallback);
-                progressCallback('error');
-                reject(error instanceof Error ? error : new Error(String(error)));
-              }
-            }, 500);
-          };
-          
-          // Adjust parameters and potentially downscale for complex images
-          if (complexityResult.complex) {
-            logProcessingStep('COMPLEX', `Image appears to be complex: ${complexityResult.reason}`, false, detailedLogCallback);
-            // Use even more aggressive settings for very complex images
-            let enhancedParams = simplifyForComplexImages(params);
-            
-            // For network clients, use even more aggressive settings
-            if (isNetwork) {
-              enhancedParams = simplifyForNetworkClients(params);
-              logProcessingStep('NETWORK', 'Applied network-specific optimizations to parameters', false, detailedLogCallback);
-            }
-            
-            // If extremely complex, downscale the image first
-            if (complexityResult.size && complexityResult.size > 4000000) {
-              logProcessingStep('COMPLEX', 'Image is extremely large, downscaling before processing', false, detailedLogCallback);
-              progressCallback('processing');
+            // If we're on a network client AND the image is complex, 
+            // downscale it even more for better performance
+            if (complexityResult.complex && processedImageData === imageData) {
+              logProcessingStep('NETWORK_SCALE', 'Further downscaling image for network processing', false, detailedLogCallback);
               
-              // Downscale by different amounts based on complexity
-              let scaleFactor = complexityResult.size > 8000000 ? 0.25 : 0.5;
-              
-              // For network clients, downscale even more aggressively
-              if (isNetwork) {
-                scaleFactor = complexityResult.size > 8000000 ? 0.15 : 0.25;
-                logProcessingStep('NETWORK', `Using more aggressive downscaling for network client: ${scaleFactor}`, false, detailedLogCallback);
-              }
-              
-              downscaleImage(imageData, scaleFactor)
-                .then(downscaledData => {
-                  logProcessingStep('DOWNSCALE', 'Successfully downscaled image', false, detailedLogCallback);
-                  processWithParams(downscaledData, enhancedParams);
-                })
-                .catch(err => {
-                  logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
-                  // Fall back to original image with aggressive params
-                  processWithParams(imageData, enhancedParams);
-                });
-            } else {
-              // Moderately complex - use enhanced params without downscaling
-              processWithParams(imageData, enhancedParams);
-            }
-          } else if (isNetwork) {
-            // Even for simple images, apply some optimization for network clients
-            let networkParams = params;
-            
-            // If it's not technically complex but being processed over network, 
-            // apply moderate optimizations and light downscaling
-            logProcessingStep('NETWORK', 'Simple image on network - applying moderate optimizations', false, detailedLogCallback);
-            networkParams = { ...params, turdSize: params.turdSize + 2, optCurve: false };
-            
-            // Light downscaling for all network clients
-            downscaleImage(imageData, 0.75)
-              .then(downscaledData => {
-                logProcessingStep('NETWORK', 'Applied light downscaling for network performance', false, detailedLogCallback);
-                processWithParams(downscaledData, networkParams);
-              })
-              .catch(err => {
-                // Fall back to original image with network params
-                logProcessingStep('ERROR', `Failed to downscale simple image: ${err.message}`, true, detailedLogCallback);
-                processWithParams(imageData, networkParams);
+              // Apply more aggressive downscaling for network clients with complex images
+              downscaleImage(processedImageData, 0.3).then((scaledData) => {
+                processedImageData = scaledData;
+                logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
+                processWithParams(processedImageData, params);
+              }).catch(err => {
+                logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
+                processWithParams(processedImageData, params);
               });
+            } else {
+              processWithParams(processedImageData, params);
+            }
           } else {
-            // Normal processing for simple images
-            processWithParams(imageData, params);
+            processWithParams(processedImageData, params);
           }
-          
-        }, 500); // Increased from 300ms to 500ms
-      }, 500); // Increased from 300ms to 500ms
+        }, isNetwork ? 300 : 100);
+      };
+      
+      // If network client, downscale image first
+      if (isNetwork) {
+        logProcessingStep('NETWORK_SCALE', 'Downscaling image for network processing', false, detailedLogCallback);
+        downscaleImage(imageData, 0.5).then((scaledData) => {
+          processedImageData = scaledData;
+          logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
+          processNextStep();
+        }).catch(err => {
+          logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
+          processNextStep();
+        });
+      } else {
+        setTimeout(processNextStep, 100);
+      }
+
+      // Handle complex images with different strategy - we'll reuse this function
+      const processWithParams = async (imgData: string, processingParams: TracingParams) => {
+        progressCallback('tracing');
+        logProcessingStep('TRACE', `Starting image tracing with data length: ${imgData.length}`, false, detailedLogCallback);
+        
+        // Add a timeout to give the UI time to update before intensive processing
+        setTimeout(() => {
+          try {
+            // Set a longer timeout for the tracing operation
+            const traceTimeout = setTimeout(() => {
+              logProcessingStep('ERROR', 'Image tracing is taking too long, possibly stuck', true, detailedLogCallback);
+              progressCallback('error');
+              reject(new Error('Image tracing timed out. The image may be too complex. Try using Complex Image Mode or simplifying the image.'));
+            }, isNetwork ? 90000 : 180000); // Shorter timeout for network clients
+
+            trace(imgData, processingParams, (err: Error | null, svg?: string) => {
+              clearTimeout(traceTimeout); // Clear the timeout if tracing completes
+              if (err) {
+                logProcessingStep('ERROR', `Error during tracing: ${err.message}`, true, detailedLogCallback);
+                progressCallback('error');
+                reject(new Error(`Failed to trace image: ${err.message}`));
+                return;
+              }
+              
+              if (!svg) {
+                logProcessingStep('ERROR', 'Potrace returned empty SVG', true, detailedLogCallback);
+                progressCallback('error');
+                reject(new Error('Potrace returned empty SVG'));
+                return;
+              }
+              
+              progressCallback('optimizing');
+              logProcessingStep('OPTIMIZE', `SVG generated, size: ${svg.length} characters`, false, detailedLogCallback);
+              
+              // Add a short delay before showing the result for better UX
+              setTimeout(() => {
+                progressCallback('done');
+                logProcessingStep('DONE', 'Image processing complete', false, detailedLogCallback);
+                resolve(svg);
+              }, 300);
+            }, detailedLogCallback); // Pass the detailed log callback to the trace function
+          } catch (error) {
+            logProcessingStep('ERROR', `Exception during tracing: ${error}`, true, detailedLogCallback);
+            progressCallback('error');
+            reject(error instanceof Error ? error : new Error(String(error)));
+          }
+        }, isNetwork ? 500 : 100); // More delay for network clients
+      };
     } catch (error) {
-      logProcessingStep('ERROR', `Unexpected error in processImage: ${error}`, true, detailedLogCallback);
+      logProcessingStep('ERROR', `Exception during processing setup: ${error}`, true, detailedLogCallback);
       progressCallback('error');
       reject(error instanceof Error ? error : new Error(String(error)));
     }
@@ -455,9 +423,13 @@ export const simplifyForNetworkClients = (params: TracingParams): TracingParams 
   
   // Then apply even more aggressive settings
   complexParams.threshold = Math.min(160, complexParams.threshold + 30);
-  complexParams.turdSize = Math.max(15, complexParams.turdSize * 2);
+  complexParams.turdSize = Math.max(15, complexParams.turdSize * 2);  // More aggressive noise filtering
   complexParams.alphaMax = Math.min(0.5, complexParams.alphaMax - 0.1);
   complexParams.optCurve = false; // Disable curve optimization to speed up processing
+  complexParams.optTolerance = 1.0; // Maximum tolerance for faster processing
+  
+  // Add a console log for debugging
+  console.log('Network optimized params:', complexParams);
   
   return complexParams;
 }; 

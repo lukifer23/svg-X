@@ -16,7 +16,7 @@ export default {
     identity: null
   },
   afterSign: undefined,
-  appId: "com.svgbolt.app",
+  appId: "com.svg-x.app",
   productName: "SVG-X",
   files: [
     "dist/**/*",

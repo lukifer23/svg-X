@@ -1,6 +1,6 @@
-# Building SVG Bolt for Windows
+# Building SVG-X for Windows
 
-This guide will walk you through building the SVG Bolt installer for Windows.
+This guide will walk you through building the SVG-X application for Windows.
 
 ## Prerequisites
 
@@ -11,8 +11,8 @@ This guide will walk you through building the SVG Bolt installer for Windows.
 
 1. Clone the repository:
    ```
-   git clone https://github.com/YOUR_USERNAME/svg-bolt.git
-   cd svg-bolt
+   git clone https://github.com/YOUR_USERNAME/svg-x.git
+   cd svg-x
    ```
 
 2. Install dependencies:
@@ -26,17 +26,42 @@ This guide will walk you through building the SVG Bolt installer for Windows.
    ```
    This should launch the application in development mode.
 
-## Building the Windows Installer
+## Building the Windows Executable
 
-To build the Windows installer:
+There are several build options available:
 
+### Option 1: Portable Executable (Recommended)
 ```
-npm run electron:build -- --win
+npm run build:portable-exe
 ```
+This will create a portable .exe file in the `release` directory that can be run without installation.
 
-This will create the following files in the `release` directory:
-- `SVG Bolt-1.0.0-x64.exe` - NSIS Installer (64-bit)
-- `SVG Bolt-1.0.0-x64-portable.exe` - Portable version (64-bit)
+### Option 2: Directory Output (For testing)
+```
+npm run electron:build:dir
+```
+This creates the application files in `release/win-unpacked` which can be useful for testing.
+
+### Option 3: Create a ZIP archive of the unpacked build
+```
+npm run create-zip
+```
+This creates a ZIP file of the unpacked build at `release/SVG-X-win-unpacked.zip`.
+
+## Important Build Notes
+
+1. **Electron Entry Point**: If you get an error about `electron.cjs`, run:
+   ```
+   node create-electron-cjs.js
+   ```
+   This generates the necessary entry point file.
+
+2. **Code Signing**: The default builds disable code signing. Users may get security warnings when running the app for the first time.
+
+3. **Network Client Performance**: The application includes optimizations for network clients accessing the app from other devices:
+   - Automatic downscaling of images
+   - Adjusted processing parameters
+   - Enhanced UI responsiveness
 
 ## Troubleshooting
 
@@ -54,9 +79,11 @@ This will create the following files in the `release` directory:
    - Ensure your system has enough memory and disk space
    - Close other applications to free up resources
 
-## Distributing the Installer
+4. **"Cannot use 'in' operator to search for 'file'" error**:
+   - This is related to code signing and can be ignored when using the non-signed build options
 
-After building, share the `.exe` file with users. The installer will:
-1. Install SVG Bolt on the user's system
-2. Create desktop and start menu shortcuts
-3. Make the app available on the local network automatically when running 
+## Distributing the Application
+
+- Share the portable executable `SVG-X-1.1.0-x64.exe` for the simplest distribution
+- Alternatively, share the ZIP file containing the unpacked application
+- The app works as a standalone application without installation 
