@@ -221,6 +221,10 @@ const dataUrl = canvas.toDataURL('image/png');
 
 ### Recent Fixes
 
+- Fixed SVG conversion functionality to properly implement the `processImage` function
+- Added batch processing capability for converting multiple images at once
+- Added color preservation mode for retaining original image colors
+- Fixed Electron application mode detection for proper file loading
 - Fixed Potrace implementation to properly use the library's `trace` function with enhanced error handling
 - Corrected image data formatting for Potrace compatibility
 - Improved conversion parameters for better SVG quality
