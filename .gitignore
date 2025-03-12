@@ -18,6 +18,12 @@ dist-ssr
 release
 *.local
 
+# Specifically exclude large files
+*.exe
+*.zip
+temp-check/win-unpacked
+release/win-unpacked
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
