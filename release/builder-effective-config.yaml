@@ -1,0 +1,39 @@
+directories:
+  output: release
+  buildResources: .
+appId: com.svg-x.app
+productName: SVG-X
+files:
+  - filter:
+      - dist/**/*
+      - main.js
+      - preload.js
+      - src/**/*
+      - package.json
+extraResources:
+  - from: dist
+    to: dist
+asar: true
+mac:
+  category: public.app-category.graphics-design
+  target:
+    - dmg
+    - zip
+  artifactName: ${productName}-${version}-${arch}.${ext}
+win:
+  sign: false
+  signDlls: false
+  publisherName: Luke S
+  verifyUpdateCodeSignature: false
+  signAndEditExecutable: false
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  target:
+    - portable
+  icon: 'null'
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Graphics
+  artifactName: ${productName}-${version}-${arch}.${ext}
+electronVersion: 30.5.1

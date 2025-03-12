@@ -1,0 +1,448 @@
+﻿2025-03-10 07:53:00.668   Log opened. (Time zone: UTC-05:00)
+2025-03-10 07:53:00.668   Setup version: Inno Setup version 6.2.2
+2025-03-10 07:53:00.668   Original Setup EXE: C:\Users\Nunya2\Documents\Cursor Projects\svg-X\installer-output\SVG-X-Setup-1.1.0.exe
+2025-03-10 07:53:00.668   Setup command line: /SL5="$34051C,106078615,832512,C:\Users\Nunya2\Documents\Cursor Projects\svg-X\installer-output\SVG-X-Setup-1.1.0.exe" /SPAWNWND=$240078 /NOTIFYWND=$510090 /VERYSILENT /SUPPRESSMSGBOXES /LOG=installer.log
+2025-03-10 07:53:00.668   Windows version: 10.0.26100  (NT platform: Yes)
+2025-03-10 07:53:00.668   64-bit Windows: Yes
+2025-03-10 07:53:00.668   Processor architecture: x64
+2025-03-10 07:53:00.668   User privileges: Administrative
+2025-03-10 07:53:00.671   Administrative install mode: Yes
+2025-03-10 07:53:00.671   Install mode root key: HKEY_LOCAL_MACHINE
+2025-03-10 07:53:00.671   64-bit install mode: Yes
+2025-03-10 07:53:00.674   Created temporary directory: C:\Users\Nunya2\AppData\Local\Temp\is-FD457.tmp
+2025-03-10 07:53:00.680   Extracting temporary file: C:\Users\Nunya2\AppData\Local\Temp\is-FD457.tmp\VC_redist.x64.exe
+2025-03-10 07:53:07.044   Found 7 files to register with RestartManager.
+2025-03-10 07:53:07.044   Calling RestartManager's RmGetList.
+2025-03-10 07:53:07.050   RmGetList finished successfully.
+2025-03-10 07:53:07.050   RestartManager found no applications using one of our files.
+2025-03-10 07:53:07.053   Starting the installation process.
+2025-03-10 07:53:07.055   Creating directory: C:\Program Files\SVG-X
+2025-03-10 07:53:07.056   Directory for uninstall files: C:\Program Files\SVG-X
+2025-03-10 07:53:07.056   Creating new uninstall log: C:\Program Files\SVG-X\unins000.dat
+2025-03-10 07:53:07.058   -- File entry --
+2025-03-10 07:53:07.058   Dest filename: C:\Program Files\SVG-X\unins000.exe
+2025-03-10 07:53:07.058   Non-default bitness: 32-bit
+2025-03-10 07:53:07.060   Time stamp of our file: 2025-03-10 07:53:00.326
+2025-03-10 07:53:07.060   Installing the file.
+2025-03-10 07:53:07.065   Successfully installed the file.
+2025-03-10 07:53:07.066   -- File entry --
+2025-03-10 07:53:07.066   Dest filename: C:\Program Files\SVG-X\chrome_100_percent.pak
+2025-03-10 07:53:07.066   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.066   Installing the file.
+2025-03-10 07:53:07.074   Successfully installed the file.
+2025-03-10 07:53:07.074   -- File entry --
+2025-03-10 07:53:07.074   Dest filename: C:\Program Files\SVG-X\chrome_200_percent.pak
+2025-03-10 07:53:07.074   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:07.074   Installing the file.
+2025-03-10 07:53:07.083   Successfully installed the file.
+2025-03-10 07:53:07.083   -- File entry --
+2025-03-10 07:53:07.083   Dest filename: C:\Program Files\SVG-X\d3dcompiler_47.dll
+2025-03-10 07:53:07.083   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.083   Installing the file.
+2025-03-10 07:53:07.205   Successfully installed the file.
+2025-03-10 07:53:07.205   -- File entry --
+2025-03-10 07:53:07.205   Dest filename: C:\Program Files\SVG-X\ffmpeg.dll
+2025-03-10 07:53:07.205   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:07.205   Installing the file.
+2025-03-10 07:53:07.268   Successfully installed the file.
+2025-03-10 07:53:07.268   -- File entry --
+2025-03-10 07:53:07.268   Dest filename: C:\Program Files\SVG-X\icudtl.dat
+2025-03-10 07:53:07.268   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.268   Installing the file.
+2025-03-10 07:53:07.514   Successfully installed the file.
+2025-03-10 07:53:07.514   -- File entry --
+2025-03-10 07:53:07.514   Dest filename: C:\Program Files\SVG-X\libEGL.dll
+2025-03-10 07:53:07.514   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:07.514   Installing the file.
+2025-03-10 07:53:07.528   Successfully installed the file.
+2025-03-10 07:53:07.528   -- File entry --
+2025-03-10 07:53:07.528   Dest filename: C:\Program Files\SVG-X\libGLESv2.dll
+2025-03-10 07:53:07.528   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.528   Installing the file.
+2025-03-10 07:53:07.696   Successfully installed the file.
+2025-03-10 07:53:07.696   -- File entry --
+2025-03-10 07:53:07.696   Dest filename: C:\Program Files\SVG-X\LICENSE.electron.txt
+2025-03-10 07:53:07.697   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.697   Installing the file.
+2025-03-10 07:53:07.697   Successfully installed the file.
+2025-03-10 07:53:07.697   -- File entry --
+2025-03-10 07:53:07.697   Dest filename: C:\Program Files\SVG-X\LICENSES.chromium.html
+2025-03-10 07:53:07.697   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:07.697   Installing the file.
+2025-03-10 07:53:07.748   Successfully installed the file.
+2025-03-10 07:53:07.748   -- File entry --
+2025-03-10 07:53:07.748   Dest filename: C:\Program Files\SVG-X\resources.pak
+2025-03-10 07:53:07.748   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:07.748   Installing the file.
+2025-03-10 07:53:08.034   Successfully installed the file.
+2025-03-10 07:53:08.034   -- File entry --
+2025-03-10 07:53:08.034   Dest filename: C:\Program Files\SVG-X\snapshot_blob.bin
+2025-03-10 07:53:08.035   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:08.035   Installing the file.
+2025-03-10 07:53:08.040   Successfully installed the file.
+2025-03-10 07:53:08.040   -- File entry --
+2025-03-10 07:53:08.040   Dest filename: C:\Program Files\SVG-X\SVG-X.exe
+2025-03-10 07:53:08.040   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:08.040   Installing the file.
+2025-03-10 07:53:12.269   Successfully installed the file.
+2025-03-10 07:53:12.269   -- File entry --
+2025-03-10 07:53:12.269   Dest filename: C:\Program Files\SVG-X\v8_context_snapshot.bin
+2025-03-10 07:53:12.269   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.269   Installing the file.
+2025-03-10 07:53:12.281   Successfully installed the file.
+2025-03-10 07:53:12.281   -- File entry --
+2025-03-10 07:53:12.281   Dest filename: C:\Program Files\SVG-X\vk_swiftshader.dll
+2025-03-10 07:53:12.281   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.281   Installing the file.
+2025-03-10 07:53:12.390   Successfully installed the file.
+2025-03-10 07:53:12.390   -- File entry --
+2025-03-10 07:53:12.390   Dest filename: C:\Program Files\SVG-X\vk_swiftshader_icd.json
+2025-03-10 07:53:12.390   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.390   Installing the file.
+2025-03-10 07:53:12.391   Successfully installed the file.
+2025-03-10 07:53:12.391   -- File entry --
+2025-03-10 07:53:12.391   Dest filename: C:\Program Files\SVG-X\vulkan-1.dll
+2025-03-10 07:53:12.391   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.391   Installing the file.
+2025-03-10 07:53:12.405   Successfully installed the file.
+2025-03-10 07:53:12.405   -- File entry --
+2025-03-10 07:53:12.405   Dest filename: C:\Program Files\SVG-X\locales\af.pak
+2025-03-10 07:53:12.406   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.406   Installing the file.
+2025-03-10 07:53:12.406   Creating directory: C:\Program Files\SVG-X\locales
+2025-03-10 07:53:12.416   Successfully installed the file.
+2025-03-10 07:53:12.416   -- File entry --
+2025-03-10 07:53:12.416   Dest filename: C:\Program Files\SVG-X\locales\am.pak
+2025-03-10 07:53:12.416   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.416   Installing the file.
+2025-03-10 07:53:12.428   Successfully installed the file.
+2025-03-10 07:53:12.428   -- File entry --
+2025-03-10 07:53:12.428   Dest filename: C:\Program Files\SVG-X\locales\ar.pak
+2025-03-10 07:53:12.428   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.428   Installing the file.
+2025-03-10 07:53:12.440   Successfully installed the file.
+2025-03-10 07:53:12.440   -- File entry --
+2025-03-10 07:53:12.440   Dest filename: C:\Program Files\SVG-X\locales\bg.pak
+2025-03-10 07:53:12.440   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.440   Installing the file.
+2025-03-10 07:53:12.452   Successfully installed the file.
+2025-03-10 07:53:12.452   -- File entry --
+2025-03-10 07:53:12.452   Dest filename: C:\Program Files\SVG-X\locales\bn.pak
+2025-03-10 07:53:12.452   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.452   Installing the file.
+2025-03-10 07:53:12.466   Successfully installed the file.
+2025-03-10 07:53:12.466   -- File entry --
+2025-03-10 07:53:12.466   Dest filename: C:\Program Files\SVG-X\locales\ca.pak
+2025-03-10 07:53:12.466   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.466   Installing the file.
+2025-03-10 07:53:12.476   Successfully installed the file.
+2025-03-10 07:53:12.476   -- File entry --
+2025-03-10 07:53:12.476   Dest filename: C:\Program Files\SVG-X\locales\cs.pak
+2025-03-10 07:53:12.476   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.476   Installing the file.
+2025-03-10 07:53:12.488   Successfully installed the file.
+2025-03-10 07:53:12.488   -- File entry --
+2025-03-10 07:53:12.488   Dest filename: C:\Program Files\SVG-X\locales\da.pak
+2025-03-10 07:53:12.488   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.488   Installing the file.
+2025-03-10 07:53:12.498   Successfully installed the file.
+2025-03-10 07:53:12.498   -- File entry --
+2025-03-10 07:53:12.498   Dest filename: C:\Program Files\SVG-X\locales\de.pak
+2025-03-10 07:53:12.498   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.498   Installing the file.
+2025-03-10 07:53:12.508   Successfully installed the file.
+2025-03-10 07:53:12.508   -- File entry --
+2025-03-10 07:53:12.508   Dest filename: C:\Program Files\SVG-X\locales\el.pak
+2025-03-10 07:53:12.508   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.508   Installing the file.
+2025-03-10 07:53:12.521   Successfully installed the file.
+2025-03-10 07:53:12.521   -- File entry --
+2025-03-10 07:53:12.521   Dest filename: C:\Program Files\SVG-X\locales\en-GB.pak
+2025-03-10 07:53:12.521   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.521   Installing the file.
+2025-03-10 07:53:12.531   Successfully installed the file.
+2025-03-10 07:53:12.531   -- File entry --
+2025-03-10 07:53:12.531   Dest filename: C:\Program Files\SVG-X\locales\en-US.pak
+2025-03-10 07:53:12.531   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.531   Installing the file.
+2025-03-10 07:53:12.536   Successfully installed the file.
+2025-03-10 07:53:12.536   -- File entry --
+2025-03-10 07:53:12.536   Dest filename: C:\Program Files\SVG-X\locales\es-419.pak
+2025-03-10 07:53:12.537   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.537   Installing the file.
+2025-03-10 07:53:12.546   Successfully installed the file.
+2025-03-10 07:53:12.546   -- File entry --
+2025-03-10 07:53:12.546   Dest filename: C:\Program Files\SVG-X\locales\es.pak
+2025-03-10 07:53:12.547   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.547   Installing the file.
+2025-03-10 07:53:12.554   Successfully installed the file.
+2025-03-10 07:53:12.554   -- File entry --
+2025-03-10 07:53:12.554   Dest filename: C:\Program Files\SVG-X\locales\et.pak
+2025-03-10 07:53:12.554   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.554   Installing the file.
+2025-03-10 07:53:12.564   Successfully installed the file.
+2025-03-10 07:53:12.564   -- File entry --
+2025-03-10 07:53:12.564   Dest filename: C:\Program Files\SVG-X\locales\fa.pak
+2025-03-10 07:53:12.565   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.565   Installing the file.
+2025-03-10 07:53:12.576   Successfully installed the file.
+2025-03-10 07:53:12.576   -- File entry --
+2025-03-10 07:53:12.576   Dest filename: C:\Program Files\SVG-X\locales\fi.pak
+2025-03-10 07:53:12.576   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.576   Installing the file.
+2025-03-10 07:53:12.585   Successfully installed the file.
+2025-03-10 07:53:12.585   -- File entry --
+2025-03-10 07:53:12.585   Dest filename: C:\Program Files\SVG-X\locales\fil.pak
+2025-03-10 07:53:12.585   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.585   Installing the file.
+2025-03-10 07:53:12.595   Successfully installed the file.
+2025-03-10 07:53:12.595   -- File entry --
+2025-03-10 07:53:12.595   Dest filename: C:\Program Files\SVG-X\locales\fr.pak
+2025-03-10 07:53:12.595   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.595   Installing the file.
+2025-03-10 07:53:12.606   Successfully installed the file.
+2025-03-10 07:53:12.606   -- File entry --
+2025-03-10 07:53:12.606   Dest filename: C:\Program Files\SVG-X\locales\gu.pak
+2025-03-10 07:53:12.606   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.606   Installing the file.
+2025-03-10 07:53:12.620   Successfully installed the file.
+2025-03-10 07:53:12.620   -- File entry --
+2025-03-10 07:53:12.620   Dest filename: C:\Program Files\SVG-X\locales\he.pak
+2025-03-10 07:53:12.620   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.620   Installing the file.
+2025-03-10 07:53:12.630   Successfully installed the file.
+2025-03-10 07:53:12.630   -- File entry --
+2025-03-10 07:53:12.630   Dest filename: C:\Program Files\SVG-X\locales\hi.pak
+2025-03-10 07:53:12.630   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.630   Installing the file.
+2025-03-10 07:53:12.644   Successfully installed the file.
+2025-03-10 07:53:12.644   -- File entry --
+2025-03-10 07:53:12.644   Dest filename: C:\Program Files\SVG-X\locales\hr.pak
+2025-03-10 07:53:12.644   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.644   Installing the file.
+2025-03-10 07:53:12.655   Successfully installed the file.
+2025-03-10 07:53:12.655   -- File entry --
+2025-03-10 07:53:12.655   Dest filename: C:\Program Files\SVG-X\locales\hu.pak
+2025-03-10 07:53:12.655   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.655   Installing the file.
+2025-03-10 07:53:12.666   Successfully installed the file.
+2025-03-10 07:53:12.666   -- File entry --
+2025-03-10 07:53:12.666   Dest filename: C:\Program Files\SVG-X\locales\id.pak
+2025-03-10 07:53:12.666   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.666   Installing the file.
+2025-03-10 07:53:12.675   Successfully installed the file.
+2025-03-10 07:53:12.675   -- File entry --
+2025-03-10 07:53:12.675   Dest filename: C:\Program Files\SVG-X\locales\it.pak
+2025-03-10 07:53:12.675   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.675   Installing the file.
+2025-03-10 07:53:12.684   Successfully installed the file.
+2025-03-10 07:53:12.685   -- File entry --
+2025-03-10 07:53:12.685   Dest filename: C:\Program Files\SVG-X\locales\ja.pak
+2025-03-10 07:53:12.685   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.685   Installing the file.
+2025-03-10 07:53:12.695   Successfully installed the file.
+2025-03-10 07:53:12.695   -- File entry --
+2025-03-10 07:53:12.695   Dest filename: C:\Program Files\SVG-X\locales\kn.pak
+2025-03-10 07:53:12.695   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.695   Installing the file.
+2025-03-10 07:53:12.704   Successfully installed the file.
+2025-03-10 07:53:12.704   -- File entry --
+2025-03-10 07:53:12.704   Dest filename: C:\Program Files\SVG-X\locales\ko.pak
+2025-03-10 07:53:12.704   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.704   Installing the file.
+2025-03-10 07:53:12.719   Successfully installed the file.
+2025-03-10 07:53:12.719   -- File entry --
+2025-03-10 07:53:12.719   Dest filename: C:\Program Files\SVG-X\locales\lt.pak
+2025-03-10 07:53:12.719   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.719   Installing the file.
+2025-03-10 07:53:12.730   Successfully installed the file.
+2025-03-10 07:53:12.730   -- File entry --
+2025-03-10 07:53:12.730   Dest filename: C:\Program Files\SVG-X\locales\lv.pak
+2025-03-10 07:53:12.730   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.730   Installing the file.
+2025-03-10 07:53:12.741   Successfully installed the file.
+2025-03-10 07:53:12.741   -- File entry --
+2025-03-10 07:53:12.741   Dest filename: C:\Program Files\SVG-X\locales\ml.pak
+2025-03-10 07:53:12.741   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.741   Installing the file.
+2025-03-10 07:53:12.756   Successfully installed the file.
+2025-03-10 07:53:12.756   -- File entry --
+2025-03-10 07:53:12.756   Dest filename: C:\Program Files\SVG-X\locales\mr.pak
+2025-03-10 07:53:12.756   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.756   Installing the file.
+2025-03-10 07:53:12.769   Successfully installed the file.
+2025-03-10 07:53:12.770   -- File entry --
+2025-03-10 07:53:12.770   Dest filename: C:\Program Files\SVG-X\locales\ms.pak
+2025-03-10 07:53:12.770   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.770   Installing the file.
+2025-03-10 07:53:12.778   Successfully installed the file.
+2025-03-10 07:53:12.778   -- File entry --
+2025-03-10 07:53:12.778   Dest filename: C:\Program Files\SVG-X\locales\nb.pak
+2025-03-10 07:53:12.779   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.779   Installing the file.
+2025-03-10 07:53:12.787   Successfully installed the file.
+2025-03-10 07:53:12.787   -- File entry --
+2025-03-10 07:53:12.788   Dest filename: C:\Program Files\SVG-X\locales\nl.pak
+2025-03-10 07:53:12.788   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.788   Installing the file.
+2025-03-10 07:53:12.797   Successfully installed the file.
+2025-03-10 07:53:12.797   -- File entry --
+2025-03-10 07:53:12.797   Dest filename: C:\Program Files\SVG-X\locales\pl.pak
+2025-03-10 07:53:12.798   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.798   Installing the file.
+2025-03-10 07:53:12.808   Successfully installed the file.
+2025-03-10 07:53:12.808   -- File entry --
+2025-03-10 07:53:12.808   Dest filename: C:\Program Files\SVG-X\locales\pt-BR.pak
+2025-03-10 07:53:12.808   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.808   Installing the file.
+2025-03-10 07:53:12.819   Successfully installed the file.
+2025-03-10 07:53:12.819   -- File entry --
+2025-03-10 07:53:12.819   Dest filename: C:\Program Files\SVG-X\locales\pt-PT.pak
+2025-03-10 07:53:12.819   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.819   Installing the file.
+2025-03-10 07:53:12.827   Successfully installed the file.
+2025-03-10 07:53:12.827   -- File entry --
+2025-03-10 07:53:12.827   Dest filename: C:\Program Files\SVG-X\locales\ro.pak
+2025-03-10 07:53:12.827   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.827   Installing the file.
+2025-03-10 07:53:12.837   Successfully installed the file.
+2025-03-10 07:53:12.837   -- File entry --
+2025-03-10 07:53:12.837   Dest filename: C:\Program Files\SVG-X\locales\ru.pak
+2025-03-10 07:53:12.837   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.837   Installing the file.
+2025-03-10 07:53:12.850   Successfully installed the file.
+2025-03-10 07:53:12.850   -- File entry --
+2025-03-10 07:53:12.850   Dest filename: C:\Program Files\SVG-X\locales\sk.pak
+2025-03-10 07:53:12.850   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.850   Installing the file.
+2025-03-10 07:53:12.863   Successfully installed the file.
+2025-03-10 07:53:12.863   -- File entry --
+2025-03-10 07:53:12.863   Dest filename: C:\Program Files\SVG-X\locales\sl.pak
+2025-03-10 07:53:12.863   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.863   Installing the file.
+2025-03-10 07:53:12.873   Successfully installed the file.
+2025-03-10 07:53:12.873   -- File entry --
+2025-03-10 07:53:12.873   Dest filename: C:\Program Files\SVG-X\locales\sr.pak
+2025-03-10 07:53:12.874   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.874   Installing the file.
+2025-03-10 07:53:12.884   Successfully installed the file.
+2025-03-10 07:53:12.885   -- File entry --
+2025-03-10 07:53:12.885   Dest filename: C:\Program Files\SVG-X\locales\sv.pak
+2025-03-10 07:53:12.885   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.885   Installing the file.
+2025-03-10 07:53:12.894   Successfully installed the file.
+2025-03-10 07:53:12.894   -- File entry --
+2025-03-10 07:53:12.894   Dest filename: C:\Program Files\SVG-X\locales\sw.pak
+2025-03-10 07:53:12.894   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.894   Installing the file.
+2025-03-10 07:53:12.904   Successfully installed the file.
+2025-03-10 07:53:12.904   -- File entry --
+2025-03-10 07:53:12.904   Dest filename: C:\Program Files\SVG-X\locales\ta.pak
+2025-03-10 07:53:12.904   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.904   Installing the file.
+2025-03-10 07:53:12.919   Successfully installed the file.
+2025-03-10 07:53:12.919   -- File entry --
+2025-03-10 07:53:12.919   Dest filename: C:\Program Files\SVG-X\locales\te.pak
+2025-03-10 07:53:12.919   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.919   Installing the file.
+2025-03-10 07:53:12.931   Successfully installed the file.
+2025-03-10 07:53:12.931   -- File entry --
+2025-03-10 07:53:12.931   Dest filename: C:\Program Files\SVG-X\locales\th.pak
+2025-03-10 07:53:12.931   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.931   Installing the file.
+2025-03-10 07:53:12.931   Successfully installed the file.
+2025-03-10 07:53:12.931   -- File entry --
+2025-03-10 07:53:12.931   Dest filename: C:\Program Files\SVG-X\locales\tr.pak
+2025-03-10 07:53:12.931   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.931   Installing the file.
+2025-03-10 07:53:12.955   Successfully installed the file.
+2025-03-10 07:53:12.955   -- File entry --
+2025-03-10 07:53:12.955   Dest filename: C:\Program Files\SVG-X\locales\uk.pak
+2025-03-10 07:53:12.956   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.956   Installing the file.
+2025-03-10 07:53:12.968   Successfully installed the file.
+2025-03-10 07:53:12.968   -- File entry --
+2025-03-10 07:53:12.968   Dest filename: C:\Program Files\SVG-X\locales\ur.pak
+2025-03-10 07:53:12.968   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.968   Installing the file.
+2025-03-10 07:53:12.979   Successfully installed the file.
+2025-03-10 07:53:12.979   -- File entry --
+2025-03-10 07:53:12.979   Dest filename: C:\Program Files\SVG-X\locales\vi.pak
+2025-03-10 07:53:12.979   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.979   Installing the file.
+2025-03-10 07:53:12.990   Successfully installed the file.
+2025-03-10 07:53:12.990   -- File entry --
+2025-03-10 07:53:12.990   Dest filename: C:\Program Files\SVG-X\locales\zh-CN.pak
+2025-03-10 07:53:12.990   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:12.990   Installing the file.
+2025-03-10 07:53:12.999   Successfully installed the file.
+2025-03-10 07:53:12.999   -- File entry --
+2025-03-10 07:53:12.999   Dest filename: C:\Program Files\SVG-X\locales\zh-TW.pak
+2025-03-10 07:53:12.999   Time stamp of our file: 2025-03-09 18:50:26.000
+2025-03-10 07:53:12.999   Installing the file.
+2025-03-10 07:53:13.008   Successfully installed the file.
+2025-03-10 07:53:13.008   -- File entry --
+2025-03-10 07:53:13.008   Dest filename: C:\Program Files\SVG-X\resources\app.asar
+2025-03-10 07:53:13.008   Time stamp of our file: 2025-03-09 18:50:30.000
+2025-03-10 07:53:13.008   Installing the file.
+2025-03-10 07:53:13.008   Creating directory: C:\Program Files\SVG-X\resources
+2025-03-10 07:53:13.352   Successfully installed the file.
+2025-03-10 07:53:13.352   -- File entry --
+2025-03-10 07:53:13.352   Dest filename: C:\Program Files\SVG-X\resources\dist\index.html
+2025-03-10 07:53:13.352   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:13.352   Installing the file.
+2025-03-10 07:53:13.352   Creating directory: C:\Program Files\SVG-X\resources\dist
+2025-03-10 07:53:13.353   Successfully installed the file.
+2025-03-10 07:53:13.353   -- File entry --
+2025-03-10 07:53:13.353   Dest filename: C:\Program Files\SVG-X\resources\dist\assets\index-Bqhi7w8g.css
+2025-03-10 07:53:13.353   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:13.353   Installing the file.
+2025-03-10 07:53:13.354   Creating directory: C:\Program Files\SVG-X\resources\dist\assets
+2025-03-10 07:53:13.355   Successfully installed the file.
+2025-03-10 07:53:13.355   -- File entry --
+2025-03-10 07:53:13.355   Dest filename: C:\Program Files\SVG-X\resources\dist\assets\index-bsewVVvw.js
+2025-03-10 07:53:13.355   Time stamp of our file: 2025-03-09 18:50:24.000
+2025-03-10 07:53:13.355   Installing the file.
+2025-03-10 07:53:13.370   Successfully installed the file.
+2025-03-10 07:53:13.370   -- Icon entry --
+2025-03-10 07:53:13.370   Dest filename: C:\ProgramData\Microsoft\Windows\Start Menu\Programs\SVG-X\SVG-X.lnk
+2025-03-10 07:53:13.371   Creating directory: C:\ProgramData\Microsoft\Windows\Start Menu\Programs\SVG-X
+2025-03-10 07:53:13.378   Creating the icon.
+2025-03-10 07:53:13.757   Successfully created the icon.
+2025-03-10 07:53:13.764   -- Icon entry --
+2025-03-10 07:53:13.764   Dest filename: C:\ProgramData\Microsoft\Windows\Start Menu\Programs\SVG-X\Uninstall SVG-X.lnk
+2025-03-10 07:53:13.764   Creating the icon.
+2025-03-10 07:53:13.897   Successfully created the icon.
+2025-03-10 07:53:13.904   -- Icon entry --
+2025-03-10 07:53:13.904   Dest filename: C:\Users\Public\Desktop\SVG-X.lnk
+2025-03-10 07:53:13.905   Creating the icon.
+2025-03-10 07:53:13.907   Successfully created the icon.
+2025-03-10 07:53:13.921   -- Registry entry --
+2025-03-10 07:53:13.921   Key: HKEY_CLASSES_ROOT\.svg
+2025-03-10 07:53:13.921   Creating or opening the key.
+2025-03-10 07:53:13.921   Creating or setting the value.
+2025-03-10 07:53:13.922   Successfully created or set the value.
+2025-03-10 07:53:13.922   -- Registry entry --
+2025-03-10 07:53:13.922   Key: HKEY_CLASSES_ROOT\SVG-X.Document
+2025-03-10 07:53:13.922   Creating or opening the key.
+2025-03-10 07:53:13.922   Creating or setting the value.
+2025-03-10 07:53:13.922   Successfully created or set the value.
+2025-03-10 07:53:13.922   -- Registry entry --
+2025-03-10 07:53:13.922   Key: HKEY_CLASSES_ROOT\SVG-X.Document\DefaultIcon
+2025-03-10 07:53:13.922   Creating or opening the key.
+2025-03-10 07:53:13.923   Creating or setting the value.
+2025-03-10 07:53:13.923   Successfully created or set the value.
+2025-03-10 07:53:13.923   -- Registry entry --
+2025-03-10 07:53:13.923   Key: HKEY_CLASSES_ROOT\SVG-X.Document\shell\open\command
+2025-03-10 07:53:13.923   Creating or opening the key.
+2025-03-10 07:53:13.923   Creating or setting the value.
+2025-03-10 07:53:13.923   Successfully created or set the value.
+2025-03-10 07:53:13.923   Saving uninstall information.
+2025-03-10 07:53:13.923   Creating new uninstall key: HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\{EACEA1B5-3B2F-4F6D-9ABC-EE8EF85C0E6F}_is1
+2025-03-10 07:53:13.923   Writing uninstall key values.
+2025-03-10 07:53:13.924   Detected previous non administrative install? No
+2025-03-10 07:53:13.924   Detected previous administrative 32-bit install? No
+2025-03-10 07:53:13.926   Installation process succeeded.
+2025-03-10 07:53:13.927   Need to restart Windows? No
+2025-03-10 07:53:13.929   Deinitializing Setup.
+2025-03-10 07:53:13.939   Log closed.
