@@ -2,6 +2,8 @@
  * Last checked: 2025-03-08
  */
 
+// Last updated: 2025-03-11 - Force update to repository
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Settings, FileText, Layers, AlertTriangle, Terminal } from 'lucide-react';
 import FileUpload from './components/FileUpload';
