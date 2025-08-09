@@ -28,6 +28,7 @@ The application follows these steps to convert raster images to SVG:
 3. **Grayscale Conversion**:
    - Processes each pixel using the luminance formula: `0.299*R + 0.587*G + 0.114*B`
    - Creates a new grayscale image on a canvas
+   - This step runs automatically for every upload to ensure consistent tracing results
 
 4. **Image Tracing**:
    - Converts the canvas to a data URL (PNG format)
@@ -46,6 +47,12 @@ Users can adjust the following parameters to optimize the SVG output:
 - **Threshold**: Sets the cutoff between black and white pixels (0-255)
 - **Corner Threshold (alphaMax)**: Affects how corners are detected and processed (0.1-1.5)
 - **Curve Optimization**: Enables smoother curves in the output SVG
+
+#### Foreground & Background Colors
+
+The `color` option sets the fill color for traced paths, while `background` controls the canvas behind them. Adjusting these values can dramatically change the SVG appearance (for example, white paths on a black background for a negative effect).
+
+Enable **Color Preservation** in the Settings panel to sample and apply the original image colors instead of a single foreground/background combination.
 
 ### Complex Image Mode
 
@@ -76,17 +83,19 @@ SVG-X is now fully responsive and works on all device sizes:
 
 ### Local Network Access
 
-The application can be accessed from other devices on the same network. When running the development server or the desktop application, it listens on all network interfaces (0.0.0.0), allowing access via:
+The application can be reached from other devices on the same network. After network hardening, SVG-X now retrieves active URLs from `/api/network-info` and refreshes the list every 30 seconds.
+
+The network panel (Globe icon in the corner) shows these addresses and lets you copy them. Example usage from another device:
 
 ```
-http://[your-computer-ip]:3000
+http://192.168.1.50:3000
 ```
 
-The application displays network URLs in the bottom-right corner of the interface. Click on the "Network Access" button to see all available network addresses. You can copy these URLs to easily share access with other devices on your network.
+The panel also lists `http://localhost:3000` for local access.
 
-For developers and advanced users, these URLs are also logged to the console when the application starts:
+For developers and advanced users, the resolved URLs are logged to the console when the application starts:
 - In development mode: Check the terminal where you started the app
-- In the desktop app: The URLs are logged in the background console
+- In the desktop app: The URLs are logged in the background console window
 
 ## Installation
 
