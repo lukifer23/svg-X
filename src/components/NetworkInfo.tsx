@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Globe, Copy, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Globe, Copy, Check, X } from 'lucide-react';
 import { getNetworkUrls } from '../utils/networkUtils';
 
 interface NetworkInfoProps {

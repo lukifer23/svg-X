@@ -14,16 +14,18 @@ export interface SettingsPanelProps {
   optCurve: boolean;
   optTolerance: number;
   threshold: number;
+  useAdaptiveThreshold: boolean;
   blackOnWhite: boolean;
   color: string;
   background: string;
   invert: boolean;
   highestQuality: boolean;
-  onParamChange: (param: string, value: any) => void;
+  onParamChange: (param: string, value: unknown) => void;
   onReset: () => void;
   onClose: () => void;
   onApply?: () => void;
   onApplyComplex?: () => void;
+  onAdaptiveToggle: (value: boolean) => void;
   isMobile?: boolean;
   isComplexMode?: boolean;
 }
@@ -35,6 +37,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   optCurve,
   optTolerance,
   threshold,
+  useAdaptiveThreshold,
   blackOnWhite,
   color,
   background,
@@ -45,6 +48,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onClose,
   onApply,
   onApplyComplex,
+  onAdaptiveToggle,
   isMobile = false,
   isComplexMode = false
 }) => {
@@ -52,7 +56,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   // CSS classes for slider styling
   const sliderTrackClass = "w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer";
-  const sliderThumbClass = "w-6 h-6 rounded-full bg-gradient-blue border-2 border-white shadow-md appearance-none";
 
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto">
@@ -131,32 +134,48 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Threshold: {threshold}
+              Threshold: {useAdaptiveThreshold ? 'Adaptive' : threshold}
             </label>
-            <div className="text-xs text-gray-500 mb-2">
-              Controls black/white cutoff (0-255)
-            </div>
-            <div className="relative pt-1">
-              <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                <div 
-                  style={{ width: `${threshold/255*100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                ></div>
-              </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="255" 
-                step="1"
-                value={threshold} 
-                onChange={(e) => onParamChange('threshold', e.target.value)}
-                className={`${sliderTrackClass} mt-2`}
-                style={{ 
-                  WebkitAppearance: 'none',
-                  appearance: 'none'
-                }}
+            <div className="flex items-center mb-2">
+              <input
+                type="checkbox"
+                id="adaptiveThreshold"
+                checked={useAdaptiveThreshold}
+                onChange={(e) => onAdaptiveToggle(e.target.checked)}
+                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
+              <label htmlFor="adaptiveThreshold" className="ml-2 text-xs sm:text-sm text-gray-600">
+                Use adaptive threshold
+              </label>
             </div>
+            {!useAdaptiveThreshold && (
+              <>
+                <div className="text-xs text-gray-500 mb-2">
+                  Controls black/white cutoff (0-255)
+                </div>
+                <div className="relative pt-1">
+                  <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
+                    <div
+                      style={{ width: `${threshold/255*100}%` }}
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
+                    ></div>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="255"
+                    step="1"
+                    value={threshold}
+                    onChange={(e) => onParamChange('threshold', e.target.value)}
+                    className={`${sliderTrackClass} mt-2`}
+                    style={{
+                      WebkitAppearance: 'none',
+                      appearance: 'none'
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </div>
           
           <div>

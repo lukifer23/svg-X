@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { FolderInput, FolderOutput, Play, X, Loader2, CheckCircle2, AlertCircle, ImageIcon, Settings } from 'lucide-react';
+import { FolderInput, FolderOutput, Play, X, Loader2, CheckCircle2, AlertCircle, ImageIcon } from 'lucide-react';
 import { TracingParams } from '../utils/imageProcessor';
 
 // Add TypeScript interface for electronAPI

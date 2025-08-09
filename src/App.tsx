@@ -32,14 +32,13 @@ function App() {
   const [error, setError] = useState<string>('');
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [potraceParams, setPotraceParams] = useState<TracingParams>({...DEFAULT_PARAMS});
+  const [useAdaptiveThreshold, setUseAdaptiveThreshold] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>('image');
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [isMobileView, setIsMobileView] = useState<boolean>(window.innerWidth < 768);
   const [isComplexMode, setIsComplexMode] = useState<boolean>(false);
   const [showBatchConversion, setShowBatchConversion] = useState<boolean>(false);
   const [isElectronAvailable, setIsElectronAvailable] = useState<boolean>(false);
   const [showElectronWarning, setShowElectronWarning] = useState<boolean>(false);
-  const [isConsoleVisible, setIsConsoleVisible] = useState<boolean>(false);
   
   // Add state for processing logs
   const [processingLogs, setProcessingLogs] = useState<LogEntry[]>([]);
@@ -70,11 +69,10 @@ function App() {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showBatchConversion]);
 
   // Handle parameter changes
-  const handleParamChange = (param: string, value: any) => {
+  const handleParamChange = (param: string, value: unknown) => {
     // Turn off complex mode when user manually adjusts settings
     if (isComplexMode) {
       setIsComplexMode(false);
@@ -141,9 +139,10 @@ function App() {
         // Add a UI delay to update the status
         setTimeout(async () => {
           try {
+            const paramsToUse = useAdaptiveThreshold ? { ...complexParams, threshold: undefined } : complexParams;
             const svgData = await processImageWithPotrace(
               image,
-              complexParams,
+              paramsToUse,
               (newStatus) => {
                 setStatus(newStatus as ConversionStatus);
                 console.log(`Status update: ${newStatus}`);
@@ -193,9 +192,10 @@ function App() {
       setStatus('processing');
       setError(''); // Clear any previous errors
       
+      const paramsToUse = useAdaptiveThreshold ? { ...potraceParams, threshold: undefined } : potraceParams;
       const svgData = await processImageWithPotrace(
         image,
-        potraceParams,
+        paramsToUse,
         (newStatus) => setStatus(newStatus as ConversionStatus),
         handleLogEntry // Pass the log handler
       );
@@ -223,35 +223,36 @@ function App() {
     }
   };
 
-  const handleImageSelect = useCallback(async (imageData: string, file: File) => {
-    setImage(imageData);
-    setCurrentFile(file);
-    setFileName(getOptimizedFilename(file.name));
-    setSvg(null);
-    setError('');
-    
-    try {
-      setStatus('processing');
-      const svgData = await processImageWithPotrace(
-        imageData,
-        potraceParams,
-        (newStatus) => setStatus(newStatus as ConversionStatus)
-      );
-      setSvg(svgData);
-      setStatus('done');
-    } catch (err) {
-      console.error('Error processing image:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setStatus('error');
-    }
-  }, [potraceParams]);
+    const handleImageSelect = useCallback(async (imageData: string, file: File) => {
+      setImage(imageData);
+      setFileName(getOptimizedFilename(file.name));
+      setSvg(null);
+      setError('');
+
+      try {
+        setStatus('processing');
+        const paramsToUse = useAdaptiveThreshold ? { ...potraceParams, threshold: undefined } : potraceParams;
+        const svgData = await processImageWithPotrace(
+          imageData,
+          paramsToUse,
+          (newStatus) => setStatus(newStatus as ConversionStatus)
+        );
+        setSvg(svgData);
+        setStatus('done');
+      } catch (err) {
+        console.error('Error processing image:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setStatus('error');
+      }
+    }, [potraceParams, useAdaptiveThreshold]);
 
   // Expose the processImage function for batch processing
   const processImage = useCallback(async (imageData: string, params: TracingParams) => {
+    const paramsToUse = useAdaptiveThreshold ? { ...params, threshold: undefined } : params;
     try {
       return await processImageWithPotrace(
         imageData,
-        params,
+        paramsToUse,
         () => {}, // We don't need the status callback for batch processing
         handleLogEntry
       );
@@ -259,7 +260,7 @@ function App() {
       console.error('Error in batch processing:', err);
       throw err;
     }
-  }, [handleLogEntry]);
+  }, [handleLogEntry, useAdaptiveThreshold]);
 
   // Handler for batch button click when not in Electron
   const handleBatchButtonClick = () => {
@@ -278,7 +279,7 @@ function App() {
     
     try {
       // Use a safe type casting approach
-      const api = window.electronAPI as Record<string, any>;
+      const api = window.electronAPI as Record<string, unknown>;
       if (typeof api.toggleConsole === 'function') {
         const result = await api.toggleConsole();
         if (result && typeof result === 'object' && 'visible' in result) {
@@ -443,11 +444,14 @@ function App() {
       {showSettings && (
         <SettingsPanel
           {...potraceParams}
+          threshold={potraceParams.threshold ?? DEFAULT_PARAMS.threshold}
+          useAdaptiveThreshold={useAdaptiveThreshold}
           onParamChange={handleParamChange}
           onReset={resetParams}
           onClose={() => setShowSettings(false)}
           onApply={image ? applyParams : undefined}
           onApplyComplex={applyComplexSettings}
+          onAdaptiveToggle={setUseAdaptiveThreshold}
           isMobile={isMobileView}
           isComplexMode={isComplexMode}
         />

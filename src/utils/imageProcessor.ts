@@ -4,6 +4,8 @@
 
 // Last updated: 2025-03-11 - Force update to repository
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import * as Potrace from 'potrace';
 
 export type TurnPolicy = 'black' | 'white' | 'left' | 'right' | 'minority' | 'majority';
@@ -14,7 +16,7 @@ export interface TracingParams {
   alphaMax: number;
   optCurve: boolean;
   optTolerance: number;
-  threshold: number;
+  threshold?: number;
   blackOnWhite: boolean;
   color: string;
   background: string;
@@ -62,8 +64,8 @@ const logProcessingStep = (step: string, message: string, isError = false, logCa
 
 // Add a heartbeat mechanism to monitor long-running operations
 const createHeartbeat = (
-  operation: string, 
-  intervalMs: number, 
+  operation: string,
+  intervalMs: number,
   logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
 ) => {
   const heartbeatId = setInterval(() => {
@@ -78,6 +80,69 @@ const createHeartbeat = (
     stop: () => clearInterval(heartbeatId),
     heartbeatId
   };
+};
+
+// Compute an adaptive threshold using Otsu's method
+export const computeAdaptiveThreshold = (imageData: string): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+      const histogram = new Array(256).fill(0);
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        histogram[gray]++;
+      }
+
+      const total = imgData.width * imgData.height;
+      let sum = 0;
+      for (let t = 0; t < 256; t++) {
+        sum += t * histogram[t];
+      }
+
+      let sumB = 0;
+      let wB = 0;
+      let wF = 0;
+      let max = 0;
+      let threshold = 0;
+
+      for (let t = 0; t < 256; t++) {
+        wB += histogram[t];
+        if (wB === 0) continue;
+        wF = total - wB;
+        if (wF === 0) break;
+        sumB += t * histogram[t];
+        const mB = sumB / wB;
+        const mF = (sum - sumB) / wF;
+        const between = wB * wF * (mB - mF) * (mB - mF);
+        if (between > max) {
+          max = between;
+          threshold = t;
+        }
+      }
+
+      resolve(threshold);
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image for threshold computation'));
+    img.src = imageData;
+  });
 };
 
 // Utility function to handle the TypeScript type issue with Potrace
@@ -348,7 +413,18 @@ export const processImage = (
       const processWithParams = async (imgData: string, processingParams: TracingParams) => {
         progressCallback('tracing');
         logProcessingStep('TRACE', `Starting image tracing with data length: ${imgData.length}`, false, detailedLogCallback);
-        
+
+        if (processingParams.threshold === undefined) {
+          try {
+            const adaptive = await computeAdaptiveThreshold(imgData);
+            processingParams.threshold = adaptive;
+            logProcessingStep('THRESHOLD', `Adaptive threshold computed: ${adaptive}`, false, detailedLogCallback);
+          } catch (error) {
+            logProcessingStep('ERROR', `Adaptive threshold computation failed: ${error}`, true, detailedLogCallback);
+            processingParams.threshold = DEFAULT_PARAMS.threshold;
+          }
+        }
+
         // Add a timeout to give the UI time to update before intensive processing
         setTimeout(() => {
           try {

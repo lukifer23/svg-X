@@ -50,7 +50,7 @@ declare global {
   interface Buffer extends Uint8Array {
     from(array: Uint8Array): Buffer;
   }
-  var Buffer: {
+  const Buffer: {
     from(array: Uint8Array): Buffer;
   };
 }
