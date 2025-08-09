@@ -7,20 +7,22 @@
 import * as Potrace from 'potrace';
 
 export type TurnPolicy = 'black' | 'white' | 'left' | 'right' | 'minority' | 'majority';
-
-export interface TracingParams {
-  turdSize: number;
-  turnPolicy: TurnPolicy;
-  alphaMax: number;
-  optCurve: boolean;
-  optTolerance: number;
-  threshold: number;
-  blackOnWhite: boolean;
-  color: string;
-  background: string;
-  invert: boolean;
-  highestQuality: boolean;
+/** Options supported by the Potrace library */
+export interface PotraceOptions {
+  turdSize?: number;
+  turnPolicy?: TurnPolicy;
+  alphaMax?: number;
+  optCurve?: boolean;
+  optTolerance?: number;
+  threshold?: number;
+  blackOnWhite?: boolean;
+  color?: string;
+  background?: string;
+  invert?: boolean;
+  highestQuality?: boolean;
 }
+
+export type TracingParams = Required<PotraceOptions>;
 
 export const DEFAULT_PARAMS: TracingParams = {
   turdSize: 2,
@@ -83,7 +85,7 @@ const createHeartbeat = (
 // Utility function to handle the TypeScript type issue with Potrace
 const trace = (
   image: string,
-  options: any,
+  options: PotraceOptions,
   callback: (err: Error | null, svg?: string) => void,
   logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
 ) => {

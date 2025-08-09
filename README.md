@@ -188,8 +188,10 @@ npm run electron:build -- --linux
 ## Key Implementation Details
 
 ```typescript
+import type { PotraceOptions } from './utils/imageProcessor';
+
 // Critical configuration for Potrace tracing quality
-const potraceParams = {
+const potraceParams: PotraceOptions = {
   turdSize: 2,        // Suppress speckles (smaller = more details)
   alphaMax: 1,        // Corner threshold
   optCurve: true,     // Optimize curves
