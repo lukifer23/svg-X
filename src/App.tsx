@@ -91,6 +91,11 @@ function App() {
           ...prev,
           [param]: value
         };
+      } else if (param === 'color' || param === 'background') {
+        return {
+          ...prev,
+          [param]: value
+        };
       } else {
         return {
           ...prev,

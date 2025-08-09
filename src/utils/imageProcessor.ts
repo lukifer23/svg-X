@@ -5,8 +5,11 @@
 // Last updated: 2025-03-11 - Force update to repository
 
 import * as Potrace from 'potrace';
+import tinycolor from 'tinycolor2';
 
 export type TurnPolicy = 'black' | 'white' | 'left' | 'right' | 'minority' | 'majority';
+
+export type HexColor = `#${string}`;
 
 export interface TracingParams {
   turdSize: number;
@@ -16,8 +19,10 @@ export interface TracingParams {
   optTolerance: number;
   threshold: number;
   blackOnWhite: boolean;
-  color: string;
-  background: string;
+  /** Hex color */
+  color: HexColor;
+  /** Hex color or 'transparent' */
+  background: HexColor | 'transparent';
   invert: boolean;
   highestQuality: boolean;
 }
@@ -45,6 +50,14 @@ export const PROGRESS_STEPS = {
   optimizing: 'Optimizing SVG output...',
   done: 'Done!',
   error: 'An error occurred'
+};
+
+const normalizeColor = (value: string, allowTransparent = false): string => {
+  if (allowTransparent && value.toLowerCase() === 'transparent') {
+    return 'transparent';
+  }
+  const tc = tinycolor(value);
+  return tc.isValid() ? tc.toHexString() : '#000000';
 };
 
 // Enhanced logging with optional callback for UI display
@@ -359,7 +372,13 @@ export const processImage = (
               reject(new Error('Image tracing timed out. The image may be too complex. Try using Complex Image Mode or simplifying the image.'));
             }, isNetwork ? 90000 : 180000); // Shorter timeout for network clients
 
-            trace(imgData, processingParams, (err: Error | null, svg?: string) => {
+            const normalizedParams: TracingParams = {
+              ...processingParams,
+              color: normalizeColor(processingParams.color) as HexColor,
+              background: normalizeColor(processingParams.background, true) as HexColor | 'transparent'
+            };
+
+            trace(imgData, normalizedParams, (err: Error | null, svg?: string) => {
               clearTimeout(traceTimeout); // Clear the timeout if tracing completes
               if (err) {
                 logProcessingStep('ERROR', `Error during tracing: ${err.message}`, true, detailedLogCallback);

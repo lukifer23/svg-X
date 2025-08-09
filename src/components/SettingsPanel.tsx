@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Settings } from 'lucide-react';
+import tinycolor from 'tinycolor2';
 import { TurnPolicy } from '../utils/imageProcessor';
 
 // Define the props interface for the component
@@ -310,17 +311,27 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   Foreground color:
                 </label>
                 <div className="flex">
-                  <input 
-                    type="color" 
-                    id="color" 
+                  <input
+                    type="color"
+                    id="color"
                     value={color}
-                    onChange={(e) => onParamChange('color', e.target.value)}
+                    onChange={(e) => {
+                      const tc = tinycolor(e.target.value);
+                      if (tc.isValid()) {
+                        onParamChange('color', tc.toHexString());
+                      }
+                    }}
                     className="h-8 w-8 border border-gray-300 rounded mr-2"
                   />
-                  <input 
-                    type="text" 
-                    value={color} 
-                    onChange={(e) => onParamChange('color', e.target.value)}
+                  <input
+                    type="text"
+                    value={color}
+                    onChange={(e) => {
+                      const tc = tinycolor(e.target.value);
+                      if (tc.isValid()) {
+                        onParamChange('color', tc.toHexString());
+                      }
+                    }}
                     className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm"
                     placeholder="#000000"
                   />
@@ -332,17 +343,32 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   Background color:
                 </label>
                 <div className="flex">
-                  <input 
-                    type="color" 
+                  <input
+                    type="color"
                     id="background"
-                    value={background === 'transparent' ? '#ffffff' : background} 
-                    onChange={(e) => onParamChange('background', e.target.value)}
+                    value={background === 'transparent' ? '#ffffff' : background}
+                    onChange={(e) => {
+                      const tc = tinycolor(e.target.value);
+                      if (tc.isValid()) {
+                        onParamChange('background', tc.toHexString());
+                      }
+                    }}
                     className="h-8 w-8 border border-gray-300 rounded mr-2"
                   />
-                  <input 
-                    type="text" 
-                    value={background} 
-                    onChange={(e) => onParamChange('background', e.target.value)}
+                  <input
+                    type="text"
+                    value={background}
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      if (val.toLowerCase() === 'transparent') {
+                        onParamChange('background', 'transparent');
+                      } else {
+                        const tc = tinycolor(val);
+                        if (tc.isValid()) {
+                          onParamChange('background', tc.toHexString());
+                        }
+                      }
+                    }}
                     className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm"
                     placeholder="transparent or #hex"
                   />
