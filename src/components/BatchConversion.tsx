@@ -2,9 +2,9 @@
  * Last checked: 2025-03-08
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FolderInput, FolderOutput, Play, X, Loader2, CheckCircle2, AlertCircle, ImageIcon, Settings } from 'lucide-react';
-import { TracingParams } from '../utils/imageProcessor';
+import { TracingParams, getOptimizedFilename } from '../utils/imageProcessor';
 
 // Add TypeScript interface for electronAPI
 declare global {
@@ -58,6 +58,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(-1);
   const [isElectronEnvironment, setIsElectronEnvironment] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const filenameCounts = useRef<Record<string, number>>({});
   
   // Add state for resize options
   const [resizeOptions, setResizeOptions] = useState<ResizeOptions>({
@@ -104,14 +105,13 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
         const files = await window.electronAPI.readDirectory(selectedDir);
         
         if (Array.isArray(files)) {
-          // Create a Map to avoid duplicate files by filename
-          const uniqueFiles = new Map();
-          
+          const items: ProcessingItem[] = [];
+
           files.forEach(filePath => {
             const fileName = filePath.split(/[/\\]/).pop() || '';
             // Only add if it's an image file
             if (/\.(jpe?g|png|gif|bmp)$/i.test(fileName)) {
-              uniqueFiles.set(fileName, {
+              items.push({
                 filePath,
                 fileName,
                 status: 'pending'
@@ -119,14 +119,12 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
             }
           });
           
-          const items: ProcessingItem[] = Array.from(uniqueFiles.values());
-          
           if (items.length === 0) {
             setErrorMessage("No image files found in the selected directory. Please select a directory containing image files.");
             return;
           }
           
-          console.log(`Found ${items.length} unique image files to process`);
+          console.log(`Found ${items.length} image files to process`);
           
           setProcessingItems(items);
           setStats({
@@ -196,6 +194,9 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
       }))
     );
     
+    // Reset filename counts for collision handling
+    filenameCounts.current = {};
+
     // Start processing
     setIsProcessing(true);
     setCurrentFileIndex(0);
@@ -240,16 +241,19 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
         
         // Process the image
         const svgData = await processImage(fileData, potraceParams);
-        
-        // Get base filename without extension
-        const baseFileName = currentItem.fileName.split('.').slice(0, -1).join('.') || currentItem.fileName;
-        
+
+        // Generate a slugified filename and handle collisions
+        const baseSlug = getOptimizedFilename(currentItem.fileName);
+        const count = filenameCounts.current[baseSlug] || 0;
+        filenameCounts.current[baseSlug] = count + 1;
+        const finalFileName = count === 0 ? baseSlug : `${baseSlug}-${count}`;
+
         // Save the SVG
         if (!window.electronAPI) {
           throw new Error('Electron API is not available');
         }
-        
-        const outputPath = joinPaths(outputDirectory!, `${baseFileName}.svg`);
+
+        const outputPath = joinPaths(outputDirectory!, `${finalFileName}.svg`);
         const saveResult = await window.electronAPI.saveSvg({ svgData, outputPath });
         
         if ('success' in saveResult && saveResult.success) {

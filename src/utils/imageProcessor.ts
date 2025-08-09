@@ -5,6 +5,7 @@
 // Last updated: 2025-03-11 - Force update to repository
 
 import * as Potrace from 'potrace';
+import slugify from 'slugify';
 
 export type TurnPolicy = 'black' | 'white' | 'left' | 'right' | 'minority' | 'majority';
 /** Options supported by the Potrace library */
@@ -474,14 +475,11 @@ export const processImage = (
 export const getOptimizedFilename = (originalName: string): string => {
   // Remove file extension
   const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, "");
-  
-  // Remove non-alphanumeric characters and replace spaces with hyphens
-  const cleanedName = nameWithoutExtension
-    .replace(/[^a-zA-Z0-9\s]/g, "")
-    .replace(/\s+/g, "-")
-    .toLowerCase();
-    
-  return cleanedName || "image";
+
+  // Use slugify to handle international characters and spacing
+  const slug = slugify(nameWithoutExtension, { lower: true, strict: true });
+
+  return slug || 'image';
 };
 
 // Function to detect if app is being accessed over network
