@@ -275,6 +275,44 @@ const downscaleImage = (imageData: string, scale: number = 0.5): Promise<string>
   });
 };
 
+export const calculateGrayscale = (r: number, g: number, b: number): number => {
+  return Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+};
+
+// Convert image to grayscale using luminance formula
+const convertToGrayscale = (imageData: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = calculateGrayscale(data[i], data[i + 1], data[i + 2]);
+          data[i] = data[i + 1] = data[i + 2] = gray;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => {
+        reject(new Error('Failed to load image for grayscale conversion'));
+      };
+      img.src = imageData;
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 export const processImage = (
   imageData: string,
   params: TracingParams,
@@ -295,37 +333,47 @@ export const processImage = (
       const processNextStep = () => {
         progressCallback('processing');
         logProcessingStep('PROCESS', 'Processing image data', false, detailedLogCallback);
-        
+
         setTimeout(() => {
-          progressCallback('analyzing');
-          
-          // Analyze image complexity
-          const complexityResult = analyzeImageComplexity(processedImageData);
-          logProcessingStep('ANALYZE', `Complexity analysis result: ${JSON.stringify(complexityResult)}`, false, detailedLogCallback);
-          
-          if (isNetwork) {
-            logProcessingStep('NETWORK', 'Processing as network client - applying enhanced optimizations', false, detailedLogCallback);
-            
-            // If we're on a network client AND the image is complex, 
-            // downscale it even more for better performance
-            if (complexityResult.complex && processedImageData === imageData) {
-              logProcessingStep('NETWORK_SCALE', 'Further downscaling image for network processing', false, detailedLogCallback);
-              
-              // Apply more aggressive downscaling for network clients with complex images
-              downscaleImage(processedImageData, 0.3).then((scaledData) => {
-                processedImageData = scaledData;
-                logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
+          const analyzeAndProcess = () => {
+            progressCallback('analyzing');
+
+            // Analyze image complexity
+            const complexityResult = analyzeImageComplexity(processedImageData);
+            logProcessingStep('ANALYZE', `Complexity analysis result: ${JSON.stringify(complexityResult)}`, false, detailedLogCallback);
+
+            if (isNetwork) {
+              logProcessingStep('NETWORK', 'Processing as network client - applying enhanced optimizations', false, detailedLogCallback);
+
+              // If we're on a network client AND the image is complex,
+              // downscale it even more for better performance
+              if (complexityResult.complex && processedImageData === imageData) {
+                logProcessingStep('NETWORK_SCALE', 'Further downscaling image for network processing', false, detailedLogCallback);
+
+                // Apply more aggressive downscaling for network clients with complex images
+                downscaleImage(processedImageData, 0.3).then((scaledData) => {
+                  processedImageData = scaledData;
+                  logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
+                  processWithParams(processedImageData, params);
+                }).catch(err => {
+                  logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
+                  processWithParams(processedImageData, params);
+                });
+              } else {
                 processWithParams(processedImageData, params);
-              }).catch(err => {
-                logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
-                processWithParams(processedImageData, params);
-              });
+              }
             } else {
               processWithParams(processedImageData, params);
             }
-          } else {
-            processWithParams(processedImageData, params);
-          }
+          };
+
+          convertToGrayscale(processedImageData).then((grayData) => {
+            processedImageData = grayData;
+            analyzeAndProcess();
+          }).catch(err => {
+            logProcessingStep('ERROR', `Failed to convert image to grayscale: ${err}`, true, detailedLogCallback);
+            analyzeAndProcess();
+          });
         }, isNetwork ? 300 : 100);
       };
       
