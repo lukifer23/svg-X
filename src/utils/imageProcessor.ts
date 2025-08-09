@@ -50,10 +50,7 @@ export const PROGRESS_STEPS = {
 // Enhanced logging with optional callback for UI display
 const logProcessingStep = (step: string, message: string, isError = false, logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void) => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
-  console.log(`[${timestamp}] [${step}] ${message}`);
-  if (isError) {
-    console.error(`[${timestamp}] [${step}] ${message}`);
-  }
+  console[isError ? 'error' : 'log'](`[${timestamp}] [${step}] ${message}`);
   // If callback is provided, send the log info to it for UI display
   if (logCallback) {
     logCallback(step, message, isError, timestamp);
