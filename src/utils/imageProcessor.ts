@@ -220,6 +220,65 @@ export const simplifyForComplexImages = (params: TracingParams): TracingParams =
   };
 };
 
+// Scale image so that the largest dimension does not exceed a maximum value
+export const scaleToMaxDimension = (imageData: string, maxDimension = 1000): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      logProcessingStep('SCALE', `Ensuring image fits within ${maxDimension}px`);
+
+      const img = new Image();
+      img.onload = () => {
+        const originalWidth = img.width;
+        const originalHeight = img.height;
+
+        if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
+          resolve(imageData);
+          return;
+        }
+
+        // Determine scaling factor
+        const scale = originalWidth > originalHeight
+          ? maxDimension / originalWidth
+          : maxDimension / originalHeight;
+
+        const canvas = document.createElement('canvas');
+        const newWidth = Math.round(originalWidth * scale);
+        const newHeight = Math.round(originalHeight * scale);
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        logProcessingStep('SCALE', `Scaling image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}`);
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, newWidth, newHeight);
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+        const scaledData = canvas.toDataURL('image/png');
+        resolve(scaledData);
+      };
+
+      img.onerror = () => {
+        reject(new Error('Failed to load image for scaling'));
+      };
+
+      img.src = imageData;
+    } catch (error) {
+      logProcessingStep('SCALE', `Error during scaling: ${error}`, true);
+      reject(error);
+    }
+  });
+};
+
 // Downscale image to reduce complexity
 const downscaleImage = (imageData: string, scale: number = 0.5): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -288,10 +347,10 @@ export const processImage = (
 
       // Check if this is a network client
       const isNetwork = isNetworkClient();
-      
+
       // For network clients, apply more aggressive downscaling
       let processedImageData = imageData;
-      
+
       const processNextStep = () => {
         progressCallback('processing');
         logProcessingStep('PROCESS', 'Processing image data', false, detailedLogCallback);
@@ -329,20 +388,30 @@ export const processImage = (
         }, isNetwork ? 300 : 100);
       };
       
-      // If network client, downscale image first
-      if (isNetwork) {
-        logProcessingStep('NETWORK_SCALE', 'Downscaling image for network processing', false, detailedLogCallback);
-        downscaleImage(imageData, 0.5).then((scaledData) => {
-          processedImageData = scaledData;
-          logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
-          processNextStep();
-        }).catch(err => {
-          logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
-          processNextStep();
-        });
-      } else {
-        setTimeout(processNextStep, 100);
-      }
+      const beginProcessing = () => {
+        if (isNetwork) {
+          logProcessingStep('NETWORK_SCALE', 'Downscaling image for network processing', false, detailedLogCallback);
+          downscaleImage(processedImageData, 0.5).then((scaledData) => {
+            processedImageData = scaledData;
+            logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
+            processNextStep();
+          }).catch(err => {
+            logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
+            processNextStep();
+          });
+        } else {
+          setTimeout(processNextStep, 100);
+        }
+      };
+
+      // Ensure image doesn't exceed max dimension before further processing
+      scaleToMaxDimension(imageData, 1000).then((scaledData) => {
+        processedImageData = scaledData;
+        beginProcessing();
+      }).catch(err => {
+        logProcessingStep('ERROR', `Failed to scale image: ${err.message}`, true, detailedLogCallback);
+        beginProcessing();
+      });
 
       // Handle complex images with different strategy - we'll reuse this function
       const processWithParams = async (imgData: string, processingParams: TracingParams) => {
