@@ -52,8 +52,6 @@ Users can adjust the following parameters to optimize the SVG output:
 
 The `color` option sets the fill color for traced paths, while `background` controls the canvas behind them. Adjusting these values can dramatically change the SVG appearance (for example, white paths on a black background for a negative effect).
 
-Enable **Color Preservation** in the Settings panel to sample and apply the original image colors instead of a single foreground/background combination.
-
 ### Complex Image Mode
 
 The application includes a **Complex Image Mode** specifically designed for handling:
@@ -234,7 +232,6 @@ const dataUrl = canvas.toDataURL('image/png');
 
 - Fixed SVG conversion functionality to properly implement the `processImage` function
 - Added batch processing capability for converting multiple images at once
-- Added color preservation mode for retaining original image colors
 - Fixed Electron application mode detection for proper file loading
 - Fixed Potrace implementation to properly use the library's `trace` function with enhanced error handling
 - Corrected image data formatting for Potrace compatibility
