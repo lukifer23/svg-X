@@ -21,9 +21,9 @@ A desktop application that converts raster images to SVG using Potrace.
 The application follows these steps to convert raster images to SVG:
 
 1. **Image Loading**: Uploads and loads the source image into memory
-2. **Preprocessing**: 
-   - Scales large images down to a maximum of 1000px on the longest side while preserving aspect ratio (`scaleToMaxDimension`)
-   - Draws the image to a canvas with a white background
+2. **Preprocessing**:
+   - Scales large images down to a maximum of 1000px on the longest side while preserving aspect ratio (`resizeImage`)
+   - Draws the image to a canvas with an optional background color
 
 3. **Grayscale Conversion**:
    - Processes each pixel using the luminance formula: `0.299*R + 0.587*G + 0.114*B`
@@ -263,7 +263,7 @@ npm run build
 
 ## Known Limitations
 
-- Large images are automatically scaled down to 1000px maximum dimension (`scaleToMaxDimension`)
+- Large images are automatically scaled down to 1000px maximum dimension (`resizeImage`)
 - Works best with high-contrast images
 - Processing may take some time depending on image complexity
 

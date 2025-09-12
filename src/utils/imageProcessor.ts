@@ -220,35 +220,42 @@ export const simplifyForComplexImages = (params: TracingParams): TracingParams =
   };
 };
 
-// Scale image so that the largest dimension does not exceed a maximum value
-export const scaleToMaxDimension = (imageData: string, maxDimension = 1000): Promise<string> => {
+// Resize image by either limiting maximum dimension or applying a scale factor
+export const resizeImage = (
+  imageData: string,
+  { maxDimension, scale, background = 'transparent' }: { maxDimension?: number; scale?: number; background?: string }
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      logProcessingStep('SCALE', `Ensuring image fits within ${maxDimension}px`);
+      if (maxDimension == null && scale == null) {
+        resolve(imageData);
+        return;
+      }
 
       const img = new Image();
       img.onload = () => {
         const originalWidth = img.width;
         const originalHeight = img.height;
 
-        if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
-          resolve(imageData);
-          return;
+        let resizeScale = scale ?? 1;
+        if (maxDimension != null) {
+          if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
+            resolve(imageData);
+            return;
+          }
+          resizeScale = originalWidth > originalHeight
+            ? maxDimension / originalWidth
+            : maxDimension / originalHeight;
         }
 
-        // Determine scaling factor
-        const scale = originalWidth > originalHeight
-          ? maxDimension / originalWidth
-          : maxDimension / originalHeight;
+        const newWidth = Math.round(originalWidth * resizeScale);
+        const newHeight = Math.round(originalHeight * resizeScale);
 
         const canvas = document.createElement('canvas');
-        const newWidth = Math.round(originalWidth * scale);
-        const newHeight = Math.round(originalHeight * scale);
-
         canvas.width = newWidth;
         canvas.height = newHeight;
 
-        logProcessingStep('SCALE', `Scaling image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}`);
+        logProcessingStep('RESIZE', `Resizing image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}`);
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -259,76 +266,24 @@ export const scaleToMaxDimension = (imageData: string, maxDimension = 1000): Pro
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, newWidth, newHeight);
-        ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-        const scaledData = canvas.toDataURL('image/png');
-        resolve(scaledData);
-      };
-
-      img.onerror = () => {
-        reject(new Error('Failed to load image for scaling'));
-      };
-
-      img.src = imageData;
-    } catch (error) {
-      logProcessingStep('SCALE', `Error during scaling: ${error}`, true);
-      reject(error);
-    }
-  });
-};
-
-// Downscale image to reduce complexity
-const downscaleImage = (imageData: string, scale: number = 0.5): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    try {
-      logProcessingStep('DOWNSCALE', `Downscaling image by factor of ${scale}`);
-      
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-        
-        // Calculate new dimensions
-        const newWidth = Math.round(originalWidth * scale);
-        const newHeight = Math.round(originalHeight * scale);
-        
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        
-        logProcessingStep('DOWNSCALE', `Original size: ${originalWidth}x${originalHeight}, New size: ${newWidth}x${newHeight}`);
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
+        if (background && background !== 'transparent') {
+          ctx.fillStyle = background;
+          ctx.fillRect(0, 0, newWidth, newHeight);
         }
-        
-        // Use better interpolation method for downscaling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
-        // Draw image with white background
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, newWidth, newHeight);
+
         ctx.drawImage(img, 0, 0, newWidth, newHeight);
-        
-        // Get downscaled image data
-        const downscaledData = canvas.toDataURL('image/png');
-        logProcessingStep('DOWNSCALE', `Downscaled image data length: ${downscaledData.length}`);
-        
-        resolve(downscaledData);
+
+        const resizedData = canvas.toDataURL('image/png');
+        resolve(resizedData);
       };
-      
+
       img.onerror = () => {
-        reject(new Error('Failed to load image for downscaling'));
+        reject(new Error('Failed to load image for resizing'));
       };
-      
+
       img.src = imageData;
     } catch (error) {
-      logProcessingStep('DOWNSCALE', `Error during downscaling: ${error}`, true);
+      logProcessingStep('RESIZE', `Error during resizing: ${error}`, true);
       reject(error);
     }
   });
@@ -371,7 +326,7 @@ export const processImage = (
               logProcessingStep('NETWORK_SCALE', 'Further downscaling image for network processing', false, detailedLogCallback);
               
               // Apply more aggressive downscaling for network clients with complex images
-              downscaleImage(processedImageData, 0.3).then((scaledData) => {
+              resizeImage(processedImageData, { scale: 0.3 }).then((scaledData) => {
                 processedImageData = scaledData;
                 logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
                 processWithParams(processedImageData, params);
@@ -391,7 +346,7 @@ export const processImage = (
       const beginProcessing = () => {
         if (isNetwork) {
           logProcessingStep('NETWORK_SCALE', 'Downscaling image for network processing', false, detailedLogCallback);
-          downscaleImage(processedImageData, 0.5).then((scaledData) => {
+          resizeImage(processedImageData, { scale: 0.5 }).then((scaledData) => {
             processedImageData = scaledData;
             logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
             processNextStep();
@@ -405,7 +360,7 @@ export const processImage = (
       };
 
       // Ensure image doesn't exceed max dimension before further processing
-      scaleToMaxDimension(imageData, 1000).then((scaledData) => {
+      resizeImage(imageData, { maxDimension: 1000 }).then((scaledData) => {
         processedImageData = scaledData;
         beginProcessing();
       }).catch(err => {
