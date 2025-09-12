@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { scaleToMaxDimension } from './imageProcessor';
+import { scaleToMaxDimension, simplifyForNetworkClients, DEFAULT_PARAMS } from './imageProcessor';
 import { Image, createCanvas } from 'canvas';
 
 // Polyfill global Image and document for the scaling helper
@@ -41,5 +41,14 @@ describe('scaleToMaxDimension', () => {
 
     const scaled = await scaleToMaxDimension(dataUrl, 1000);
     expect(scaled).toBe(dataUrl);
+  });
+});
+
+describe('simplifyForNetworkClients', () => {
+  test('increases threshold with upper bound enforcement', () => {
+    const params = { ...DEFAULT_PARAMS, threshold: 128 };
+    const result = simplifyForNetworkClients(params);
+    expect(result.threshold).toBe(210); // 180 from complex + 30, capped below 255
+    expect(result.threshold).toBeLessThanOrEqual(255);
   });
 });

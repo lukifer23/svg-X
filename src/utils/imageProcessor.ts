@@ -492,9 +492,10 @@ export const simplifyForNetworkClients = (params: TracingParams): TracingParams 
   
   // Start with complex image optimizations
   const complexParams = simplifyForComplexImages(networkParams);
-  
+
   // Then apply even more aggressive settings
-  complexParams.threshold = Math.min(160, complexParams.threshold + 30);
+  // Increase threshold while capping at an upper bound to maintain contrast
+  complexParams.threshold = Math.min(255, complexParams.threshold + 30);
   complexParams.turdSize = Math.max(15, complexParams.turdSize * 2);  // More aggressive noise filtering
   complexParams.alphaMax = Math.min(0.5, complexParams.alphaMax - 0.1);
   complexParams.optCurve = false; // Disable curve optimization to speed up processing
