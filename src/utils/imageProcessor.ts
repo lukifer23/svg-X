@@ -53,7 +53,9 @@ export const PROGRESS_STEPS = {
 // Enhanced logging with optional callback for UI display
 const logProcessingStep = (step: string, message: string, isError = false, logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void) => {
   const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
-  console[isError ? 'error' : 'log'](`[${timestamp}] [${step}] ${message}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console[isError ? 'error' : 'log'](`[${timestamp}] [${step}] ${message}`);
+  }
   // If callback is provided, send the log info to it for UI display
   if (logCallback) {
     logCallback(step, message, isError, timestamp);
@@ -68,7 +70,9 @@ const createHeartbeat = (
 ) => {
   const heartbeatId = setInterval(() => {
     const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    console.log(`[${timestamp}] [HEARTBEAT] ${operation} still running...`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[${timestamp}] [HEARTBEAT] ${operation} still running...`);
+    }
     if (logCallback) {
       logCallback('HEARTBEAT', `${operation} still running...`, false, timestamp);
     }
@@ -489,19 +493,21 @@ export const isNetworkClient = (): boolean => {
 // Even more aggressive parameters for network clients
 export const simplifyForNetworkClients = (params: TracingParams): TracingParams => {
   const networkParams = { ...params };
-  
+
   // Start with complex image optimizations
   const complexParams = simplifyForComplexImages(networkParams);
-  
+
   // Then apply even more aggressive settings
   complexParams.threshold = Math.min(160, complexParams.threshold + 30);
   complexParams.turdSize = Math.max(15, complexParams.turdSize * 2);  // More aggressive noise filtering
   complexParams.alphaMax = Math.min(0.5, complexParams.alphaMax - 0.1);
   complexParams.optCurve = false; // Disable curve optimization to speed up processing
   complexParams.optTolerance = 1.0; // Maximum tolerance for faster processing
-  
+
   // Add a console log for debugging
-  console.log('Network optimized params:', complexParams);
-  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Network optimized params:', complexParams);
+  }
+
   return complexParams;
-}; 
+};
