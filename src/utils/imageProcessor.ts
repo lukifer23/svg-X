@@ -7,6 +7,9 @@
 import * as Potrace from 'potrace';
 import slugify from 'slugify';
 
+export const formatTimestamp = (): string =>
+  new Date().toISOString().split('T')[1].split('.')[0];
+
 export type TurnPolicy = 'black' | 'white' | 'left' | 'right' | 'minority' | 'majority';
 /** Options supported by the Potrace library */
 export interface PotraceOptions {
@@ -51,8 +54,13 @@ export const PROGRESS_STEPS = {
 };
 
 // Enhanced logging with optional callback for UI display
-const logProcessingStep = (step: string, message: string, isError = false, logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void) => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS format
+const logProcessingStep = (
+  step: string,
+  message: string,
+  isError = false,
+  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void,
+  timestamp = formatTimestamp()
+) => {
   console[isError ? 'error' : 'log'](`[${timestamp}] [${step}] ${message}`);
   // If callback is provided, send the log info to it for UI display
   if (logCallback) {
@@ -62,16 +70,12 @@ const logProcessingStep = (step: string, message: string, isError = false, logCa
 
 // Add a heartbeat mechanism to monitor long-running operations
 const createHeartbeat = (
-  operation: string, 
-  intervalMs: number, 
+  operation: string,
+  intervalMs: number,
   logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
 ) => {
   const heartbeatId = setInterval(() => {
-    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-    console.log(`[${timestamp}] [HEARTBEAT] ${operation} still running...`);
-    if (logCallback) {
-      logCallback('HEARTBEAT', `${operation} still running...`, false, timestamp);
-    }
+    logProcessingStep('HEARTBEAT', `${operation} still running...`, false, logCallback);
   }, intervalMs);
   
   return {
@@ -95,20 +99,20 @@ const trace = (
                     image.startsWith('data:image/') ? 'other' : 'unknown';
     
     if (logCallback) {
-      logCallback('IMAGE_RECEIPT', `Image received: ${imageSize} bytes, type: ${imageType}`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+      logCallback('IMAGE_RECEIPT', `Image received: ${imageSize} bytes, type: ${imageType}`, false, formatTimestamp());
     }
     
     // Check if this is a network client to add additional logging and handling
     const isNetwork = isNetworkClient();
     if (isNetwork && logCallback) {
-      logCallback('NETWORK_TRACE', 'Processing trace over network - this might take longer', false, new Date().toISOString().split('T')[1].split('.')[0]);
+      logCallback('NETWORK_TRACE', 'Processing trace over network - this might take longer', false, formatTimestamp());
     }
     
     // Log memory usage before tracing
     if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
       const memUsage = (window as any).performance.memory;
       if (logCallback) {
-        logCallback('MEMORY', `Before tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+        logCallback('MEMORY', `Before tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, formatTimestamp());
       }
     }
     
@@ -120,13 +124,13 @@ const trace = (
     // Track start time
     const startTime = performance.now();
     if (logCallback) {
-      logCallback('TRACE_START', `Starting Potrace at ${startTime}ms`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+      logCallback('TRACE_START', `Starting Potrace at ${startTime}ms`, false, formatTimestamp());
     }
     
     // Use the Potrace.trace function directly instead of creating a Potrace instance
     // This is the correct way to use Potrace with a data URL
     if (logCallback) {
-      logCallback('TRACE_METHOD', 'Using Potrace.trace with data URL', false, new Date().toISOString().split('T')[1].split('.')[0]);
+      logCallback('TRACE_METHOD', 'Using Potrace.trace with data URL', false, formatTimestamp());
     }
     
     // Call the trace function from the Potrace library directly
@@ -137,7 +141,7 @@ const trace = (
           if (err) {
             heartbeat.stop();
             if (logCallback) {
-              logCallback('TRACE_ERROR', `Error during Potrace tracing: ${err.message}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
+              logCallback('TRACE_ERROR', `Error during Potrace tracing: ${err.message}`, true, formatTimestamp());
             }
             callback(err);
             return;
@@ -148,12 +152,12 @@ const trace = (
           heartbeat.stop();
           
           if (logCallback) {
-            logCallback('TRACE_COMPLETE', `Completed in ${Math.round(endTime - startTime)}ms`, false, new Date().toISOString().split('T')[1].split('.')[0]);
-            
+            logCallback('TRACE_COMPLETE', `Completed in ${Math.round(endTime - startTime)}ms`, false, formatTimestamp());
+
             // Log memory usage after tracing
             if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
               const memUsage = (window as any).performance.memory;
-              logCallback('MEMORY', `After tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, new Date().toISOString().split('T')[1].split('.')[0]);
+              logCallback('MEMORY', `After tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, formatTimestamp());
             }
           }
           
@@ -162,14 +166,14 @@ const trace = (
       } catch (error) {
         heartbeat.stop();
         if (logCallback) {
-          logCallback('TRACE_SETUP_ERROR', `Exception during Potrace execution: ${error}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
+          logCallback('TRACE_SETUP_ERROR', `Exception during Potrace execution: ${error}`, true, formatTimestamp());
         }
         callback(error instanceof Error ? error : new Error(String(error)));
       }
     }, isNetwork ? 300 : 0); // Add a small delay for network clients to ensure UI responsiveness
   } catch (error) {
     if (logCallback) {
-      logCallback('TRACE_SETUP_ERROR', `Failed to initialize tracing: ${error}`, true, new Date().toISOString().split('T')[1].split('.')[0]);
+      logCallback('TRACE_SETUP_ERROR', `Failed to initialize tracing: ${error}`, true, formatTimestamp());
     }
     callback(error instanceof Error ? error : new Error(String(error)));
   }
