@@ -54,14 +54,19 @@ async function getLocalIPs(): Promise<string[]> {
  * @param url The URL to test
  */
 async function isReachable(url: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1000);
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1000);
-    await fetch(url, { mode: 'no-cors', signal: controller.signal });
-    clearTimeout(timeout);
-    return true;
+    const response = await fetch(url, {
+      method: 'HEAD',
+      mode: 'cors',
+      signal: controller.signal
+    });
+    return response.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
