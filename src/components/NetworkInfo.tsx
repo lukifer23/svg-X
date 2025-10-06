@@ -2,12 +2,20 @@
  * Last checked: 2025-03-02
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Globe, Copy, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { getNetworkUrls } from '../utils/networkUtils';
 
 interface NetworkInfoProps {
   isMobile?: boolean;
+}
+
+function buildFallbackUrls(localUrl: string): string[] {
+  const urls = new Set<string>([localUrl]);
+  if (typeof window !== 'undefined' && window.location.origin) {
+    urls.add(window.location.origin);
+  }
+  return Array.from(urls);
 }
 
 const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
@@ -29,15 +37,10 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
         setNetworkInfo(info);
       } catch (error) {
         console.error('Failed to get network URLs:', error);
-        // Fallback: Use values based on current port
+        // Fallback: Use minimal accurate values based on current context
         setNetworkInfo({
           localUrl: `http://localhost:${currentPort}`,
-          networkUrls: [
-            `http://localhost:${currentPort}`,
-            `http://172.18.240.1:${currentPort}`,
-            `http://192.168.1.99:${currentPort}`,
-            `http://192.168.1.130:${currentPort}`
-          ]
+          networkUrls: buildFallbackUrls(`http://localhost:${currentPort}`)
         });
       }
     }
@@ -69,6 +72,8 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
   }
 
   // When expanded, show a modal-like popup
+  const fallbackUrls = useMemo(() => buildFallbackUrls(networkInfo.localUrl), [networkInfo.localUrl]);
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className={`relative bg-white rounded-lg shadow-xl ${isMobile ? 'w-full max-w-sm' : 'max-w-md'} p-4`}>
@@ -89,16 +94,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
           <div className={`${isMobile ? 'text-xs' : 'text-xs'} text-gray-600 font-medium`}>
             Access this app from other devices on your network:
           </div>
-          
-          {/* Use dynamic port for fallback values */}
-          {(networkInfo.networkUrls.length === 0 ? 
-            [
-              `http://localhost:${currentPort}`,
-              `http://172.18.240.1:${currentPort}`,
-              `http://192.168.1.99:${currentPort}`,
-              `http://192.168.1.130:${currentPort}`
-            ] : 
-            networkInfo.networkUrls).map((url, index) => (
+          {(networkInfo.networkUrls.length === 0 ? fallbackUrls : networkInfo.networkUrls).map((url, index) => (
             <div key={index} className="flex items-center bg-gray-50 p-1.5 rounded">
               <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-mono text-gray-800 flex-1 truncate`}>
                 {url}
