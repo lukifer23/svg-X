@@ -57,12 +57,13 @@ async function isReachable(url: string): Promise<boolean> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 1000);
   try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      mode: 'cors',
-      signal: controller.signal
+    await fetch(url, {
+      method: 'GET',
+      mode: 'no-cors',
+      signal: controller.signal,
+      cache: 'no-store'
     });
-    return response.ok;
+    return true;
   } catch {
     return false;
   } finally {
@@ -75,7 +76,7 @@ async function isReachable(url: string): Promise<boolean> {
  * @param urls Candidate URLs
  */
 async function filterReachableUrls(urls: string[]): Promise<string[]> {
-  const checks = await Promise.all(urls.map(async (url) => (await isReachable(url)) ? url : null));
+  const checks = await Promise.all(urls.map(async (url) => ((await isReachable(url)) ? url : null)));
   return checks.filter((u): u is string => Boolean(u));
 }
 
