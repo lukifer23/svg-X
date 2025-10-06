@@ -229,13 +229,15 @@ function App() {
     setFileName(getOptimizedFilename(file.name));
     setSvg(null);
     setError('');
-    
+    setProcessingLogs([]);
+
     try {
       setStatus('processing');
       const svgData = await processImageWithPotrace(
         imageData,
         potraceParams,
-        (newStatus) => setStatus(newStatus as ConversionStatus)
+        (newStatus) => setStatus(newStatus as ConversionStatus),
+        handleLogEntry
       );
       setSvg(svgData);
       setStatus('done');
@@ -244,7 +246,7 @@ function App() {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setStatus('error');
     }
-  }, [potraceParams]);
+  }, [potraceParams, handleLogEntry]);
 
   // Expose the processImage function for batch processing
   const processImage = useCallback(async (imageData: string, params: TracingParams) => {
