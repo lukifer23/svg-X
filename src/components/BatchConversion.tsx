@@ -15,7 +15,12 @@ declare global {
       readDirectory: (dirPath: string) => Promise<string[] | { error: string }>;
       saveSvg: (data: { svgData: string, outputPath: string }) => Promise<{ success: boolean, path: string } | { error: string }>;
       readImageFile: (filePath: string) => Promise<string | { error: string }>;
-      resizeImage?: (data: { imageData: string, width: number, height: number }) => Promise<string | { error: string }>;
+      resizeImage?: (data: {
+        imageData: string;
+        width: number;
+        height: number;
+        maintainAspectRatio?: boolean;
+      }) => Promise<string | { error: string }>;
       toggleConsole?: () => Promise<{ visible: boolean }>;
     }
   }
@@ -335,7 +340,8 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
           const resizedImage = await window.electronAPI.resizeImage({
             imageData: result,
             width: resizeOptions.width,
-            height: resizeOptions.height
+            height: resizeOptions.height,
+            maintainAspectRatio: resizeOptions.maintainAspectRatio
           });
           
           if (typeof resizedImage !== 'string') {
