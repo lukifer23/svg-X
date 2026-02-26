@@ -2,7 +2,7 @@
  * Last checked: 2025-03-02
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon } from 'lucide-react';
 
 interface ImagePreviewProps {
@@ -20,6 +20,50 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   progressSteps,
   isMobile = false
 }) => {
+  // Add state for detailed progress information
+  const [progressDetails, setProgressDetails] = useState<string>('');
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  
+  // Listen for color progress updates
+  useEffect(() => {
+    const handleProgressUpdate = (event: CustomEvent) => {
+      const { progress, details } = event.detail;
+      setProgressPercent(progress);
+      if (details) {
+        setProgressDetails(details);
+      }
+    };
+    
+    window.addEventListener('color-progress-update', handleProgressUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('color-progress-update', handleProgressUpdate as EventListener);
+    };
+  }, []);
+  
+  // Reset progress details when status changes to something other than colorProcessing
+  useEffect(() => {
+    if (status !== 'colorProcessing') {
+      setProgressDetails('');
+    }
+  }, [status]);
+  
+  // Calculate progress width based on status or detailed progress
+  const getProgressWidth = () => {
+    if (status === 'colorProcessing' && progressPercent > 0) {
+      return `${progressPercent}%`;
+    }
+    
+    return `${
+      status === 'loading' ? 20 :
+      status === 'processing' ? 40 :
+      status === 'analyzing' ? 60 :
+      status === 'tracing' ? 80 :
+      status === 'colorProcessing' ? 70 :
+      status === 'optimizing' ? 90 : 0
+    }%`;
+  };
+  
   return (
     <div className="panel p-3 sm:p-6 animate-slide-in-bottom">
       <h2 className="text-base sm:text-lg font-semibold text-gradient mb-2 sm:mb-4 flex items-center">
@@ -36,17 +80,22 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                 {progressSteps[status]}
               </span>
             </div>
+            
+            {/* Show detailed progress for color processing */}
+            {status === 'colorProcessing' && progressDetails && (
+              <div className="mt-1 text-xs text-gray-600">
+                {progressDetails}
+                {progressPercent > 0 && (
+                  <span className="ml-1 font-medium">{progressPercent}%</span>
+                )}
+              </div>
+            )}
+            
             <div className="mt-2 sm:mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-gradient-blue transition-all duration-500 ease-out"
                 style={{
-                  width: `${
-                    status === 'loading' ? 20 :
-                    status === 'processing' ? 40 :
-                    status === 'analyzing' ? 60 :
-                    status === 'tracing' ? 80 :
-                    status === 'optimizing' ? 90 : 0
-                  }%`
+                  width: getProgressWidth()
                 }}
               />
             </div>
@@ -67,14 +116,25 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         <div className="animate-slide-in-right" style={{animationDelay: '0.2s'}}>
           <p className="text-xs sm:text-sm text-gray-600 font-medium mb-1 sm:mb-2">SVG Output:</p>
           {svg ? (
-            <div
-              dangerouslySetInnerHTML={{ __html: svg }}
-              className="bg-white border border-gray-200 rounded-lg p-2 sm:p-4 w-full h-auto max-h-[200px] sm:max-h-[300px] overflow-hidden shadow-soft hover:shadow-md transition-all duration-300"
-            />
+            <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-4 w-full h-[200px] sm:h-[300px] flex items-center justify-center shadow-soft hover:shadow-md transition-all duration-300 overflow-hidden">
+              <div
+                dangerouslySetInnerHTML={{ __html: svg.replace('<svg', '<svg preserveAspectRatio="xMidYMid meet"') }}
+                className="max-w-full max-h-full w-auto h-auto"
+                style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: 'scale(0.9)',
+                  transformOrigin: 'center'
+                }}
+              />
+            </div>
           ) : (
             <div className="h-[200px] sm:h-[300px] border border-gray-200 rounded-lg bg-white/50 flex items-center justify-center p-2 sm:p-4 text-center shadow-soft">
               <span className="text-xs sm:text-sm text-gray-400">
-                {status === 'idle' ? 'Upload an image to see the SVG output' : 'Processing...'}
+                {status === 'idle' ? 'Upload an image to see the SVG output' : 
+                 status === 'colorProcessing' ? 'Processing color layers...' :
+                 'Processing...'}
               </span>
             </div>
           )}

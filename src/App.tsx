@@ -15,7 +15,7 @@ import ProcessingLogs from './components/ProcessingLogs';
 import BatchConversion from './components/BatchConversion';
 import { processImage as processImageWithPotrace, DEFAULT_PARAMS, PROGRESS_STEPS, getOptimizedFilename, TracingParams, TurnPolicy, simplifyForComplexImages, isNetworkClient, simplifyForNetworkClients } from './utils/imageProcessor';
 
-type ConversionStatus = 'idle' | 'loading' | 'processing' | 'tracing' | 'done' | 'error';
+type ConversionStatus = 'idle' | 'loading' | 'processing' | 'analyzing' | 'tracing' | 'colorProcessing' | 'optimizing' | 'done' | 'error';
 
 // Define the LogEntry interface
 interface LogEntry {

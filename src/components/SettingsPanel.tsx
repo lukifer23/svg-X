@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { Settings } from 'lucide-react';
-import { TurnPolicy } from '../utils/imageProcessor';
+import { TurnPolicy, FillStrategy } from '../utils/imageProcessor';
 
 // Define the props interface for the component
 export interface SettingsPanelProps {
@@ -19,6 +19,9 @@ export interface SettingsPanelProps {
   background: string;
   invert: boolean;
   highestQuality: boolean;
+  colorMode: boolean;
+  colorSteps: number;
+  fillStrategy: FillStrategy;
   onParamChange: (param: string, value: any) => void;
   onReset: () => void;
   onClose: () => void;
@@ -40,6 +43,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   background,
   invert,
   highestQuality,
+  colorMode,
+  colorSteps,
+  fillStrategy,
   onParamChange,
   onReset,
   onClose,
@@ -49,10 +55,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   isComplexMode = false
 }) => {
   const turnPolicyOptions: TurnPolicy[] = ['black', 'white', 'left', 'right', 'minority', 'majority'];
+  const fillStrategyOptions: FillStrategy[] = ['dominant', 'mean', 'median', 'spread'];
 
   // CSS classes for slider styling
   const sliderTrackClass = "w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer";
-  const sliderThumbClass = "w-6 h-6 rounded-full bg-gradient-blue border-2 border-white shadow-md appearance-none";
 
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto">
@@ -300,6 +306,81 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className={isMobile ? "" : "sm:col-span-2"}>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Color Mode:</label>
+            <div className="flex items-center mb-3">
+              <input 
+                type="checkbox" 
+                id="colorMode"
+                checked={colorMode} 
+                onChange={(e) => onParamChange('colorMode', e.target.checked)}
+                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <label htmlFor="colorMode" className="ml-2 text-xs sm:text-sm text-gray-600 font-medium">
+                Enable color mode (posterization)
+              </label>
+            </div>
+            
+            {colorMode && (
+              <>
+                <div className="mb-3">
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
+                    Color Steps: {colorSteps}
+                  </label>
+                  <div className="text-xs text-gray-500 mb-2">
+                    Number of color levels (2-8)
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
+                      <div 
+                        style={{ width: `${((colorSteps-2)/6)*100}%` }}
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
+                      ></div>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="2" 
+                      max="8" 
+                      step="1"
+                      value={colorSteps} 
+                      onChange={(e) => onParamChange('colorSteps', parseInt(e.target.value))}
+                      className={`${sliderTrackClass} mt-2`}
+                      style={{ 
+                        WebkitAppearance: 'none',
+                        appearance: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">Fill Strategy:</label>
+                  <div className="text-xs text-gray-500 mb-2">
+                    How to determine colors for each layer
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {fillStrategyOptions.map(option => (
+                      <div key={option} className="flex items-center">
+                        <input
+                          type="radio"
+                          id={`fill-${option}`}
+                          name="fillStrategy"
+                          value={option}
+                          checked={fillStrategy === option}
+                          onChange={() => onParamChange('fillStrategy', option)}
+                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                        />
+                        <label htmlFor={`fill-${option}`} className="ml-2 text-xs sm:text-sm text-gray-600">
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className={isMobile ? "" : "sm:col-span-2"}>
