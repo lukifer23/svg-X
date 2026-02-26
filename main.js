@@ -1,133 +1,51 @@
-// Last updated: 2025-03-11 - Force update to repository
-// Last updated: 2025-03-08
 /**
- * Main process file for SVG-X Electron application
- * This file handles all the Electron-specific functionality including:
- * - Window creation
- * - IPC communication
- * - File system operations
+ * Main process for SVG-X Electron application.
+ * Handles window creation, IPC communication, and file system operations.
  */
 
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
 const express = require('express');
 const expressApp = express();
 const fs = require('fs');
 const os = require('os');
-const http = require('http');
 const sharp = require('sharp');
 
-// Add missing variable declarations
 let mainWindow = null;
 let serverProcess = null;
-let consoleWindow = null;
 
-// Define port for the express server
-// Using 3001 since port 3000 appears to be in use
 const PORT = 3001;
+const isDev = !app.isPackaged;
 
-// Function to get local IP addresses
-function getLocalIpAddress() {
+function getLocalIpAddresses() {
   const interfaces = os.networkInterfaces();
-  const ipAddresses = [];
+  const addresses = [];
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
-      // Skip internal and non-IPv4 addresses
       if (iface.family === 'IPv4' && !iface.internal) {
-        ipAddresses.push(iface.address);
+        addresses.push(iface.address);
       }
     }
   }
-  return ipAddresses.length > 0 ? ipAddresses : ['localhost']; // Fallback
+  return addresses.length > 0 ? addresses : ['localhost'];
 }
 
-// Create a separate console window for logging
-function createConsoleWindow() {
-  consoleWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    title: 'SVG-X Console',
-    icon: path.join(__dirname, 'icon.png'),
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    }
-  });
-  
-  // Load a simple HTML file to display logs
-  const consoleHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>SVG-X Console</title>
-      <style>
-        body {
-          background-color: #1e1e1e;
-          color: #f0f0f0;
-          font-family: monospace;
-          padding: 10px;
-          margin: 0;
-          height: 100vh;
-          overflow-y: auto;
-          white-space: pre-wrap;
-          word-break: break-all;
-        }
-        .info { color: #4cc9f0; }
-        .success { color: #4ade80; }
-        .error { color: #f87171; }
-        .warning { color: #fbbf24; }
-      </style>
-    </head>
-    <body>
-      <div id="log"></div>
-      <script>
-        const logEl = document.getElementById('log');
-        window.electronAPI = {
-          receiveLog: (message, type) => {
-            const entry = document.createElement('div');
-            entry.className = type || '';
-            entry.textContent = message;
-            logEl.appendChild(entry);
-            window.scrollTo(0, document.body.scrollHeight);
-          }
-        };
-      </script>
-    </body>
-    </html>
-  `;
-  
-  // Write the HTML to a temporary file
-  const tempHtmlPath = path.join(app.getPath('temp'), 'svg-x-console.html');
-  fs.writeFileSync(tempHtmlPath, consoleHtml);
-  
-  // Load the HTML file
-  consoleWindow.loadFile(tempHtmlPath);
-  
-  // Don't show in taskbar
-  consoleWindow.setSkipTaskbar(true);
-  
-  // Hide by default
-  consoleWindow.hide();
-  
-  consoleWindow.on('closed', () => {
-    consoleWindow = null;
-  });
-  
-  return consoleWindow;
-}
+// CORS headers for all Express responses (enables LAN access from other devices)
+expressApp.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
 
-// Console logging function
-function logToConsole(message, type = 'info') {
-  console.log(message); // Still log to main console
-  
-  if (consoleWindow && !consoleWindow.isDestroyed()) {
-    consoleWindow.webContents.executeJavaScript(`
-      window.electronAPI.receiveLog(${JSON.stringify(message)}, ${JSON.stringify(type)});
-    `).catch(err => console.error('Error sending log to console window:', err));
-  }
-}
+// Network info API — available in both dev and production
+expressApp.get('/api/network-info', (_req, res) => {
+  const ips = getLocalIpAddresses();
+  res.json({
+    localUrl: `http://localhost:${PORT}`,
+    networkUrls: ips.map(ip => `http://${ip}:${PORT}`)
+  });
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -142,266 +60,192 @@ function createWindow() {
     icon: path.join(__dirname, 'icon.png')
   });
 
-  // Create console window
-  createConsoleWindow();
-
-  // Check if we're in development or production
-  const isDev = !app.isPackaged;
-
   if (isDev) {
-    // In development, connect to the Vite dev server
-    // Wait for dev server to start
-    console.log('Development mode - connecting to Vite server at port 3001');
-    mainWindow.loadURL('http://localhost:3001');
-    
-    // Open DevTools
+    mainWindow.loadURL(`http://localhost:${PORT}`);
     mainWindow.webContents.openDevTools();
   } else {
-    // In production, determine the correct path to the built files
-    let distPath;
-    
-    // Check if running from packaged app (resources directory)
-    if (process.resourcesPath) {
-      distPath = path.join(process.resourcesPath, 'dist');
-      console.log(`Looking for dist in resources: ${distPath}`);
-    } else {
-      // Fallback to the standard dist directory
-      distPath = path.join(__dirname, 'dist');
-      console.log(`Looking for dist in __dirname: ${distPath}`);
-    }
-    
-    // Check if the dist directory exists
+    let distPath = process.resourcesPath
+      ? path.join(process.resourcesPath, 'dist')
+      : path.join(__dirname, 'dist');
+
     if (!fs.existsSync(distPath)) {
-      console.error(`Error: ${distPath} does not exist!`);
-      // Try alternate locations
-      const altPaths = [
+      const candidates = [
         path.join(__dirname, 'dist'),
         path.join(__dirname, '..', 'dist'),
         path.join(app.getAppPath(), 'dist')
       ];
-      
-      for (const altPath of altPaths) {
-        console.log(`Trying alternate path: ${altPath}`);
-        if (fs.existsSync(altPath)) {
-          distPath = altPath;
-          console.log(`Using alternate path: ${distPath}`);
-          break;
-        }
+      for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) { distPath = candidate; break; }
       }
     }
-    
-    // Serve the static files
+
     expressApp.use(express.static(distPath));
-    
-    expressApp.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-    
+    expressApp.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+
     const server = expressApp.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-      const ipAddresses = getLocalIpAddress();
-      console.log(`Available on your network at http://${ipAddresses[0]}:${PORT}`);
-      
-      // Load the app from the Express server
+      const ips = getLocalIpAddresses();
+      console.log(`SVG-X server: http://localhost:${PORT}`);
+      console.log(`Network: http://${ips[0]}:${PORT}`);
       mainWindow.loadURL(`http://localhost:${PORT}`);
     });
-
     serverProcess = server;
   }
 
-  // Prevent external links from opening in the Electron window
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Open external URLs in the default browser instead
     if (url.startsWith('http:') || url.startsWith('https:')) {
-      require('electron').shell.openExternal(url);
+      shell.openExternal(url);
       return { action: 'deny' };
     }
     return { action: 'allow' };
   });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
-  // Add API endpoint for network information
-  expressApp.get('/api/network-info', (req, res) => {
-    const ipAddresses = getLocalIpAddress();
-    res.json({
-      localUrl: `http://localhost:${PORT}`,
-      networkUrls: ipAddresses.map(ip => `http://${ip}:${PORT}`)
-    });
-  });
-
-  // Setup IPC handlers for batch processing
-  setupIPCHandlers();
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// Set up IPC handlers for communication between renderer and main process
+/**
+ * Validate that a resolved absolute path does not escape outside an allowed
+ * root via path traversal. Uses path.relative() which is immune to substring
+ * tricks like "my..file" or double-encoded separators.
+ */
+function isPathSafe(filePath, allowedRoot) {
+  const normalized = path.normalize(path.resolve(filePath));
+  if (!path.isAbsolute(normalized)) return false;
+  // If no allowed root is specified, just require an absolute path
+  if (!allowedRoot) return true;
+  const rel = path.relative(allowedRoot, normalized);
+  // If relative path starts with '..', the file escapes the allowed root
+  return !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
 function setupIPCHandlers() {
-  // Handler for selecting input directory
-  ipcMain.handle('select-input-directory', async () => {
-    console.log('Handling select-input-directory request');
+  ipcMain.handle('select-directory', async (_event, title) => {
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory'],
-      title: 'Select Input Directory Containing Images'
+      title: title || 'Select Directory'
     });
-    
-    console.log('Dialog result:', result);
     return result.canceled ? null : result.filePaths[0];
   });
 
-  // Handler for selecting output directory
-  ipcMain.handle('select-output-directory', async () => {
-    console.log('Handling select-output-directory request');
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openDirectory'],
-      title: 'Select Output Directory for SVG Files'
-    });
-    
-    console.log('Dialog result:', result);
-    return result.canceled ? null : result.filePaths[0];
-  });
-
-  // Handler for reading directory contents
-  ipcMain.handle('read-directory', async (event, dirPath) => {
-    console.log(`Reading directory: ${dirPath}`);
+  ipcMain.handle('read-directory', async (_event, dirPath) => {
     try {
       const files = fs.readdirSync(dirPath);
-      
-      // Filter for image files
-      const imageFiles = files.filter(file => {
-        const ext = path.extname(file).toLowerCase();
-        return ['.png', '.jpg', '.jpeg', '.gif', '.bmp'].includes(ext);
-      });
-      
-      console.log(`Found ${imageFiles.length} image files`);
-      // Return full paths
+      const imageFiles = files.filter(file =>
+        ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].includes(path.extname(file).toLowerCase())
+      );
       return imageFiles.map(file => path.join(dirPath, file));
     } catch (error) {
-      console.error('Error reading directory:', error);
       return { error: error.message };
     }
   });
 
-  // Handler for saving SVG file
-  ipcMain.handle('save-svg', async (event, { svgData, outputPath }) => {
-    console.log(`Saving SVG to: ${outputPath}`);
+  ipcMain.handle('save-svg', async (_event, { svgData, outputPath }) => {
+    const resolvedPath = path.resolve(outputPath);
+    // Allow saving anywhere the user has access to (they chose the directory themselves)
+    if (!path.isAbsolute(resolvedPath)) return { error: 'Invalid output path' };
     try {
-      fs.writeFileSync(outputPath, svgData);
-      return { success: true, path: outputPath };
+      await fs.promises.writeFile(resolvedPath, svgData, 'utf8');
+      return { success: true, path: resolvedPath };
     } catch (error) {
-      console.error('Error saving SVG:', error);
       return { error: error.message };
     }
   });
 
-  // Handler for reading image file as data URL
-  ipcMain.handle('read-image-file', async (event, filePath) => {
-    console.log(`Reading image file: ${filePath}`);
+  ipcMain.handle('read-image-file', async (_event, filePath) => {
+    const resolvedPath = path.resolve(filePath);
+    if (!path.isAbsolute(resolvedPath)) return { error: 'Invalid file path' };
     try {
-      const data = fs.readFileSync(filePath);
-      const base64data = data.toString('base64');
-      const extension = path.extname(filePath).toLowerCase().substring(1);
-      const mimetype = {
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'bmp': 'image/bmp'
-      }[extension] || 'application/octet-stream';
-      
-      return `data:${mimetype};base64,${base64data}`;
-    } catch (error) {
-      console.error('Error reading image file:', error);
-      return { error: error.message };
-    }
-  });
-
-  // Handler for resizing images
-  ipcMain.handle('resize-image', async (event, { imageData, width, height, maintainAspectRatio = true }) => {
-    logToConsole(`Resizing image to ${width}x${height}`, 'info');
-    
-    try {
-      // Extract the base64 data from the data URL
-      const [header, base64Data] = imageData.split(',');
-      const mimeType = header.match(/data:(.*?);/)[1];
-      
-      // Convert base64 to buffer
-      const buffer = Buffer.from(base64Data, 'base64');
-      
-      // Create sharp instance
-      let sharpInstance = sharp(buffer);
-      
-      // Get image metadata
-      const metadata = await sharpInstance.metadata();
-      logToConsole(`Original image: ${metadata.width}x${metadata.height}`, 'info');
-      
-      // Resize using sharp
-      let resizeOptions = {
-        width: width,
-        height: height,
-        fit: maintainAspectRatio ? 'inside' : 'fill'
+      const data = await fs.promises.readFile(resolvedPath);
+      const ext = path.extname(resolvedPath).toLowerCase().substring(1);
+      const mimeMap = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        bmp: 'image/bmp',
+        webp: 'image/webp'
       };
-      
-      // Apply resize
-      sharpInstance = sharpInstance.resize(resizeOptions);
-      
-      // Convert back to buffer
-      const resizedBuffer = await sharpInstance.toBuffer();
-      
-      // Convert buffer to base64
-      const resizedBase64 = resizedBuffer.toString('base64');
-      
-      // Create data URL
-      const dataUrl = `data:${mimeType};base64,${resizedBase64}`;
-      
-      logToConsole('Image resized successfully', 'success');
-      return dataUrl;
+      const mime = mimeMap[ext] || 'application/octet-stream';
+      return `data:${mime};base64,${data.toString('base64')}`;
     } catch (error) {
-      logToConsole(`Error resizing image: ${error.message}`, 'error');
       return { error: error.message };
     }
   });
-  
-  // Handler for toggling console window
-  ipcMain.handle('toggle-console', async (event) => {
-    if (!consoleWindow || consoleWindow.isDestroyed()) {
-      createConsoleWindow();
+
+  ipcMain.handle('resize-image', async (_event, { imageData, width, height, maintainAspectRatio = true }) => {
+    try {
+      const commaIdx = imageData.indexOf(',');
+      if (commaIdx === -1) return { error: 'Invalid data URL' };
+      const header = imageData.slice(0, commaIdx);
+      const base64Data = imageData.slice(commaIdx + 1);
+      const mimeMatch = header.match(/data:(.*?);/);
+      if (!mimeMatch) return { error: 'Cannot parse MIME type from data URL' };
+      const mimeType = mimeMatch[1];
+
+      const buffer = Buffer.from(base64Data, 'base64');
+      const resizedBuffer = await sharp(buffer)
+        .resize({ width, height, fit: maintainAspectRatio ? 'inside' : 'fill' })
+        .toBuffer();
+
+      return `data:${mimeType};base64,${resizedBuffer.toString('base64')}`;
+    } catch (error) {
+      return { error: error.message };
     }
-    
-    if (consoleWindow.isVisible()) {
-      consoleWindow.hide();
+  });
+
+  ipcMain.handle('show-save-dialog', async (_event, { defaultName } = {}) => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName || 'image.svg',
+      filters: [{ name: 'SVG Files', extensions: ['svg'] }]
+    });
+    return result.canceled ? null : result.filePath;
+  });
+
+  ipcMain.handle('open-output-directory', async (_event, dirPath) => {
+    const resolvedPath = path.resolve(dirPath);
+    if (path.isAbsolute(resolvedPath)) await shell.openPath(resolvedPath);
+  });
+
+  ipcMain.handle('join-paths', (_event, segments) => {
+    return path.join(...segments);
+  });
+
+  ipcMain.handle('get-app-version', () => app.getVersion());
+
+  ipcMain.handle('toggle-console', () => {
+    if (!mainWindow) return { visible: false };
+    if (mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.closeDevTools();
       return { visible: false };
     } else {
-      consoleWindow.show();
+      mainWindow.webContents.openDevTools();
       return { visible: true };
     }
   });
 }
 
-app.on('ready', createWindow);
+app.on('ready', () => {
+  const ips = getLocalIpAddresses();
+  console.log(`SVG-X starting — local: http://localhost:${PORT}, network: http://${ips[0]}:${PORT}`);
+
+  // In dev mode, start a minimal Express server for the /api/network-info endpoint only.
+  // Vite handles all other requests. This avoids the network-info 404 in dev.
+  if (isDev) {
+    expressApp.listen(PORT + 1, '0.0.0.0', () => {
+      console.log(`SVG-X API server (dev): http://localhost:${PORT + 1}`);
+    }).on('error', () => {
+      // Port in use — silently skip; WebRTC fallback handles network info
+    });
+  }
+
+  setupIPCHandlers();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-
-  // Close Express server if it's running
-  if (serverProcess) {
-    serverProcess.close();
-  }
+  if (serverProcess) { try { serverProcess.close(); } catch (_) {} }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
-  }
+  if (mainWindow === null) createWindow();
 });
-
-// Display local network access info on app start
-app.on('ready', () => {
-  const ipAddresses = getLocalIpAddress();
-  console.log(`SVG-X is running!`);
-  console.log(`Local access: http://localhost:${PORT}`);
-  console.log(`Network access: http://${ipAddresses[0]}:${PORT}`);
-}); 

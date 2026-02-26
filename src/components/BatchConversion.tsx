@@ -1,30 +1,9 @@
-/**
- * Last checked: 2025-03-08
- */
-
-import React, { useState, useEffect, useRef } from 'react';
-import { FolderInput, FolderOutput, Play, X, Loader2, CheckCircle2, AlertCircle, ImageIcon, Settings } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  FolderInput, FolderOutput, Play, Square, X, RotateCw,
+  Loader2, CheckCircle2, AlertCircle, ImageIcon, FolderOpen, Settings
+} from 'lucide-react';
 import { TracingParams, getOptimizedFilename } from '../utils/imageProcessor';
-
-// Add TypeScript interface for electronAPI
-declare global {
-  interface Window {
-    electronAPI?: {
-      selectInputDirectory: () => Promise<string | null>;
-      selectOutputDirectory: () => Promise<string | null>;
-      readDirectory: (dirPath: string) => Promise<string[] | { error: string }>;
-      saveSvg: (data: { svgData: string, outputPath: string }) => Promise<{ success: boolean, path: string } | { error: string }>;
-      readImageFile: (filePath: string) => Promise<string | { error: string }>;
-      resizeImage?: (data: {
-        imageData: string;
-        width: number;
-        height: number;
-        maintainAspectRatio?: boolean;
-      }) => Promise<string | { error: string }>;
-      toggleConsole?: () => Promise<{ visible: boolean }>;
-    }
-  }
-}
 
 interface BatchConversionProps {
   potraceParams: TracingParams;
@@ -36,7 +15,6 @@ interface BatchProcessingStats {
   total: number;
   completed: number;
   failed: number;
-  inProgress: number;
 }
 
 interface ProcessingItem {
@@ -46,7 +24,6 @@ interface ProcessingItem {
   error?: string;
 }
 
-// Add resize options interface
 interface ResizeOptions {
   enabled: boolean;
   width: number;
@@ -54,578 +31,549 @@ interface ResizeOptions {
   maintainAspectRatio: boolean;
 }
 
+// Reads a file as a data URL and optionally resizes it via Electron IPC.
+// Defined outside the component to avoid stale closure issues.
+async function readFileAsDataURL(
+  filePath: string,
+  resizeOptions: ResizeOptions
+): Promise<string> {
+  if (!window.electronAPI) throw new Error('Electron API unavailable');
+
+  const result = await window.electronAPI.readImageFile(filePath);
+  if (typeof result !== 'string') throw new Error(result.error || 'Failed to read image file');
+
+  if (resizeOptions.enabled && typeof window.electronAPI.resizeImage === 'function') {
+    try {
+      const resized = await window.electronAPI.resizeImage!({
+        imageData: result,
+        width: resizeOptions.width,
+        height: resizeOptions.height,
+        maintainAspectRatio: resizeOptions.maintainAspectRatio
+      });
+      if (typeof resized === 'string') return resized;
+      console.warn('Resize failed, using original:', (resized as { error: string }).error);
+    } catch (e) {
+      console.warn('Resize error, using original:', e);
+    }
+  } else if (resizeOptions.enabled) {
+    console.warn('resizeImage not available in this build — resize skipped');
+  }
+
+  return result;
+}
+
+const ConfirmDialog: React.FC<{
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ message, onConfirm, onCancel }) => (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4">
+    <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5">
+      <p className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">{message}</p>
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={onCancel}
+          className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClose, processImage }) => {
   const [inputDirectory, setInputDirectory] = useState<string | null>(null);
   const [outputDirectory, setOutputDirectory] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingItems, setProcessingItems] = useState<ProcessingItem[]>([]);
-  const [stats, setStats] = useState<BatchProcessingStats>({ total: 0, completed: 0, failed: 0, inProgress: 0 });
+  const [stats, setStats] = useState<BatchProcessingStats>({ total: 0, completed: 0, failed: 0 });
   const [currentFileIndex, setCurrentFileIndex] = useState<number>(-1);
-  const [isElectronEnvironment, setIsElectronEnvironment] = useState<boolean>(false);
+  const [isElectronEnvironment, setIsElectronEnvironment] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const filenameCounts = useRef<Record<string, number>>({});
-  
-  // Add state for resize options
+  const [confirm, setConfirm] = useState<{ message: string; resolve: (v: boolean) => void } | null>(null);
   const [resizeOptions, setResizeOptions] = useState<ResizeOptions>({
-    enabled: false,
-    width: 512,
-    height: 512,
-    maintainAspectRatio: true
+    enabled: false, width: 512, height: 512, maintainAspectRatio: true
   });
-  
-  // Add state for showing resize settings
-  const [showResizeSettings, setShowResizeSettings] = useState<boolean>(false);
-  
-  // Check if we're in an Electron environment on component mount
+  const [showResizeSettings, setShowResizeSettings] = useState(false);
+  const [resizeSkippedWarning, setResizeSkippedWarning] = useState(false);
+
+  // Refs to avoid stale closures in the processing effect
+  const resizeOptionsRef = useRef<ResizeOptions>(resizeOptions);
+  const filenameCounts = useRef<Record<string, number>>({});
+  const isCancelled = useRef(false);
+  const processingItemsRef = useRef<ProcessingItem[]>([]);
+
+  // Keep refs in sync
+  useEffect(() => { processingItemsRef.current = processingItems; }, [processingItems]);
+  useEffect(() => { resizeOptionsRef.current = resizeOptions; }, [resizeOptions]);
+
+  // Reset collision counter on new input directory
+  useEffect(() => { filenameCounts.current = {}; }, [inputDirectory]);
+
   useEffect(() => {
-    const checkElectronEnvironment = () => {
-      const isElectron = !!window.electronAPI;
-      console.log('Electron environment detected:', isElectron);
-      setIsElectronEnvironment(isElectron);
-      
-      if (!isElectron) {
-        setErrorMessage('Batch conversion requires the Electron app. Please run SVG-X as a desktop application to use this feature.');
-      }
-    };
-    
-    checkElectronEnvironment();
-  }, []);
-  
-  // Function to select input directory
-  const handleSelectInputDirectory = async () => {
-    if (!isElectronEnvironment || !window.electronAPI) {
-      setErrorMessage("Cannot access file system in browser mode. Please run with 'npm run electron:dev'.");
-      return;
+    const hasElectron = !!window.electronAPI;
+    setIsElectronEnvironment(hasElectron);
+    if (!hasElectron) {
+      setErrorMessage('Batch conversion requires the Electron app. Please run SVG-X as a desktop application to use this feature.');
     }
-    
+    // Warn if resize is enabled but resizeImage isn't available
+    if (hasElectron && !window.electronAPI!.resizeImage) {
+      setResizeSkippedWarning(true);
+    }
+  }, []);
+
+  const showConfirm = (message: string): Promise<boolean> =>
+    new Promise(resolve => setConfirm({ message, resolve }));
+
+  const handleSelectInputDirectory = async () => {
+    if (!window.electronAPI) return;
     try {
       const selectedDir = await window.electronAPI.selectInputDirectory();
-      if (selectedDir) {
-        setInputDirectory(selectedDir);
-        
-        // Reset any previous errors
-        setErrorMessage(null);
-        
-        // List image files in the directory
-        const files = await window.electronAPI.readDirectory(selectedDir);
-        
-        if (Array.isArray(files)) {
-          const items: ProcessingItem[] = [];
+      if (!selectedDir) return;
+      setInputDirectory(selectedDir);
+      setErrorMessage(null);
 
-          files.forEach(filePath => {
-            const fileName = filePath.split(/[/\\]/).pop() || '';
-            // Only add if it's an image file
-            if (/\.(jpe?g|png|gif|bmp)$/i.test(fileName)) {
-              items.push({
-                filePath,
-                fileName,
-                status: 'pending'
-              });
-            }
-          });
-          
-          if (items.length === 0) {
-            setErrorMessage("No image files found in the selected directory. Please select a directory containing image files.");
-            return;
-          }
-          
-          console.log(`Found ${items.length} image files to process`);
-          
-          setProcessingItems(items);
-          setStats({
-            total: items.length,
-            completed: 0,
-            failed: 0,
-            inProgress: 0
-          });
-        } else {
-          console.error('Error reading directory:', files.error);
-          setErrorMessage(`Error reading directory: ${files.error}`);
-        }
+      const files = await window.electronAPI.readDirectory(selectedDir);
+      if (!Array.isArray(files)) {
+        setErrorMessage(`Error reading directory: ${'error' in files ? files.error : 'Unknown error'}`);
+        return;
       }
+
+      const items: ProcessingItem[] = files
+        .filter(fp => /\.(jpe?g|png|gif|bmp|webp)$/i.test(fp))
+        .map(fp => ({
+          filePath: fp,
+          fileName: fp.split(/[/\\]/).pop() || fp,
+          status: 'pending'
+        }));
+
+      if (items.length === 0) {
+        setErrorMessage('No supported image files found in the selected directory (PNG, JPG, GIF, BMP, WEBP).');
+        return;
+      }
+
+      setProcessingItems(items);
+      setStats({ total: items.length, completed: 0, failed: 0 });
     } catch (error) {
-      console.error('Error selecting input directory:', error);
       setErrorMessage(`Error selecting directory: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-  
-  // Function to select output directory
+
   const handleSelectOutputDirectory = async () => {
-    if (!isElectronEnvironment || !window.electronAPI) {
-      setErrorMessage("Cannot access file system in browser mode. Please run with 'npm run electron:dev'.");
-      return;
-    }
-    
+    if (!window.electronAPI) return;
     try {
       const selectedDir = await window.electronAPI.selectOutputDirectory();
-      if (selectedDir) {
-        setOutputDirectory(selectedDir);
-      }
+      if (selectedDir) setOutputDirectory(selectedDir);
     } catch (error) {
-      console.error('Error selecting output directory:', error);
       setErrorMessage(`Error selecting directory: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-  
-  // Function to start batch processing
-  const startBatchProcessing = async () => {
-    if (!inputDirectory || !outputDirectory || processingItems.length === 0) {
-      return;
-    }
-    
-    // Show confirmation dialog
-    const confirmed = window.confirm(
-      `You are about to process ${processingItems.length} image files from:\n${inputDirectory}\n\nSVG files will be saved to:\n${outputDirectory}\n\nDo you want to continue?`
-    );
-    
-    if (!confirmed) {
-      return;
-    }
-    
-    // Reset any previous state
-    setStats({
-      total: processingItems.length,
-      completed: 0,
-      failed: 0,
-      inProgress: 0
-    });
-    
-    // Reset all items to pending state
-    setProcessingItems(items => 
-      items.map(item => ({
-        ...item,
-        status: 'pending',
-        error: undefined
-      }))
-    );
-    
-    // Reset filename counts for collision handling
-    filenameCounts.current = {};
 
-    // Start processing
+  const startBatchProcessing = async () => {
+    if (!inputDirectory || !outputDirectory || processingItems.length === 0) return;
+
+    const confirmed = await showConfirm(
+      `Process ${processingItems.length} image file${processingItems.length !== 1 ? 's' : ''} from:\n${inputDirectory}\n\nSVGs will be saved to:\n${outputDirectory}`
+    );
+    setConfirm(null);
+    if (!confirmed) return;
+
+    isCancelled.current = false;
+    filenameCounts.current = {};
+    setStats({ total: processingItems.length, completed: 0, failed: 0 });
+    setProcessingItems(items => items.map(item => ({ ...item, status: 'pending', error: undefined })));
     setIsProcessing(true);
     setCurrentFileIndex(0);
   };
-  
-  // Effect to handle the processing queue
+
+  const cancelProcessing = () => {
+    isCancelled.current = true;
+    setIsProcessing(false);
+    setCurrentFileIndex(-1);
+  };
+
+  const retryFailed = () => {
+    isCancelled.current = false;
+    const hasFailures = processingItems.some(i => i.status === 'failed');
+    if (!hasFailures) return;
+    // Reset filename collision counter so retried files don't get spurious suffixes
+    filenameCounts.current = {};
+    setProcessingItems(items =>
+      items.map(item => item.status === 'failed' ? { ...item, status: 'pending', error: undefined } : item)
+    );
+    const firstFailed = processingItems.findIndex(i => i.status === 'failed');
+    setIsProcessing(true);
+    setCurrentFileIndex(firstFailed);
+  };
+
+  const openOutputDirectory = async () => {
+    if (!outputDirectory || !window.electronAPI?.openOutputDirectory) return;
+    try {
+      await window.electronAPI.openOutputDirectory(outputDirectory);
+    } catch {
+      // Silently skip if shell.openPath fails
+    }
+  };
+
+  // Processing loop — reads resizeOptions from ref to avoid stale closure
   useEffect(() => {
-    if (!isProcessing || currentFileIndex < 0 || currentFileIndex >= processingItems.length || !window.electronAPI) {
+    if (!isProcessing || currentFileIndex < 0 || !window.electronAPI) return;
+
+    const items = processingItemsRef.current;
+    if (currentFileIndex >= items.length) {
+      setIsProcessing(false);
+      setCurrentFileIndex(-1);
       return;
     }
-    
-    const processCurrentFile = async () => {
-      const currentItem = processingItems[currentFileIndex];
-      
-      // Skip if this file is already processed or processing
-      if (currentItem.status !== 'pending') {
-        // Already processed or processing, move to next file
-        if (currentFileIndex < processingItems.length - 1) {
-          setCurrentFileIndex(prevIndex => prevIndex + 1);
-        } else {
-          // All files processed
-          setIsProcessing(false);
-          setCurrentFileIndex(-1);
-        }
+
+    const timeoutId = setTimeout(async () => {
+      if (isCancelled.current) {
+        setIsProcessing(false);
+        setCurrentFileIndex(-1);
         return;
       }
-      
-      console.log(`Processing file ${currentFileIndex + 1}/${processingItems.length}: ${currentItem.fileName}`);
-      
-      // Update status to processing
-      setProcessingItems(items => 
-        items.map((item, idx) => 
-          idx === currentFileIndex ? { ...item, status: 'processing' } : item
-        )
+
+      const currentItem = items[currentFileIndex];
+      if (currentItem.status !== 'pending') {
+        setCurrentFileIndex(idx => idx + 1);
+        return;
+      }
+
+      setProcessingItems(prev =>
+        prev.map((item, idx) => idx === currentFileIndex ? { ...item, status: 'processing' } : item)
       );
-      
-      setStats(prev => ({ ...prev, inProgress: 1 }));
-      
+
       try {
-        // Read the file
-        const fileData = await readFileAsDataURL(currentItem.filePath);
-        
-        // Process the image
+        // Use the ref so we always have current resize options without re-running the effect
+        const fileData = await readFileAsDataURL(currentItem.filePath, resizeOptionsRef.current);
         const svgData = await processImage(fileData, potraceParams);
 
-        // Generate a slugified filename and handle collisions
         const baseSlug = getOptimizedFilename(currentItem.fileName);
         const count = filenameCounts.current[baseSlug] || 0;
         filenameCounts.current[baseSlug] = count + 1;
         const finalFileName = count === 0 ? baseSlug : `${baseSlug}-${count}`;
 
-        // Save the SVG
-        if (!window.electronAPI) {
-          throw new Error('Electron API is not available');
-        }
+        const outputPath = window.electronAPI!.joinPaths
+          ? await window.electronAPI!.joinPaths!(outputDirectory!, `${finalFileName}.svg`)
+          : `${outputDirectory!.replace(/[/\\]$/, '')}/${finalFileName}.svg`;
 
-        const outputPath = joinPaths(outputDirectory!, `${finalFileName}.svg`);
-        const saveResult = await window.electronAPI.saveSvg({ svgData, outputPath });
-        
-        if ('success' in saveResult && saveResult.success) {
-          // Update status to completed
-          setProcessingItems(items => 
-            items.map((item, idx) => 
-              idx === currentFileIndex ? { ...item, status: 'completed' } : item
-            )
-          );
-          
-          setStats(prev => ({ 
-            ...prev, 
-            completed: prev.completed + 1,
-            inProgress: 0
-          }));
-        } else {
+        const saveResult = await window.electronAPI!.saveSvg({ svgData, outputPath });
+        if (!('success' in saveResult && saveResult.success)) {
           throw new Error('error' in saveResult ? saveResult.error : 'Failed to save SVG');
         }
+
+        setProcessingItems(prev =>
+          prev.map((item, idx) => idx === currentFileIndex ? { ...item, status: 'completed' } : item)
+        );
+        setStats(prev => ({ ...prev, completed: prev.completed + 1 }));
       } catch (error) {
-        console.error(`Error processing ${currentItem.fileName}:`, error);
-        
-        // Update status to failed
-        setProcessingItems(items => 
-          items.map((item, idx) => 
-            idx === currentFileIndex ? { 
-              ...item, 
-              status: 'failed',
-              error: error instanceof Error ? error.message : 'Unknown error'
-            } : item
+        setProcessingItems(prev =>
+          prev.map((item, idx) =>
+            idx === currentFileIndex
+              ? { ...item, status: 'failed', error: error instanceof Error ? error.message : String(error) }
+              : item
           )
         );
-        
-        setStats(prev => ({ 
-          ...prev, 
-          failed: prev.failed + 1,
-          inProgress: 0
-        }));
+        setStats(prev => ({ ...prev, failed: prev.failed + 1 }));
       }
-      
-      // Move to next file
-      if (currentFileIndex < processingItems.length - 1) {
-        setCurrentFileIndex(prevIndex => prevIndex + 1);
-      } else {
-        // All files processed
-        setIsProcessing(false);
-        setCurrentFileIndex(-1);
-      }
-    };
-    
-    // Use a timeout to avoid potential infinite loops 
-    // and give UI time to update between files
-    const timeoutId = setTimeout(() => {
-      processCurrentFile();
-    }, 100);
-    
-    return () => clearTimeout(timeoutId);
-  // Remove processingItems from dependency array to prevent reprocessing
-  // when items are updated
-  }, [isProcessing, currentFileIndex, outputDirectory, potraceParams, processImage]);
-  
-  // Update readFileAsDataURL to handle resizing
-  const readFileAsDataURL = async (filePath: string): Promise<string> => {
-    if (!window.electronAPI) {
-      throw new Error('Electron API is not available');
-    }
 
-    try {
-      let result = await window.electronAPI.readImageFile(filePath);
-      
-      if (typeof result !== 'string') {
-        throw new Error(result.error || 'Failed to read image file');
+      if (!isCancelled.current) {
+        setCurrentFileIndex(idx => idx + 1);
       }
-      
-      // If resize is enabled, resize the image
-      if (resizeOptions.enabled && window.electronAPI && window.electronAPI.resizeImage) {
-        console.log(`Resizing image to ${resizeOptions.width}x${resizeOptions.height}`);
-        
-        try {
-          const resizedImage = await window.electronAPI.resizeImage({
-            imageData: result,
-            width: resizeOptions.width,
-            height: resizeOptions.height,
-            maintainAspectRatio: resizeOptions.maintainAspectRatio
-          });
-          
-          if (typeof resizedImage !== 'string') {
-            throw new Error(resizedImage.error || 'Failed to resize image');
-          }
-          
-          result = resizedImage;
-        } catch (error) {
-          console.error('Error resizing image:', error);
-          // Continue with original image if resize fails
-        }
-      }
-      
-      return result;
-    } catch (error) {
-      console.error(`Error reading file ${filePath}:`, error);
-      throw error;
-    }
-  };
-  
-  // Add helper function for path joining to handle different OS path separators
-  const joinPaths = (path1: string, path2: string): string => {
-    // Remove trailing slashes from first path
-    const cleanPath1 = path1.replace(/[/\\]$/, '');
-    // Remove leading slashes from second path
-    const cleanPath2 = path2.replace(/^[/\\]/, '');
-    
-    // Use forward slash as universal separator
-    return `${cleanPath1}/${cleanPath2}`;
-  };
-  
-  // Render progress bar
-  const renderProgressBar = () => {
-    const percentage = stats.total > 0 
-      ? Math.round(((stats.completed + stats.failed) / stats.total) * 100) 
-      : 0;
-    
-    return (
-      <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-        <div 
-          className="bg-blue-600 h-2.5 rounded-full" 
-          style={{ width: `${percentage}%` }}></div>
-      </div>
-    );
-  };
-  
-  // Create a component for resize settings
-  const ResizeSettings = () => (
-    <div className="border rounded-lg p-4 mb-4 bg-gray-50">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-gray-800">Image Resize Options</h3>
-        <button
-          onClick={() => setShowResizeSettings(false)}
-          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      
-      <div className="space-y-3">
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="resize-enabled"
-            checked={resizeOptions.enabled}
-            onChange={(e) => setResizeOptions(prev => ({
-              ...prev,
-              enabled: e.target.checked
-            }))}
-            className="mr-2"
-          />
-          <label htmlFor="resize-enabled" className="text-sm">Enable image resizing</label>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="resize-width" className="block text-sm mb-1">Width (px)</label>
-            <input
-              type="number"
-              id="resize-width"
-              value={resizeOptions.width}
-              onChange={(e) => setResizeOptions(prev => ({
-                ...prev,
-                width: Math.max(1, parseInt(e.target.value) || 1)
-              }))}
-              disabled={!resizeOptions.enabled}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="resize-height" className="block text-sm mb-1">Height (px)</label>
-            <input
-              type="number"
-              id="resize-height"
-              value={resizeOptions.height}
-              onChange={(e) => setResizeOptions(prev => ({
-                ...prev,
-                height: Math.max(1, parseInt(e.target.value) || 1)
-              }))}
-              disabled={!resizeOptions.enabled}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
-          </div>
-        </div>
-        
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="maintain-aspect"
-            checked={resizeOptions.maintainAspectRatio}
-            onChange={(e) => setResizeOptions(prev => ({
-              ...prev,
-              maintainAspectRatio: e.target.checked
-            }))}
-            disabled={!resizeOptions.enabled}
-            className="mr-2"
-          />
-          <label htmlFor="maintain-aspect" className="text-sm">Maintain aspect ratio</label>
-        </div>
-      </div>
-    </div>
-  );
-  
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [isProcessing, currentFileIndex, outputDirectory, potraceParams, processImage]);
+
+  const percentage = stats.total > 0
+    ? Math.round(((stats.completed + stats.failed) / stats.total) * 100)
+    : 0;
+
+  const batchDone = !isProcessing && currentFileIndex === -1 && stats.total > 0 &&
+    (stats.completed + stats.failed) === stats.total;
+  const hasFailed = processingItems.some(i => i.status === 'failed');
+  const currentlyProcessing = isProcessing ? processingItems.find(i => i.status === 'processing') : null;
+
+  const settingsSummary = [
+    potraceParams.colorMode
+      ? `Color (${potraceParams.colorSteps} steps, ${potraceParams.fillStrategy})`
+      : `B&W`,
+    `threshold ${potraceParams.threshold}`,
+    `speckle ${potraceParams.turdSize}`
+  ].join(' · ');
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] overflow-y-auto p-4 sm:p-6 shadow-xl">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Batch Conversion</h2>
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className="p-1 rounded-full hover:bg-gray-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        {/* Error message display */}
-        {errorMessage && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded-md">
-            <div className="flex items-start">
-              <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium mb-1">Electron Environment Required</p>
-                <p className="mb-2">{errorMessage}</p>
-                {!isElectronEnvironment && (
-                  <div className="mt-2 p-2 bg-gray-100 rounded text-gray-800 font-mono text-sm">
-                    npm run electron:dev
-                  </div>
-                )}
+    <>
+      {confirm && (
+        <ConfirmDialog
+          message={confirm.message}
+          onConfirm={() => { setConfirm(null); confirm.resolve(true); }}
+          onCancel={() => { setConfirm(null); confirm.resolve(false); }}
+        />
+      )}
+
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg w-full max-w-3xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 shadow-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold">Batch Conversion</h2>
+              <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
+                <Settings className="w-3 h-3" />
+                <span>{settingsSummary}</span>
               </div>
             </div>
-          </div>
-        )}
-        
-        <div className="space-y-6">
-          {/* Resize Settings Toggle */}
-          <div className="flex justify-end">
             <button
-              onClick={() => setShowResizeSettings(!showResizeSettings)}
-              className="btn btn-secondary flex items-center gap-2"
+              onClick={onClose}
               disabled={isProcessing}
+              className="p-1.5 rounded-full hover:bg-gray-200 transition-colors disabled:opacity-40"
+              aria-label="Close batch conversion"
             >
-              <ImageIcon className="w-4 h-4" />
-              <span>Image Resize Options</span>
+              <X className="w-5 h-5" />
             </button>
           </div>
-          
-          {/* Resize Settings Panel */}
-          {showResizeSettings && <ResizeSettings />}
-          
-          {/* Directory Selection */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <button
-                onClick={handleSelectInputDirectory}
-                disabled={isProcessing}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                <FolderInput className="w-4 h-4" />
-                <span>Select Input Directory</span>
-              </button>
-              
-              {inputDirectory && (
-                <div className="text-sm truncate max-w-xs">
-                  <span className="font-medium">Selected:</span> {inputDirectory}
+
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium mb-1">{isElectronEnvironment ? 'Error' : 'Electron Required'}</p>
+                  <p>{errorMessage}</p>
+                  {!isElectronEnvironment && (
+                    <code className="block mt-2 px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-mono">
+                      npm run electron:dev
+                    </code>
+                  )}
                 </div>
-              )}
-            </div>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <button
-                onClick={handleSelectOutputDirectory}
-                disabled={isProcessing}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                <FolderOutput className="w-4 h-4" />
-                <span>Select Output Directory</span>
-              </button>
-              
-              {outputDirectory && (
-                <div className="text-sm truncate max-w-xs">
-                  <span className="font-medium">Selected:</span> {outputDirectory}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* File List */}
-          {processingItems.length > 0 && (
-            <div className="border rounded-lg overflow-hidden">
-              <div className="p-3 bg-gray-50 border-b">
-                <div className="font-medium">Files to process: {stats.total}</div>
-                {renderProgressBar()}
-                <div className="flex justify-between text-sm">
-                  <div>Completed: <span className="text-green-600">{stats.completed}</span></div>
-                  <div>Failed: <span className="text-red-600">{stats.failed}</span></div>
-                  <div>Remaining: <span className="text-blue-600">{Math.max(0, stats.total - stats.completed - stats.failed)}</span></div>
-                </div>
-              </div>
-              
-              <div className="max-h-60 overflow-y-auto">
-                {processingItems.map((item, index) => (
-                  <div 
-                    key={`${item.filePath}-${index}`} 
-                    className={`flex justify-between items-center p-2 text-sm ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                    } ${
-                      index === currentFileIndex ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div className="truncate max-w-xs">{item.fileName}</div>
-                    <div className="flex items-center">
-                      {item.status === 'pending' && <span className="text-gray-500">Pending</span>}
-                      {item.status === 'processing' && (
-                        <span className="flex items-center text-blue-600">
-                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                          Processing
-                        </span>
-                      )}
-                      {item.status === 'completed' && (
-                        <span className="flex items-center text-green-600">
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Completed
-                        </span>
-                      )}
-                      {item.status === 'failed' && (
-                        <span className="flex items-center text-red-600">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          Failed
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
-          
-          {/* Start Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={startBatchProcessing}
-              disabled={!inputDirectory || !outputDirectory || processingItems.length === 0 || isProcessing}
-              className={`btn ${isProcessing ? 'btn-disabled' : 'btn-primary'} flex items-center gap-2`}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  <span>Start Batch Processing</span>
-                </>
+
+          {resizeSkippedWarning && resizeOptions.enabled && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>Pre-resize is not available in this build — images will be processed at original size.</span>
+            </div>
+          )}
+
+          <div className="space-y-5">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowResizeSettings(v => !v)}
+                className="btn btn-secondary flex items-center gap-2 text-sm"
+                disabled={isProcessing}
+              >
+                <ImageIcon className="w-4 h-4" />
+                Image Resize Options
+              </button>
+            </div>
+
+            {showResizeSettings && (
+              <div className="border rounded-lg p-4 bg-gray-50 text-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-gray-800">Resize Options</h3>
+                  <button onClick={() => setShowResizeSettings(false)} className="p-1 hover:bg-gray-200 rounded" aria-label="Close resize options">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={resizeOptions.enabled}
+                      onChange={e => setResizeOptions(p => ({ ...p, enabled: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                    />
+                    Enable pre-resize before vectorization
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Width (px)</label>
+                      <input
+                        type="number"
+                        value={resizeOptions.width}
+                        onChange={e => setResizeOptions(p => ({ ...p, width: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        disabled={!resizeOptions.enabled}
+                        className="w-full px-2 py-1.5 border rounded text-sm disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Height (px)</label>
+                      <input
+                        type="number"
+                        value={resizeOptions.height}
+                        onChange={e => setResizeOptions(p => ({ ...p, height: Math.max(1, parseInt(e.target.value) || 1) }))}
+                        disabled={!resizeOptions.enabled}
+                        className="w-full px-2 py-1.5 border rounded text-sm disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={resizeOptions.maintainAspectRatio}
+                      onChange={e => setResizeOptions(p => ({ ...p, maintainAspectRatio: e.target.checked }))}
+                      disabled={!resizeOptions.enabled}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 disabled:opacity-50"
+                    />
+                    <span className={resizeOptions.enabled ? '' : 'opacity-50'}>Maintain aspect ratio</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  onClick={handleSelectInputDirectory}
+                  disabled={isProcessing}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <FolderInput className="w-4 h-4" />
+                  Select Input Directory
+                </button>
+                {inputDirectory && (
+                  <span className="text-sm text-gray-600 truncate" title={inputDirectory}>
+                    <span className="font-medium">Input:</span> {inputDirectory}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  onClick={handleSelectOutputDirectory}
+                  disabled={isProcessing}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <FolderOutput className="w-4 h-4" />
+                  Select Output Directory
+                </button>
+                {outputDirectory && (
+                  <span className="text-sm text-gray-600 truncate" title={outputDirectory}>
+                    <span className="font-medium">Output:</span> {outputDirectory}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {processingItems.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="p-3 bg-gray-50 border-b">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <div className="font-medium text-sm">Files: {stats.total}</div>
+                    {currentlyProcessing && (
+                      <span className="text-xs text-blue-600 font-medium truncate max-w-[200px]" title={currentlyProcessing.filePath}>
+                        {currentlyProcessing.fileName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>Done: <span className="text-green-600 font-medium">{stats.completed}</span></span>
+                    <span>Failed: <span className="text-red-600 font-medium">{stats.failed}</span></span>
+                    <span>Remaining: <span className="text-blue-600 font-medium">{Math.max(0, stats.total - stats.completed - stats.failed)}</span></span>
+                  </div>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-gray-100">
+                  {processingItems.map(item => (
+                    <div
+                      key={item.filePath}
+                      className={`flex justify-between items-center px-3 py-2 text-sm ${
+                        item.status === 'processing' ? 'bg-blue-50' : 'bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="truncate max-w-xs text-gray-700" title={item.filePath}>
+                        {item.fileName}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {item.status === 'pending' && <span className="text-gray-400 text-xs">Pending</span>}
+                        {item.status === 'processing' && (
+                          <span className="flex items-center text-blue-600 text-xs gap-1">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing
+                          </span>
+                        )}
+                        {item.status === 'completed' && (
+                          <span className="flex items-center text-green-600 text-xs gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                          </span>
+                        )}
+                        {item.status === 'failed' && (
+                          <span
+                            className="flex items-center text-red-600 text-xs gap-1 cursor-help"
+                            title={item.error || 'Unknown error'}
+                          >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Failed</span>
+                            {item.error && (
+                              <span className="hidden sm:inline text-red-400 truncate max-w-[120px]">: {item.error}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2">
+              {batchDone && hasFailed && (
+                <button
+                  onClick={retryFailed}
+                  className="btn btn-secondary flex items-center gap-2"
+                >
+                  <RotateCw className="w-4 h-4" />
+                  Retry Failed ({stats.failed})
+                </button>
               )}
-            </button>
+
+              {batchDone && outputDirectory && typeof window.electronAPI?.openOutputDirectory === 'function' && (
+                <button
+                  onClick={openOutputDirectory}
+                  className="btn btn-secondary flex items-center gap-2"
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  Open Output Folder
+                </button>
+              )}
+
+              {isProcessing ? (
+                <button
+                  onClick={cancelProcessing}
+                  className="btn flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Square className="w-4 h-4" />
+                  Cancel
+                </button>
+              ) : (
+                <button
+                  onClick={startBatchProcessing}
+                  disabled={!inputDirectory || !outputDirectory || processingItems.length === 0}
+                  className="btn btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Play className="w-4 h-4" />
+                  Start Batch Processing
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-export default BatchConversion; 
+export default BatchConversion;

@@ -1,28 +1,9 @@
-/**
- * Last checked: 2025-03-02
- */
-
-import React from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { Settings } from 'lucide-react';
-import { TurnPolicy, FillStrategy } from '../utils/imageProcessor';
+import { TurnPolicy, FillStrategy, TracingParams, DEFAULT_PARAMS } from '../utils/imageProcessor';
 
-// Define the props interface for the component
-export interface SettingsPanelProps {
-  turdSize: number;
-  turnPolicy: TurnPolicy;
-  alphaMax: number;
-  optCurve: boolean;
-  optTolerance: number;
-  threshold: number;
-  blackOnWhite: boolean;
-  color: string;
-  background: string;
-  invert: boolean;
-  highestQuality: boolean;
-  colorMode: boolean;
-  colorSteps: number;
-  fillStrategy: FillStrategy;
-  onParamChange: (param: string, value: any) => void;
+export interface SettingsPanelProps extends TracingParams {
+  onParamChange: <K extends keyof TracingParams>(param: K, value: TracingParams[K]) => void;
   onReset: () => void;
   onClose: () => void;
   onApply?: () => void;
@@ -31,7 +12,28 @@ export interface SettingsPanelProps {
   isComplexMode?: boolean;
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ 
+const TURN_POLICY_DESCRIPTIONS: Record<TurnPolicy, string> = {
+  black: 'Prefer to connect black areas',
+  white: 'Prefer to connect white areas',
+  left: 'Always turn left at ambiguities',
+  right: 'Always turn right at ambiguities',
+  minority: 'Prefer the minority color (recommended)',
+  majority: 'Prefer the majority color'
+};
+
+const FILL_STRATEGY_DESCRIPTIONS: Record<FillStrategy, string> = {
+  dominant: 'Most frequent colors in the image',
+  mean: 'Colors spread across perceptual luminance bands',
+  median: 'Median cut — best overall color representation',
+  spread: 'Colors evenly spaced by perceptual lightness'
+};
+
+const isParamsDirty = (params: TracingParams): boolean => {
+  const keys = Object.keys(DEFAULT_PARAMS) as (keyof TracingParams)[];
+  return keys.some(k => (params as Record<string, unknown>)[k] !== (DEFAULT_PARAMS as Record<string, unknown>)[k]);
+};
+
+const SettingsPanel: React.FC<SettingsPanelProps> = ({
   turdSize,
   turnPolicy,
   alphaMax,
@@ -56,241 +58,218 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const turnPolicyOptions: TurnPolicy[] = ['black', 'white', 'left', 'right', 'minority', 'majority'];
   const fillStrategyOptions: FillStrategy[] = ['dominant', 'mean', 'median', 'spread'];
+  const panelRef = useRef<HTMLDivElement>(null);
+  const firstFocusableRef = useRef<HTMLButtonElement>(null);
 
-  // CSS classes for slider styling
-  const sliderTrackClass = "w-full h-3 bg-gray-200 rounded-full appearance-none cursor-pointer";
+  const currentParams: TracingParams = {
+    turdSize, turnPolicy, alphaMax, optCurve, optTolerance, threshold,
+    blackOnWhite, color, background, invert, highestQuality, colorMode, colorSteps, fillStrategy
+  };
+  const dirty = isParamsDirty(currentParams);
+
+  // Focus trap: keep keyboard focus inside the modal
+  useEffect(() => {
+    firstFocusableRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab' || !panelRef.current) return;
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(el => !el.hasAttribute('disabled'));
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const sliderTrackClass = 'w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-blue-600 mt-2';
+
+  const renderSlider = (
+    id: string,
+    label: string,
+    description: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    format: (v: number) => string,
+    normalizedValue: number,
+    onChange: (v: number) => void,
+    titleHint?: string
+  ) => (
+    <div>
+      <label htmlFor={id} className="block text-xs sm:text-sm font-medium text-gray-700 mb-0.5">
+        {label}: <span className="font-mono text-blue-700">{format(value)}</span>
+      </label>
+      <div className="text-xs text-gray-500 mb-1">{description}</div>
+      <div className="relative">
+        <div className="overflow-hidden h-2 rounded-full bg-gray-200 mb-1">
+          <div
+            style={{ width: `${Math.max(0, Math.min(100, normalizedValue * 100))}%` }}
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all"
+          />
+        </div>
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={e => onChange(parseFloat(e.target.value))}
+          className={sliderTrackClass}
+          title={titleHint}
+          aria-label={label}
+        />
+      </div>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto">
-      <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-6 shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tracing Options"
+    >
+      <div
+        ref={panelRef}
+        className="bg-white border border-gray-200 rounded-lg p-3 sm:p-6 shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-semibold text-base sm:text-lg flex items-center text-gray-800">
-            <Settings className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} mr-2 text-blue-600`} />
+          <h3 className="font-semibold text-base sm:text-lg flex items-center text-gray-800 gap-2">
+            <Settings className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5'} text-blue-600`} />
             Tracing Options
             {isComplexMode && (
-              <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                Complex Mode
-              </span>
+              <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">Complex Mode</span>
+            )}
+            {dirty && (
+              <span
+                className="w-2 h-2 rounded-full bg-orange-400 inline-block"
+                title="Settings differ from defaults"
+                aria-label="Settings modified"
+              />
             )}
           </h3>
           <div className="flex space-x-2">
-            <button 
-              onClick={onApplyComplex}
-              className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors duration-200 flex items-center"
-              title="Apply optimized settings for complex images with intricate details, geometric patterns, or dense line work"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-3 w-3 mr-1" 
-                viewBox="0 0 20 20" 
-                fill="currentColor"
+            {onApplyComplex && (
+              <button
+                onClick={onApplyComplex}
+                className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors duration-200"
+                title="Apply optimized settings for complex images with intricate details, geometric patterns, or dense line work"
+                aria-label="Apply complex image settings"
               >
-                <path fillRule="evenodd" d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm4.5 14C7.01 17 5 14.99 5 12.5S7.01 8 9.5 8 14 10.01 14 12.5 11.99 17 9.5 17z" clipRule="evenodd" />
-              </svg>
-              Complex Image
-            </button>
-            <button 
-              onClick={onReset} 
+                Complex Image
+              </button>
+            )}
+            <button
+              ref={firstFocusableRef}
+              onClick={onReset}
               className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
+              aria-label="Reset all settings to defaults"
+              title="Reset all settings to defaults"
             >
               Reset
             </button>
-            <button 
+            <button
               onClick={onClose}
               className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
+              aria-label="Close settings panel"
+              title="Close settings"
             >
               Close
             </button>
           </div>
         </div>
-        
-        <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'sm:grid-cols-2 gap-6'}`}>
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Detail Level (turdSize: {turdSize})
-            </label>
-            <div className="text-xs text-gray-500 mb-2">
-              Lower values keep more details (1-10)
-            </div>
-            <div className="relative pt-1">
-              <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                <div 
-                  style={{ width: `${(turdSize-1)/9*100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                ></div>
-              </div>
-              <input 
-                type="range" 
-                min="1" 
-                max="10" 
-                step="1"
-                value={turdSize} 
-                onChange={(e) => onParamChange('turdSize', e.target.value)}
-                className={`${sliderTrackClass} mt-2`}
-                style={{ 
-                  WebkitAppearance: 'none',
-                  appearance: 'none'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Threshold: {threshold}
-            </label>
-            <div className="text-xs text-gray-500 mb-2">
-              Controls black/white cutoff (0-255)
-            </div>
-            <div className="relative pt-1">
-              <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                <div 
-                  style={{ width: `${threshold/255*100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                ></div>
-              </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="255" 
-                step="1"
-                value={threshold} 
-                onChange={(e) => onParamChange('threshold', e.target.value)}
-                className={`${sliderTrackClass} mt-2`}
-                style={{ 
-                  WebkitAppearance: 'none',
-                  appearance: 'none'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Corner Threshold (alphaMax: {alphaMax.toFixed(1)})
-            </label>
-            <div className="text-xs text-gray-500 mb-2">
-              Higher values make smoother corners (0.1-1.5)
-            </div>
-            <div className="relative pt-1">
-              <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                <div 
-                  style={{ width: `${(alphaMax-0.1)/1.4*100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                ></div>
-              </div>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="1.5" 
-                step="0.1"
-                value={alphaMax} 
-                onChange={(e) => onParamChange('alphaMax', e.target.value)}
-                className={`${sliderTrackClass} mt-2`}
-                style={{ 
-                  WebkitAppearance: 'none',
-                  appearance: 'none'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Optimization Tolerance: {optTolerance.toFixed(1)}
-            </label>
-            <div className="text-xs text-gray-500 mb-2">
-              Higher values allow more deviation (0.1-2.0)
-            </div>
-            <div className="relative pt-1">
-              <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                <div 
-                  style={{ width: `${(optTolerance-0.1)/1.9*100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                ></div>
-              </div>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="2.0" 
-                step="0.1"
-                value={optTolerance} 
-                onChange={(e) => onParamChange('optTolerance', e.target.value)}
-                className={`${sliderTrackClass} mt-2`}
-                style={{ 
-                  WebkitAppearance: 'none',
-                  appearance: 'none'
-                }}
-              />
-            </div>
-          </div>
 
-          <div className={isMobile ? "" : "sm:col-span-2"}>
+        <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'sm:grid-cols-2 gap-6'}`}>
+          {renderSlider(
+            'turdSize',
+            'Speckle Suppression',
+            'Higher = remove more small artifacts. Lower = preserve fine details.',
+            turdSize, 1, 100, 1,
+            v => String(v),
+            (turdSize - 1) / 99,
+            v => onParamChange('turdSize', v),
+            `Removes shapes with fewer than ${turdSize} pixels. Range: 1–100.`
+          )}
+
+          {renderSlider(
+            'threshold',
+            'Threshold',
+            'Controls the black/white cutoff. Lower = more black; higher = more white.',
+            threshold, 0, 255, 1,
+            v => String(v),
+            threshold / 255,
+            v => onParamChange('threshold', v),
+            `Pixels darker than ${threshold} are treated as black.`
+          )}
+
+          {renderSlider(
+            'alphaMax',
+            'Corner Sharpness',
+            'Lower = sharper corners; higher = smoother, more rounded corners.',
+            alphaMax, 0.1, 1.5, 0.1,
+            v => v.toFixed(1),
+            (alphaMax - 0.1) / 1.4,
+            v => onParamChange('alphaMax', parseFloat(v.toFixed(1))),
+            `alphaMax: ${alphaMax.toFixed(1)}. Values near 0 produce sharp corners; near 1.5 forces smooth curves.`
+          )}
+
+          {renderSlider(
+            'optTolerance',
+            'Curve Tolerance',
+            'Higher = more simplification/deviation allowed in Bezier curves.',
+            optTolerance, 0.1, 2.0, 0.1,
+            v => v.toFixed(1),
+            (optTolerance - 0.1) / 1.9,
+            v => onParamChange('optTolerance', parseFloat(v.toFixed(1))),
+            `optTolerance: ${optTolerance.toFixed(1)}. Range: 0.1–2.0.`
+          )}
+
+          <div className={isMobile ? '' : 'sm:col-span-2'}>
             <div className="flex flex-col gap-2">
               <label className="block text-xs sm:text-sm font-medium text-gray-700">Options</label>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="optCurve"
-                  checked={optCurve} 
-                  onChange={(e) => onParamChange('optCurve', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="optCurve" className="ml-2 text-xs sm:text-sm text-gray-600">
-                  Enable curve optimization
-                </label>
-              </div>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="blackOnWhite"
-                  checked={blackOnWhite} 
-                  onChange={(e) => onParamChange('blackOnWhite', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="blackOnWhite" className="ml-2 text-xs sm:text-sm text-gray-600">
-                  Black on white (vs. white on black)
-                </label>
-              </div>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="invert"
-                  checked={invert} 
-                  onChange={(e) => onParamChange('invert', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="invert" className="ml-2 text-xs sm:text-sm text-gray-600">
-                  Invert colors
-                </label>
-              </div>
-              
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="highestQuality"
-                  checked={highestQuality} 
-                  onChange={(e) => onParamChange('highestQuality', e.target.checked)}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="highestQuality" className="ml-2 text-xs sm:text-sm text-gray-600">
-                  Highest quality (slower)
-                </label>
-              </div>
+
+              {([
+                ['optCurve', 'Enable curve optimization (Bezier fit)', 'Uses Bezier curves instead of straight line segments for smoother output'],
+                ['blackOnWhite', 'Black on white (vs. white on black)', 'Assumes the foreground is dark on a light background'],
+                ['invert', 'Invert colors before tracing', 'Swaps black and white before tracing — useful for light-on-dark images'],
+                ['highestQuality', 'Highest quality (slower)', 'Disables path optimization shortcuts for maximum precision']
+              ] as [keyof TracingParams, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="flex items-center gap-2" title={desc}>
+                  <input
+                    type="checkbox"
+                    id={key}
+                    checked={currentParams[key] as boolean}
+                    onChange={e => onParamChange(key, e.target.checked as TracingParams[typeof key])}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
+                  />
+                  <label htmlFor={key} className="text-xs sm:text-sm text-gray-600 cursor-pointer">
+                    {label}
+                  </label>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className={isMobile ? "" : "sm:col-span-2"}>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Turn Policy:</label>
-            <div className="text-xs text-gray-500 mb-2">
-              Controls how to resolve ambiguities during tracing
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+          <div className={isMobile ? '' : 'sm:col-span-2'}>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Turn Policy</label>
+            <div className="text-xs text-gray-500 mb-2">Controls how ambiguous boundary pixels are handled during tracing</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {turnPolicyOptions.map(option => (
-                <div key={option} className="flex items-center">
+                <div key={option} className="flex items-start gap-2">
                   <input
                     type="radio"
                     id={`turn-${option}`}
@@ -298,71 +277,53 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     value={option}
                     checked={turnPolicy === option}
                     onChange={() => onParamChange('turnPolicy', option)}
-                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5 flex-shrink-0"
                   />
-                  <label htmlFor={`turn-${option}`} className="ml-2 text-xs sm:text-sm text-gray-600">
-                    {option.charAt(0).toUpperCase() + option.slice(1)}
-                  </label>
+                  <div>
+                    <label htmlFor={`turn-${option}`} className="text-xs sm:text-sm text-gray-700 font-medium cursor-pointer">
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </label>
+                    <p className="text-xs text-gray-400 leading-tight">{TURN_POLICY_DESCRIPTIONS[option]}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className={isMobile ? "" : "sm:col-span-2"}>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Color Mode:</label>
-            <div className="flex items-center mb-3">
-              <input 
-                type="checkbox" 
+          <div className={isMobile ? '' : 'sm:col-span-2'}>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Color Mode</label>
+            <div className="flex items-center mb-3" title="Posterizes the image into multiple color layers, each traced separately">
+              <input
+                type="checkbox"
                 id="colorMode"
-                checked={colorMode} 
-                onChange={(e) => onParamChange('colorMode', e.target.checked)}
+                checked={colorMode}
+                onChange={e => onParamChange('colorMode', e.target.checked)}
                 className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
-              <label htmlFor="colorMode" className="ml-2 text-xs sm:text-sm text-gray-600 font-medium">
+              <label htmlFor="colorMode" className="ml-2 text-xs sm:text-sm text-gray-600 font-medium cursor-pointer">
                 Enable color mode (posterization)
               </label>
             </div>
-            
+
             {colorMode && (
               <>
-                <div className="mb-3">
-                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">
-                    Color Steps: {colorSteps}
-                  </label>
-                  <div className="text-xs text-gray-500 mb-2">
-                    Number of color levels (2-8)
-                  </div>
-                  <div className="relative pt-1">
-                    <div className="overflow-hidden h-3 mb-1 text-xs flex rounded-full bg-gray-200">
-                      <div 
-                        style={{ width: `${((colorSteps-2)/6)*100}%` }}
-                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-blue"
-                      ></div>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="2" 
-                      max="8" 
-                      step="1"
-                      value={colorSteps} 
-                      onChange={(e) => onParamChange('colorSteps', parseInt(e.target.value))}
-                      className={`${sliderTrackClass} mt-2`}
-                      style={{ 
-                        WebkitAppearance: 'none',
-                        appearance: 'none'
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">Fill Strategy:</label>
-                  <div className="text-xs text-gray-500 mb-2">
-                    How to determine colors for each layer
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
+                {renderSlider(
+                  'colorSteps',
+                  'Color Steps',
+                  'Number of color layers to generate (2–8). More steps = more detail, slower.',
+                  colorSteps, 2, 8, 1,
+                  v => String(v),
+                  (colorSteps - 2) / 6,
+                  v => onParamChange('colorSteps', v),
+                  `${colorSteps} color layers will be generated`
+                )}
+
+                <div className="mt-3">
+                  <label className="block text-xs sm:text-sm text-gray-600 mb-1">Fill Strategy</label>
+                  <div className="text-xs text-gray-500 mb-2">How colors are selected for each layer</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {fillStrategyOptions.map(option => (
-                      <div key={option} className="flex items-center">
+                      <div key={option} className="flex items-start gap-2">
                         <input
                           type="radio"
                           id={`fill-${option}`}
@@ -370,11 +331,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                           value={option}
                           checked={fillStrategy === option}
                           onChange={() => onParamChange('fillStrategy', option)}
-                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 mt-0.5 flex-shrink-0"
                         />
-                        <label htmlFor={`fill-${option}`} className="ml-2 text-xs sm:text-sm text-gray-600">
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </label>
+                        <div>
+                          <label htmlFor={`fill-${option}`} className="text-xs sm:text-sm text-gray-700 font-medium cursor-pointer">
+                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                          </label>
+                          <p className="text-xs text-gray-400 leading-tight">{FILL_STRATEGY_DESCRIPTIONS[option]}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -383,61 +347,80 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             )}
           </div>
 
-          <div className={isMobile ? "" : "sm:col-span-2"}>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">SVG Colors:</label>
+          <div className={isMobile ? '' : 'sm:col-span-2'}>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">SVG Colors</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="color" className="block text-xs sm:text-sm text-gray-600 mb-1">
-                  Foreground color:
-                </label>
-                <div className="flex">
-                  <input 
-                    type="color" 
-                    id="color" 
+                <label htmlFor="color-text" className="block text-xs sm:text-sm text-gray-600 mb-1">Foreground color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    id="color-swatch"
                     value={color}
-                    onChange={(e) => onParamChange('color', e.target.value)}
-                    className="h-8 w-8 border border-gray-300 rounded mr-2"
+                    onChange={e => onParamChange('color', e.target.value)}
+                    className="h-8 w-8 border border-gray-300 rounded cursor-pointer flex-shrink-0"
+                    title="Pick foreground color"
+                    aria-label="Foreground color picker"
                   />
-                  <input 
-                    type="text" 
-                    value={color} 
-                    onChange={(e) => onParamChange('color', e.target.value)}
-                    className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm"
+                  <input
+                    type="text"
+                    id="color-text"
+                    value={color}
+                    onChange={e => {
+                      if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                        onParamChange('color', e.target.value);
+                      }
+                    }}
+                    className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm font-mono"
                     placeholder="#000000"
+                    maxLength={7}
+                    title="Hex color value (e.g. #000000)"
+                    aria-label="Foreground color hex value"
                   />
                 </div>
               </div>
-              
+
               <div>
-                <label htmlFor="background" className="block text-xs sm:text-sm text-gray-600 mb-1">
-                  Background color:
-                </label>
-                <div className="flex">
-                  <input 
-                    type="color" 
-                    id="background"
-                    value={background === 'transparent' ? '#ffffff' : background} 
-                    onChange={(e) => onParamChange('background', e.target.value)}
-                    className="h-8 w-8 border border-gray-300 rounded mr-2"
+                <label htmlFor="background-text" className="block text-xs sm:text-sm text-gray-600 mb-1">Background color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    id="background-swatch"
+                    value={background === 'transparent' ? '#ffffff' : background}
+                    onChange={e => onParamChange('background', e.target.value)}
+                    className="h-8 w-8 border border-gray-300 rounded cursor-pointer flex-shrink-0"
+                    title="Pick background color (sets a solid color; type 'transparent' to remove)"
+                    disabled={background === 'transparent'}
+                    aria-label="Background color picker"
                   />
-                  <input 
-                    type="text" 
-                    value={background} 
-                    onChange={(e) => onParamChange('background', e.target.value)}
-                    className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm"
-                    placeholder="transparent or #hex"
+                  <input
+                    type="text"
+                    id="background-text"
+                    value={background}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === 'transparent' || /^#[0-9A-Fa-f]{6}$/.test(v)) {
+                        onParamChange('background', v);
+                      }
+                    }}
+                    className="flex-1 border border-gray-300 rounded px-2 text-xs sm:text-sm font-mono"
+                    placeholder="transparent or #rrggbb"
+                    title="'transparent' for no background, or a hex color like #ffffff"
+                    aria-label="Background color hex value or transparent"
                   />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">Type 'transparent' or a hex value</p>
               </div>
             </div>
           </div>
         </div>
-        
+
         {onApply && (
           <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200">
             <button
               onClick={onApply}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 font-medium flex items-center justify-center"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 font-medium"
+              aria-label="Apply current settings and re-process image"
             >
               Apply Changes
             </button>
@@ -448,4 +431,4 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   );
 };
 
-export default SettingsPanel; 
+export default SettingsPanel;

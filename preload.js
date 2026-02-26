@@ -1,26 +1,36 @@
-// Last updated: 2025-03-08
 /**
- * Preload script for SVG-X Electron application
- * This file safely exposes Electron APIs to the renderer process
- * through the contextBridge
+ * Preload script for SVG-X Electron application.
+ * Safely exposes main-process APIs to the renderer via contextBridge.
+ * All method signatures must match the Window.electronAPI type in src/electron.d.ts.
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose protected methods that allow the renderer process to use the IPC
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Directory selection methods
-  selectInputDirectory: () => ipcRenderer.invoke('select-input-directory'),
-  selectOutputDirectory: () => ipcRenderer.invoke('select-output-directory'),
-  
-  // Directory and file operations
+  // --- Directory selection ---
+  selectInputDirectory: () => ipcRenderer.invoke('select-directory', 'Select Input Directory Containing Images'),
+  selectOutputDirectory: () => ipcRenderer.invoke('select-directory', 'Select Output Directory for SVG Files'),
+
+  // --- File system operations ---
   readDirectory: (dirPath) => ipcRenderer.invoke('read-directory', dirPath),
   saveSvg: (data) => ipcRenderer.invoke('save-svg', data),
   readImageFile: (filePath) => ipcRenderer.invoke('read-image-file', filePath),
-  
-  // Image processing
+
+  // --- Image processing ---
   resizeImage: (data) => ipcRenderer.invoke('resize-image', data),
-  
-  // Console window
-  toggleConsole: () => ipcRenderer.invoke('toggle-console')
-}); 
+
+  // --- Native save dialog ---
+  showSaveDialog: (options) => ipcRenderer.invoke('show-save-dialog', options),
+
+  // --- Shell utilities ---
+  openOutputDirectory: (dirPath) => ipcRenderer.invoke('open-output-directory', dirPath),
+
+  // --- Path utilities (server-side path.join, handles OS separators) ---
+  joinPaths: (...segments) => ipcRenderer.invoke('join-paths', segments),
+
+  // --- App info ---
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+  // --- Debug console ---
+  toggleConsole: () => ipcRenderer.invoke('toggle-console'),
+});

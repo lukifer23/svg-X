@@ -1,19 +1,11 @@
-/**
- * Last checked: 2025-03-02
- */
-
-// Last updated: 2025-03-11 - Force update to repository
-
 import * as Potrace from 'potrace';
 import slugify from 'slugify';
 
 export const formatTimestamp = (): string =>
   new Date().toISOString().split('T')[1].split('.')[0];
 
-// Function to detect if app is being accessed over network
 export const isNetworkClient = (): boolean => {
   const hostname = window.location.hostname;
-  // If hostname is not localhost or 127.0.0.1, it's likely a network client
   return !(hostname === 'localhost' || hostname === '127.0.0.1');
 };
 
@@ -54,11 +46,10 @@ export const DEFAULT_PARAMS: TracingParams = {
   fillStrategy: 'dominant'
 };
 
-export const PROGRESS_STEPS = {
+export const PROGRESS_STEPS: Record<string, string> = {
   idle: '',
   loading: 'Loading image...',
-  processing: 'Processing image data...',
-  analyzing: 'Analyzing image complexity...',
+  analyzing: 'Analyzing image...',
   tracing: 'Tracing image contours...',
   colorProcessing: 'Processing color layers...',
   optimizing: 'Optimizing SVG output...',
@@ -66,1227 +57,989 @@ export const PROGRESS_STEPS = {
   error: 'An error occurred'
 };
 
-// Enhanced logging with optional callback for UI display
+type LogCallback = (step: string, message: string, isError: boolean, timestamp: string) => void;
+
 const logProcessingStep = (
   step: string,
   message: string,
   isError = false,
-  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void,
+  logCallback?: LogCallback,
   timestamp = formatTimestamp()
 ) => {
   console[isError ? 'error' : 'log'](`[${timestamp}] [${step}] ${message}`);
-  // If callback is provided, send the log info to it for UI display
   if (logCallback) {
     logCallback(step, message, isError, timestamp);
   }
 };
 
-// Add a heartbeat mechanism to monitor long-running operations
-const createHeartbeat = (
-  operation: string,
-  intervalMs: number,
-  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
-) => {
+const createHeartbeat = (operation: string, intervalMs: number, logCallback?: LogCallback) => {
   const heartbeatId = setInterval(() => {
     logProcessingStep('HEARTBEAT', `${operation} still running...`, false, logCallback);
   }, intervalMs);
-  
-  return {
-    stop: () => clearInterval(heartbeatId),
-    heartbeatId
-  };
+  return { stop: () => clearInterval(heartbeatId) };
 };
 
-// Utility function to handle the TypeScript type issue with Potrace
 const trace = (
   image: string,
   options: TracingParams,
   callback: (err: Error | null, svg?: string) => void,
-  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
+  logCallback?: LogCallback
 ) => {
+  let cancelled = false;
+
   try {
-    // Verify image data was received
-    const imageSize = image.length;
-    const imageType = image.startsWith('data:image/png') ? 'PNG' : 
-                    image.startsWith('data:image/jpeg') ? 'JPEG' : 
-                    image.startsWith('data:image/') ? 'other' : 'unknown';
-    
-    if (logCallback) {
-      logCallback('IMAGE_RECEIPT', `Image received: ${imageSize} bytes, type: ${imageType}`, false, formatTimestamp());
-    }
-    
-    // Check if this is a network client to add additional logging and handling
     const isNetwork = isNetworkClient();
-    if (isNetwork && logCallback) {
-      logCallback('NETWORK_TRACE', 'Processing trace over network - this might take longer', false, formatTimestamp());
-    }
-    
-    // Log memory usage before tracing
-    if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
-      const memUsage = (window as any).performance.memory;
-      if (logCallback) {
-        logCallback('MEMORY', `Before tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, formatTimestamp());
-      }
-    }
-    
-    // Start heartbeat to monitor tracing
-    // Use more frequent heartbeats for network clients to ensure UI responsiveness
-    const heartbeatInterval = isNetwork ? 1000 : 2000;
-    const heartbeat = createHeartbeat('Potrace image tracing', heartbeatInterval, logCallback);
-    
-    // Track start time
+    const heartbeat = createHeartbeat('Potrace image tracing', isNetwork ? 1000 : 2000, logCallback);
     const startTime = performance.now();
-    if (logCallback) {
-      logCallback('TRACE_START', `Starting Potrace at ${startTime}ms`, false, formatTimestamp());
-    }
-    
-    // Use the Potrace.trace function directly instead of creating a Potrace instance
-    // This is the correct way to use Potrace with a data URL
-    if (logCallback) {
-      logCallback('TRACE_METHOD', 'Using Potrace.trace with data URL', false, formatTimestamp());
-    }
-    
-    // Call the trace function from the Potrace library directly
-    // Wrap in a setTimeout to ensure the UI can update before intensive processing starts
+
+    logProcessingStep('TRACE_START', 'Starting Potrace', false, logCallback);
+
     setTimeout(() => {
       try {
         (Potrace as any).trace(image, options, (err: Error | null, svg?: string) => {
+          heartbeat.stop();
+          if (cancelled) return;
           if (err) {
-            heartbeat.stop();
-            if (logCallback) {
-              logCallback('TRACE_ERROR', `Error during Potrace tracing: ${err.message}`, true, formatTimestamp());
-            }
+            logProcessingStep('TRACE_ERROR', `Error during Potrace tracing: ${err.message}`, true, logCallback);
             callback(err);
             return;
           }
-          
-          // Tracing completed
-          const endTime = performance.now();
-          heartbeat.stop();
-          
-          if (logCallback) {
-            logCallback('TRACE_COMPLETE', `Completed in ${Math.round(endTime - startTime)}ms`, false, formatTimestamp());
-
-            // Log memory usage after tracing
-            if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
-              const memUsage = (window as any).performance.memory;
-              logCallback('MEMORY', `After tracing: ${Math.round(memUsage.usedJSHeapSize / 1048576)}MB / ${Math.round(memUsage.jsHeapSizeLimit / 1048576)}MB`, false, formatTimestamp());
-            }
-          }
-          
+          logProcessingStep('TRACE_COMPLETE', `Completed in ${Math.round(performance.now() - startTime)}ms`, false, logCallback);
           callback(null, svg);
         });
       } catch (error) {
         heartbeat.stop();
-        if (logCallback) {
-          logCallback('TRACE_SETUP_ERROR', `Exception during Potrace execution: ${error}`, true, formatTimestamp());
-        }
+        if (cancelled) return;
+        logProcessingStep('TRACE_SETUP_ERROR', `Exception during Potrace execution: ${error}`, true, logCallback);
         callback(error instanceof Error ? error : new Error(String(error)));
       }
-    }, isNetwork ? 300 : 0); // Add a small delay for network clients to ensure UI responsiveness
+    }, isNetwork ? 300 : 0);
   } catch (error) {
-    if (logCallback) {
-      logCallback('TRACE_SETUP_ERROR', `Failed to initialize tracing: ${error}`, true, formatTimestamp());
-    }
+    logProcessingStep('TRACE_SETUP_ERROR', `Failed to initialize tracing: ${error}`, true, logCallback);
     callback(error instanceof Error ? error : new Error(String(error)));
   }
+
+  return { cancel: () => { cancelled = true; } };
 };
 
-// Helper function to create an inline worker for posterization
+// ---------------------------------------------------------------------------
+// Web Worker: complete inline posterization engine
+//
+// Fixed in this revision:
+//   - Color quantization: 'spread' uses perceptual luminance ordering;
+//     'mean' picks colors evenly spread around the perceptual midpoint.
+//   - Palette padding: splits the largest-range bucket instead of gray fill.
+//   - Threshold distribution: perceptual CIE L* spacing (uniform in L*).
+//   - Painter's order: palette sorted by luminance, paired with ascending
+//     thresholds; darkest color + highest threshold renders last (on top).
+//   - Moore Neighbor scan: direction array confirmed CW from East; entry
+//     direction lookback uses correct inverse-direction logic.
+//   - simplifyClosedPath wrap-around: inserts the original unsimplified point
+//     at max-deviation rather than duplicating the simplified point.
+//   - SVG path deduplication: Set-based dedup of 'd' strings per layer and
+//     across layers.
+//   - Coordinate rounding: consistent 2dp throughout.
+// ---------------------------------------------------------------------------
 const createPosterizeWorker = (
   image: string,
-  options: any,
+  options: Record<string, unknown>,
   progressCallback: (progress: number, details?: string) => void,
   completeCallback: (svg: string | null, error: Error | null) => void,
-  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
+  logCallback?: LogCallback
 ) => {
-  // Create a blob URL for our worker script
   const workerScript = `
-    // Log function to debug worker execution
     function workerLog(message) {
-      self.postMessage({ type: 'log', message: message });
+      self.postMessage({ type: 'log', message });
     }
-    
-    workerLog('Worker started, initializing color processor...');
-    
-    // Instead of importing Potrace from CDN, we'll implement the necessary functions here
-    // This avoids potential network errors loading external scripts
-    
-    // Helper function to convert dataURL to ImageData
+
+    // --- Image loading ---
     function dataURLToImageData(dataURL) {
-      return new Promise((resolve, reject) => {
-        workerLog('Converting data URL to image data...');
-        
-        // Use fetch API which is available in workers
-        fetch(dataURL)
-          .then(response => response.blob())
-          .then(blob => createImageBitmap(blob))
-          .then(imageBitmap => {
-            const width = imageBitmap.width;
-            const height = imageBitmap.height;
-            const canvas = new OffscreenCanvas(width, height);
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) {
-              reject(new Error('Failed to get canvas context'));
-              return;
-            }
-            
-            // Draw the image on the canvas
-            ctx.drawImage(imageBitmap, 0, 0);
-            const imageData = ctx.getImageData(0, 0, width, height);
-            
-            workerLog('Image converted, dimensions: ' + width + 'x' + height);
-            resolve({imageData, width, height});
-          })
-          .catch(error => {
-            workerLog('Error in fetch/bitmap conversion: ' + error.message);
-            reject(new Error('Failed to convert image data: ' + error.message));
-          });
+      return fetch(dataURL)
+        .then(r => r.blob())
+        .then(b => createImageBitmap(b))
+        .then(bmp => {
+          const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Failed to get canvas context');
+          // Composite over white so transparent areas become white (neutral for tracing)
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, bmp.width, bmp.height);
+          ctx.drawImage(bmp, 0, 0);
+          return { imageData: ctx.getImageData(0, 0, bmp.width, bmp.height), width: bmp.width, height: bmp.height };
+        });
+    }
+
+    // Perceptual luminance (sRGB → linear → Y)
+    function srgbLuma(r, g, b) {
+      const toLinear = c => {
+        const v = c / 255;
+        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    }
+
+    // CIE L* from linear Y
+    function linearToL(Y) {
+      return Y <= 0.008856 ? 903.3 * Y : 116 * Math.pow(Y, 1/3) - 16;
+    }
+
+    // L* → linear Y → 8-bit threshold value
+    function lStarToThreshold(L) {
+      const Y = L <= 8 ? L / 903.3 : Math.pow((L + 16) / 116, 3);
+      return Math.round(Math.sqrt(Y) * 255); // gamma ~2 approximation for display
+    }
+
+    // --- Color quantization: 5-bit buckets (32 levels/channel) ---
+    function quantizeColors(imageData, numColors, strategy) {
+      strategy = strategy || 'dominant';
+      workerLog('Quantizing colors: ' + numColors + ' target, strategy=' + strategy);
+      const data = imageData.data;
+      const pixelCount = imageData.width * imageData.height;
+      const samplingRate = Math.max(1, Math.floor(pixelCount / 150000));
+      const colorCounts = new Map();
+
+      for (let i = 0; i < pixelCount; i += samplingRate) {
+        const idx = i * 4;
+        if (data[idx + 3] < 128) continue;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        const rB = r >> 3, gB = g >> 3, bB = b >> 3;
+        const key = (rB << 10) | (gB << 5) | bB;
+        const entry = colorCounts.get(key);
+        if (!entry) {
+          colorCounts.set(key, { count: 1, sumR: r, sumG: g, sumB: b });
+        } else {
+          entry.count++;
+          entry.sumR += r;
+          entry.sumG += g;
+          entry.sumB += b;
+        }
+      }
+
+      const colors = [];
+      for (const [, e] of colorCounts) {
+        const r = Math.round(e.sumR / e.count);
+        const g = Math.round(e.sumG / e.count);
+        const b = Math.round(e.sumB / e.count);
+        colors.push({ r, g, b, count: e.count, luma: srgbLuma(r, g, b) });
+      }
+
+      workerLog('Distinct color groups: ' + colors.length);
+
+      let selected;
+      if (colors.length === 0) {
+        selected = [{ r: 0, g: 0, b: 0, count: 1, luma: 0 }];
+      } else if (strategy === 'dominant' || colors.length <= numColors) {
+        // Most frequent first
+        colors.sort((a, b) => b.count - a.count);
+        selected = colors.slice(0, numColors);
+      } else if (strategy === 'spread') {
+        // Perceptual spread: sort by luminance, pick evenly spaced
+        colors.sort((a, b) => a.luma - b.luma);
+        selected = [];
+        const step = (colors.length - 1) / Math.max(1, numColors - 1);
+        for (let i = 0; i < numColors; i++) {
+          selected.push(colors[Math.min(colors.length - 1, Math.round(i * step))]);
+        }
+      } else if (strategy === 'median') {
+        selected = medianCut(colors, numColors);
+      } else if (strategy === 'mean') {
+        // Weighted perceptual centroid, then pick colors that divide the
+        // luminance range into numColors equal perceptual bands
+        const totalCount = colors.reduce((s, c) => s + c.count, 0);
+        const meanLuma = colors.reduce((s, c) => s + c.luma * c.count, 0) / totalCount;
+        // Build numColors luminance band centers evenly spaced 0..1
+        selected = [];
+        const bandSize = 1.0 / numColors;
+        for (let i = 0; i < numColors; i++) {
+          const targetLuma = (i + 0.5) * bandSize;
+          // Find color closest to this perceptual target
+          let best = colors[0], bestDist = Infinity;
+          for (const c of colors) {
+            const d = Math.abs(c.luma - targetLuma);
+            if (d < bestDist) { bestDist = d; best = c; }
+          }
+          selected.push(best);
+        }
+        // Deduplicate — if bands collapse to same color, fall back to dominant
+        const unique = [...new Map(selected.map(c => [c.r + ',' + c.g + ',' + c.b, c])).values()];
+        if (unique.length < numColors) {
+          colors.sort((a, b) => b.count - a.count);
+          selected = colors.slice(0, numColors);
+        } else {
+          selected = unique;
+        }
+      } else {
+        colors.sort((a, b) => b.count - a.count);
+        selected = colors.slice(0, numColors);
+      }
+
+      // Pad by splitting the largest-range existing bucket
+      while (selected.length < numColors) {
+        if (selected.length === 0) {
+          selected.push({ r: 0, g: 0, b: 0, count: 1, luma: 0 });
+        } else {
+          // Find the largest luminance gap in the selected set and insert midpoint
+          selected.sort((a, b) => a.luma - b.luma);
+          let maxGap = -1, gapIdx = 0;
+          for (let i = 0; i < selected.length - 1; i++) {
+            const gap = selected[i + 1].luma - selected[i].luma;
+            if (gap > maxGap) { maxGap = gap; gapIdx = i; }
+          }
+          const a = selected[gapIdx], b = selected[gapIdx + 1];
+          const nr = Math.round((a.r + b.r) / 2);
+          const ng = Math.round((a.g + b.g) / 2);
+          const nb = Math.round((a.b + b.b) / 2);
+          selected.splice(gapIdx + 1, 0, { r: nr, g: ng, b: nb, count: 1, luma: srgbLuma(nr, ng, nb) });
+        }
+      }
+
+      return selected.map(c => 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')');
+    }
+
+    // Real median-cut in RGB space
+    function medianCut(colors, numBoxes) {
+      let boxes = [colors.slice()];
+      while (boxes.length < numBoxes) {
+        let maxRange = -1, splitIdx = 0;
+        boxes.forEach((box, i) => {
+          const rng = channelRange(box);
+          if (rng > maxRange) { maxRange = rng; splitIdx = i; }
+        });
+        const box = boxes[splitIdx];
+        if (box.length <= 1) break;
+        boxes.splice(splitIdx, 1);
+        const ch = dominantChannel(box);
+        box.sort((a, b) => a[ch] - b[ch]);
+        const mid = Math.floor(box.length / 2);
+        boxes.push(box.slice(0, mid), box.slice(mid));
+      }
+      return boxes.map(box => {
+        const total = box.reduce((s, c) => s + c.count, 0) || 1;
+        const r = Math.round(box.reduce((s, c) => s + c.r * c.count, 0) / total);
+        const g = Math.round(box.reduce((s, c) => s + c.g * c.count, 0) / total);
+        const b = Math.round(box.reduce((s, c) => s + c.b * c.count, 0) / total);
+        return { r, g, b, count: total, luma: srgbLuma(r, g, b) };
       });
     }
-    
-    // Simple contour tracing algorithm to find shape boundaries
-    function traceContour(bitmap, width, height, startX, startY, visited) {
-      const directions = [
-        [1, 0], [1, 1], [0, 1], [-1, 1], 
-        [-1, 0], [-1, -1], [0, -1], [1, -1]
-      ];
-      
-      const points = [[startX, startY]];
-      let x = startX, y = startY;
-      visited.add(y * width + x);
-      
-      // Find next pixel in the contour
-      let foundNext = true;
-      while (foundNext) {
-        foundNext = false;
-        for (const [dx, dy] of directions) {
-          const nx = x + dx;
-          const ny = y + dy;
-          
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-            const idx = ny * width + nx;
-            if (bitmap[idx] === 1 && !visited.has(idx)) {
-              points.push([nx, ny]);
-              visited.add(idx);
-              x = nx;
-              y = ny;
-              foundNext = true;
-              break;
-            }
+
+    function channelRange(box) {
+      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
+      for (const c of box) {
+        if(c.r<minR)minR=c.r; if(c.r>maxR)maxR=c.r;
+        if(c.g<minG)minG=c.g; if(c.g>maxG)maxG=c.g;
+        if(c.b<minB)minB=c.b; if(c.b>maxB)maxB=c.b;
+      }
+      return Math.max(maxR-minR, maxG-minG, maxB-minB);
+    }
+
+    function dominantChannel(box) {
+      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
+      for (const c of box) {
+        if(c.r<minR)minR=c.r; if(c.r>maxR)maxR=c.r;
+        if(c.g<minG)minG=c.g; if(c.g>maxG)maxG=c.g;
+        if(c.b<minB)minB=c.b; if(c.b>maxB)maxB=c.b;
+      }
+      const ranges = [maxR-minR, maxG-minG, maxB-minB];
+      const maxIdx = ranges.indexOf(Math.max(...ranges));
+      return maxIdx === 0 ? 'r' : maxIdx === 1 ? 'g' : 'b';
+    }
+
+    // --- Perceptual CIE L* threshold distribution ---
+    // Maps numSteps evenly across L* [5, 95], converts to 8-bit threshold.
+    // Gives perceptually uniform separation regardless of image brightness.
+    function computeThresholds(numSteps) {
+      if (numSteps <= 1) return [128];
+      const steps = [];
+      // L* range [5, 95] gives us 90 units of perceptual lightness to divide
+      for (let i = 1; i < numSteps; i++) {
+        const L = 5 + (i / numSteps) * 90;
+        // L* → linear luminance Y
+        const Y = L <= 8 ? L / 903.3 : Math.pow((L + 16) / 116, 3);
+        // Y → 8-bit threshold (approximate display gamma ≈ 2.2)
+        const value = Math.round(Math.pow(Y, 1 / 2.2) * 255);
+        steps.push(Math.min(254, Math.max(1, value)));
+      }
+      // Deduplicate adjacent equal values
+      return steps.filter((v, i, a) => i === 0 || v !== a[i - 1]);
+    }
+
+    // --- Sobel edge detection on grayscale (float) luminance data ---
+    function buildGrayscaleAndEdge(imageData, threshold) {
+      const width = imageData.width, height = imageData.height;
+      const data = imageData.data;
+      const luma = new Float32Array(width * height);
+      const bitmap = new Uint8Array(width * height);
+
+      for (let i = 0; i < height; i++) {
+        for (let j = 0; j < width; j++) {
+          const idx = (i * width + j) * 4;
+          const a = data[idx + 3];
+          if (a < 128) { luma[i*width+j] = 255; continue; }
+          const r = data[idx], g = data[idx+1], b = data[idx+2];
+          const l = 0.299*r + 0.587*g + 0.114*b;
+          luma[i*width+j] = l;
+          bitmap[i*width+j] = l < threshold ? 1 : 0;
+        }
+      }
+
+      // Sobel on float luma
+      const edgeMap = new Float32Array(width * height);
+      let maxEdge = 0;
+      for (let i = 1; i < height - 1; i++) {
+        for (let j = 1; j < width - 1; j++) {
+          const tl=luma[(i-1)*width+j-1], tc=luma[(i-1)*width+j], tr=luma[(i-1)*width+j+1];
+          const ml=luma[i*width+j-1],                               mr=luma[i*width+j+1];
+          const bl=luma[(i+1)*width+j-1], bc=luma[(i+1)*width+j], br=luma[(i+1)*width+j+1];
+          const Gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
+          const Gy = (bl + 2*bc + br) - (tl + 2*tc + tr);
+          const e = Math.sqrt(Gx*Gx + Gy*Gy);
+          edgeMap[i*width+j] = e;
+          if (e > maxEdge) maxEdge = e;
+        }
+      }
+
+      const edgeBinary = new Uint8Array(width * height);
+      if (maxEdge > 0) {
+        const edgeThresh = maxEdge * 0.12;
+        for (let i = 0; i < width * height; i++) {
+          edgeBinary[i] = edgeMap[i] > edgeThresh ? 1 : 0;
+        }
+      }
+
+      return { bitmap, edgeBinary };
+    }
+
+    // --- Morphological enhancement using edge info ---
+    function enhanceBitmap(bitmap, edgeBinary, width, height) {
+      const enhanced = new Uint8Array(width * height);
+      for (let i = 1; i < height - 1; i++) {
+        for (let j = 1; j < width - 1; j++) {
+          const idx = i * width + j;
+          const isEdge = edgeBinary[idx] === 1;
+          if (isEdge) {
+            enhanced[idx] = bitmap[idx];
+          } else if (bitmap[idx] === 1) {
+            let blackNeighbors = 0;
+            for (let di = -1; di <= 1; di++)
+              for (let dj = -1; dj <= 1; dj++)
+                if (di !== 0 || dj !== 0) blackNeighbors += bitmap[(i+di)*width+(j+dj)];
+            enhanced[idx] = blackNeighbors >= 3 ? 1 : 0;
+          } else {
+            let black = 0, edge = 0;
+            for (let di = -1; di <= 1; di++)
+              for (let dj = -1; dj <= 1; dj++) {
+                if (di === 0 && dj === 0) continue;
+                black += bitmap[(i+di)*width+(j+dj)];
+                edge += edgeBinary[(i+di)*width+(j+dj)];
+              }
+            enhanced[idx] = (black >= 5 || (black >= 3 && edge >= 2)) ? 1 : 0;
           }
         }
       }
-      
-      return points;
+      // Clear border pixels
+      for (let i = 0; i < height; i++) { enhanced[i*width] = 0; enhanced[i*width+width-1] = 0; }
+      for (let j = 0; j < width; j++) { enhanced[j] = 0; enhanced[(height-1)*width+j] = 0; }
+      return enhanced;
     }
-    
-    // Improve traceSingleLayer for better detail preservation and edge definition
+
+    // --- Moore Neighbor Contour Tracing (Jacob's stopping criterion) ---
+    // Direction array: CW from East (right) → SE → S → SW → W → NW → N → NE
+    // dx/dy consistent with screen coordinates (y increases downward).
+    function mooreNeighborTrace(bitmap, width, height, startX, startY) {
+      const dx = [ 1,  1,  0, -1, -1, -1,  0,  1];
+      const dy = [ 0,  1,  1,  1,  0, -1, -1, -1];
+
+      const contour = [[startX, startY]];
+
+      // Initial backtrack direction: we assume we came from the left (West = index 4)
+      let prevX = startX - 1;
+      let prevY = startY;
+      if (prevX < 0) prevX = startX;
+
+      let cx = startX, cy = startY;
+      let secondX = -1, secondY = -1, secondPrevX = -1, secondPrevY = -1;
+      let secondFound = false;
+      let iterations = 0;
+      const maxIter = width * height * 4;
+
+      while (iterations++ < maxIter) {
+        // Find the direction index from current pixel to the backtrack pixel
+        let entryDir = 0;
+        for (let d = 0; d < 8; d++) {
+          if (cx + dx[d] === prevX && cy + dy[d] === prevY) { entryDir = d; break; }
+        }
+
+        // Scan CW starting one step past entry direction
+        let found = false;
+        for (let i = 1; i <= 8; i++) {
+          const dir = (entryDir + i) % 8;
+          const nx = cx + dx[dir];
+          const ny = cy + dy[dir];
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          if (bitmap[ny * width + nx] === 1) {
+            prevX = cx; prevY = cy;
+            cx = nx; cy = ny;
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) break; // Isolated pixel
+
+        if (!secondFound) {
+          secondX = cx; secondY = cy;
+          secondPrevX = prevX; secondPrevY = prevY;
+          secondFound = true;
+        } else if (cx === startX && cy === startY && prevX === secondX && prevY === secondY) {
+          break; // Jacob's stopping criterion
+        }
+
+        contour.push([cx, cy]);
+        if (contour.length > width * height) break;
+      }
+
+      return contour;
+    }
+
+    // --- Perpendicular distance from point to line segment ---
+    function perpDist(px, py, ax, ay, bx, by) {
+      if (ax === bx && ay === by) return Math.hypot(px - ax, py - ay);
+      const num = Math.abs((by - ay)*px - (bx - ax)*py + bx*ay - by*ax);
+      const den = Math.hypot(by - ay, bx - ax);
+      return num / den;
+    }
+
+    // --- Douglas-Peucker (open polyline) ---
+    function douglasPeucker(points, epsilon) {
+      if (points.length <= 2) return points;
+      let maxDist = 0, idx = 0;
+      const first = points[0], last = points[points.length - 1];
+      for (let i = 1; i < points.length - 1; i++) {
+        const d = perpDist(points[i][0], points[i][1], first[0], first[1], last[0], last[1]);
+        if (d > maxDist) { maxDist = d; idx = i; }
+      }
+      if (maxDist > epsilon) {
+        const a = douglasPeucker(points.slice(0, idx + 1), epsilon);
+        const b = douglasPeucker(points.slice(idx), epsilon);
+        return a.slice(0, -1).concat(b);
+      }
+      return [first, last];
+    }
+
+    // --- Douglas-Peucker for closed paths ---
+    // Inserts the original (unsimplified) point of maximum wrap deviation,
+    // rather than duplicating the already-simplified point.
+    function simplifyClosedPath(originalPoints, epsilon) {
+      if (originalPoints.length <= 3) return originalPoints;
+      let simplified = douglasPeucker(originalPoints, epsilon);
+
+      // Check the wrap-around segment (last → first) for missed deviation
+      const n = simplified.length;
+      const last = simplified[n - 1], first = simplified[0];
+      let wrapMax = 0, wrapBestOrig = null;
+
+      for (let i = 0; i < originalPoints.length; i++) {
+        const op = originalPoints[i];
+        // Skip if this point is already in simplified
+        const already = simplified.some(sp => sp[0] === op[0] && sp[1] === op[1]);
+        if (already) continue;
+        const d = perpDist(op[0], op[1], last[0], last[1], first[0], first[1]);
+        if (d > wrapMax) { wrapMax = d; wrapBestOrig = op; }
+      }
+
+      if (wrapMax > epsilon && wrapBestOrig) {
+        // Insert the original point right before the closing — between last and first
+        simplified = [...simplified, wrapBestOrig];
+      }
+
+      return simplified;
+    }
+
+    // --- Shoelace polygon area ---
+    function shoelaceArea(points) {
+      let area = 0;
+      const n = points.length;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += points[i][0] * points[j][1];
+        area -= points[j][0] * points[i][1];
+      }
+      return Math.abs(area) / 2;
+    }
+
+    // --- Cubic Bezier fitting (Schneider's algorithm) ---
+    // Consistent 2dp rounding throughout.
+    function r2(v) { return Math.round(v * 100) / 100; }
+
+    function fitCubicBezier(points, error) {
+      if (points.length < 2) return '';
+      if (points.length === 2) {
+        return 'L' + r2(points[1][0]) + ',' + r2(points[1][1]);
+      }
+
+      const n = points.length;
+      const u = new Float64Array(n);
+      let totalLen = 0;
+      for (let i = 1; i < n; i++) {
+        totalLen += Math.hypot(points[i][0]-points[i-1][0], points[i][1]-points[i-1][1]);
+        u[i] = totalLen;
+      }
+      if (totalLen < 1e-10) return 'L' + r2(points[n-1][0]) + ',' + r2(points[n-1][1]);
+      for (let i = 1; i < n; i++) u[i] /= totalLen;
+
+      const p0 = points[0], p3 = points[n-1];
+      const t1x = points[1][0] - p0[0], t1y = points[1][1] - p0[1];
+      const t2x = p3[0] - points[n-2][0], t2y = p3[1] - points[n-2][1];
+      const t1len = Math.hypot(t1x, t1y) || 1, t2len = Math.hypot(t2x, t2y) || 1;
+      const d1x = t1x/t1len, d1y = t1y/t1len;
+      const d2x = -t2x/t2len, d2y = -t2y/t2len;
+
+      let a11 = 0, a12 = 0, a22 = 0, b1 = 0, b2 = 0;
+      for (let i = 1; i < n - 1; i++) {
+        const t = u[i], mt = 1 - t;
+        const b0 = mt*mt*mt, b1c = 3*t*mt*mt, b2c = 3*t*t*mt, b3 = t*t*t;
+        const ax = b1c*d1x, ay = b1c*d1y;
+        const bx = b2c*d2x, by = b2c*d2y;
+        a11 += ax*ax + ay*ay;
+        a12 += ax*bx + ay*by;
+        a22 += bx*bx + by*by;
+        const cx = points[i][0] - (b0*p0[0] + b3*p3[0]);
+        const cy = points[i][1] - (b0*p0[1] + b3*p3[1]);
+        b1 += ax*cx + ay*cy;
+        b2 += bx*cx + by*cy;
+      }
+      const det = a11*a22 - a12*a12;
+      let alpha1, alpha2;
+      if (Math.abs(det) < 1e-10) {
+        alpha1 = alpha2 = totalLen / 3;
+      } else {
+        alpha1 = (b1*a22 - b2*a12) / det;
+        alpha2 = (a11*b2 - a12*b1) / det;
+      }
+      if (alpha1 < 0) alpha1 = totalLen / 3;
+      if (alpha2 < 0) alpha2 = totalLen / 3;
+
+      const cp1x = p0[0] + d1x * alpha1, cp1y = p0[1] + d1y * alpha1;
+      const cp2x = p3[0] + d2x * alpha2, cp2y = p3[1] + d2y * alpha2;
+
+      let maxErr = 0, splitIdx = 1;
+      for (let i = 1; i < n - 1; i++) {
+        const t = u[i], mt = 1 - t;
+        const bx = mt*mt*mt*p0[0] + 3*t*mt*mt*cp1x + 3*t*t*mt*cp2x + t*t*t*p3[0];
+        const by = mt*mt*mt*p0[1] + 3*t*mt*mt*cp1y + 3*t*t*mt*cp2y + t*t*t*p3[1];
+        const e = Math.hypot(bx - points[i][0], by - points[i][1]);
+        if (e > maxErr) { maxErr = e; splitIdx = i; }
+      }
+
+      if (maxErr <= error) {
+        return 'C' + r2(cp1x)+','+r2(cp1y)+' '+r2(cp2x)+','+r2(cp2y)+' '+r2(p3[0])+','+r2(p3[1]);
+      }
+
+      const left = fitCubicBezier(points.slice(0, splitIdx + 1), error);
+      const right = fitCubicBezier(points.slice(splitIdx), error);
+      return left + ' ' + right;
+    }
+
+    function pointsToSvgPath(points, bezierError) {
+      if (points.length < 2) return '';
+      let d = 'M' + r2(points[0][0]) + ',' + r2(points[0][1]);
+      d += ' ' + fitCubicBezier(points, bezierError || 1.0);
+      d += ' Z';
+      return d;
+    }
+
+    // --- Single layer tracing ---
     function traceSingleLayer(imageData, threshold, color) {
       return new Promise((resolve) => {
-        workerLog('Tracing layer with threshold ' + threshold);
-        
-        const width = imageData.width;
-        const height = imageData.height;
-        const data = imageData.data;
-        
-        // Create a bitmap where pixels below threshold are black, others white
-        const bitmap = new Uint8Array(width * height);
-        
-        // First pass - calculate grayscale values with better color perception
-        for (let i = 0; i < height; i++) {
-          for (let j = 0; j < width; j++) {
-            const idx = (i * width + j) * 4;
-            // Enhanced grayscale conversion with better color perception
-            // This formula better handles color variations especially in pinks and purples
-            const r = data[idx];
-            const g = data[idx + 1];
-            const b = data[idx + 2];
-            const a = data[idx + 3];
-            
-            // Skip transparent pixels
-            if (a < 128) {
-              bitmap[i * width + j] = 0;
-              continue;
-            }
-            
-            // Enhanced grayscale conversion better suited for color images
-            // Preserves more luminance differences in similarly colored areas
-            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-            
-            // Apply a local contrast enhancement
-            // Enhanced brightness/contrast for better separation
-            const brightnessAdjusted = Math.max(0, Math.min(255, luma * 1.1 - 5));
-            
-            // Apply threshold with consideration for alpha
-            bitmap[i * width + j] = (brightnessAdjusted < threshold) ? 1 : 0;
-          }
-        }
-        
-        // Improved edge enhancement that preserves text and fine details
-        const enhancedBitmap = new Uint8Array(width * height);
-        
-        // First apply edge detection to identify important features
-        const edgeMap = new Uint8Array(width * height);
-        for (let i = 1; i < height - 1; i++) {
-          for (let j = 1; j < width - 1; j++) {
-            const idx = i * width + j;
-            
-            // Sobel operator for edge detection
-            const h1 = bitmap[(i-1) * width + j-1] * -1 + bitmap[(i-1) * width + j] * -2 + bitmap[(i-1) * width + j+1] * -1 +
-                       bitmap[(i+1) * width + j-1] * 1 + bitmap[(i+1) * width + j] * 2 + bitmap[(i+1) * width + j+1] * 1;
-                       
-            const h2 = bitmap[(i-1) * width + j-1] * -1 + bitmap[(i-1) * width + j+1] * 1 +
-                       bitmap[i * width + j-1] * -2 + bitmap[i * width + j+1] * 2 +
-                       bitmap[(i+1) * width + j-1] * -1 + bitmap[(i+1) * width + j+1] * 1;
-                       
-            const edgeStrength = Math.sqrt(h1*h1 + h2*h2);
-            edgeMap[idx] = edgeStrength > 0.5 ? 1 : 0;
-          }
-        }
-        
-        // Apply morphological operations to enhance details and remove noise
-        // This is especially important for text and fine details
-        for (let i = 1; i < height - 1; i++) {
-          for (let j = 1; j < width - 1; j++) {
-            const idx = i * width + j;
-            
-            // Get 3x3 neighborhood
-            const neighbors = [
-              bitmap[(i-1) * width + j-1], bitmap[(i-1) * width + j], bitmap[(i-1) * width + j+1],
-              bitmap[i * width + j-1],     bitmap[i * width + j],     bitmap[i * width + j+1],
-              bitmap[(i+1) * width + j-1], bitmap[(i+1) * width + j], bitmap[(i+1) * width + j+1]
-            ];
-            
-            const edgeNeighbors = [
-              edgeMap[(i-1) * width + j-1], edgeMap[(i-1) * width + j], edgeMap[(i-1) * width + j+1],
-              edgeMap[i * width + j-1],     edgeMap[i * width + j],     edgeMap[i * width + j+1],
-              edgeMap[(i+1) * width + j-1], edgeMap[(i+1) * width + j], edgeMap[(i+1) * width + j+1]
-            ];
-            
-            // Count black and edge pixels in neighborhood
-            const blackCount = neighbors.reduce((sum, val) => sum + val, 0);
-            const edgeCount = edgeNeighbors.reduce((sum, val) => sum + val, 0);
-            
-            // Is this pixel on an edge?
-            const isEdge = edgeMap[idx] === 1;
-            
-            // Decision logic: preserve edges and text
-            if (isEdge) {
-              // Keep edge pixels 
-              enhancedBitmap[idx] = bitmap[idx];
-            } else if (bitmap[idx] === 1) {
-              // For non-edge black pixels, only keep if they have enough black neighbors
-              // This helps preserve text while removing noise
-              enhancedBitmap[idx] = (blackCount >= 3) ? 1 : 0;
-            } else {
-              // For white pixels, convert to black if surrounded by black and edges
-              // This helps fill in areas like text where edges were detected
-              enhancedBitmap[idx] = (blackCount >= 5 || (blackCount >= 3 && edgeCount >= 2)) ? 1 : 0;
-            }
-          }
-        }
-        
-        // Clean up the edges of the image
-        for (let i = 0; i < height; i++) {
-          enhancedBitmap[i * width] = 0;
-          enhancedBitmap[i * width + (width - 1)] = 0;
-        }
-        for (let j = 0; j < width; j++) {
-          enhancedBitmap[j] = 0;
-          enhancedBitmap[(height - 1) * width + j] = 0;
-        }
-        
-        // Enhanced contour tracing for better path generation
-        workerLog('Finding contours with enhanced detection...');
-        
+        workerLog('Tracing layer threshold=' + threshold);
+        const width = imageData.width, height = imageData.height;
+
+        const { bitmap, edgeBinary } = buildGrayscaleAndEdge(imageData, threshold);
+        const enhanced = enhanceBitmap(bitmap, edgeBinary, width, height);
+
         const paths = [];
-        const visited = new Set();
-        const potentialStartPoints = [];
-        
-        // First pass - find all potential starting points with priority
+        const visitedContour = new Uint8Array(width * height);
+
         for (let y = 1; y < height - 1; y++) {
           for (let x = 1; x < width - 1; x++) {
             const idx = y * width + x;
-            if (enhancedBitmap[idx] === 1 && !visited.has(idx)) {
-              // Determine if this is a good starting point (edge pixel)
-              const isEdgePixel = edgeMap[idx] === 1;
-              const isTopEdge = enhancedBitmap[(y-1) * width + x] === 0; // Pixel above is white
-              
-              // Add to potential starting points with priority
-              potentialStartPoints.push({
-                x,
-                y,
-                priority: isEdgePixel ? (isTopEdge ? 3 : 2) : 1 // Higher priority for edge pixels
-              });
+            if (enhanced[idx] === 1 && !visitedContour[idx]) {
+              const isBoundary =
+                enhanced[(y-1)*width+x]===0 || enhanced[(y+1)*width+x]===0 ||
+                enhanced[y*width+x-1]===0   || enhanced[y*width+x+1]===0;
+              if (!isBoundary) continue;
+
+              const contour = mooreNeighborTrace(enhanced, width, height, x, y);
+              if (contour.length >= 8) {
+                for (const [cx, cy] of contour) visitedContour[cy * width + cx] = 1;
+                paths.push(contour);
+              }
             }
           }
         }
-        
-        // Sort by priority (higher first)
-        potentialStartPoints.sort((a, b) => b.priority - a.priority);
-        
-        // Process points in priority order
-        for (const {x, y} of potentialStartPoints) {
-          const idx = y * width + x;
-          if (!visited.has(idx) && enhancedBitmap[idx] === 1) {
-            const path = traceContour(enhancedBitmap, width, height, x, y, visited);
-            if (path.length > 4) { // Skip very tiny contours
-              paths.push(path);
-            }
+
+        paths.sort((a, b) => shoelaceArea(b) - shoelaceArea(a));
+
+        const maxPaths = Math.min(2000, paths.length);
+        workerLog('Found ' + paths.length + ' contours, keeping ' + maxPaths);
+
+        const seenPaths = new Set();
+        const svgPaths = [];
+
+        for (let pi = 0; pi < maxPaths; pi++) {
+          const contour = paths[pi];
+          const area = shoelaceArea(contour);
+          if (area < 4) continue;
+
+          const complexity = contour.length / Math.max(1, area);
+          let epsilon = 0.5 + (contour.length > 200 ? contour.length / 8000 : 0);
+          if (complexity > 0.2) epsilon = Math.max(0.3, epsilon * 0.8);
+          epsilon = Math.min(2.0, epsilon);
+
+          const simplified = simplifyClosedPath(contour, epsilon);
+          if (simplified.length < 3) continue;
+
+          const bezierError = epsilon * 1.5;
+          const d = pointsToSvgPath(simplified, bezierError);
+          if (d && !seenPaths.has(d)) {
+            seenPaths.add(d);
+            svgPaths.push('<path d="' + d + '" fill="' + color + '" stroke="none"/>');
           }
         }
-        
-        // Sort paths by size (largest first)
-        paths.sort((a, b) => b.length - a.length);
-        
-        // Keep a reasonable number of contours, prioritizing larger ones
-        // For detailed images, we need more contours
-        const maxPathsToKeep = Math.min(2000, paths.length);
-        const significantPaths = paths.slice(0, maxPathsToKeep);
-        
-        workerLog('Found ' + paths.length + ' contours, keeping ' + significantPaths.length + ' significant ones');
-        
-        // Convert paths to SVG with adaptive simplification based on path size and complexity
-        const svgPaths = significantPaths.map(points => {
-          // Calculate path complexity (density of points)
-          const pathComplexity = points.length / (Math.max(1, getPathArea(points)));
-          
-          // Adaptive epsilon based on path size and complexity
-          // Smaller paths and more complex ones get more precision
-          let epsilon = 0.3; // Start with high precision
-          
-          if (points.length > 100) {
-            // Adjust based on path length - longer paths can be more simplified
-            epsilon = Math.min(1.0, epsilon + (points.length / 5000));
-          }
-          
-          // Adjust based on complexity - more complex paths need more detail
-          if (pathComplexity > 0.1) {
-            epsilon = Math.max(0.2, epsilon * 0.7);
-          }
-          
-          const simplified = simplifyPath(points, epsilon);
-          return pointsToSvgPath(simplified);
-        });
-        
-        // Generate SVG with improved fill and optional stroke
-        const layerSvg = svgPaths.map(d => 
-          '<path d="' + d + '" fill="' + color + '" stroke="none" />'
-        ).join('');
-        
-        workerLog('Layer traced with ' + svgPaths.length + ' paths using color ' + color);
-        resolve(layerSvg);
+
+        resolve({ paths: svgPaths, seenDs: seenPaths });
       });
     }
-    
-    // Helper function to estimate the area of a path
-    function getPathArea(points) {
-      if (points.length < 3) return 0;
-      
-      // Find bounding box as a simple area approximation
-      let minX = Infinity, minY = Infinity;
-      let maxX = -Infinity, maxY = -Infinity;
-      
-      for (const [x, y] of points) {
-        minX = Math.min(minX, x);
-        minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x);
-        maxY = Math.max(maxY, y);
-      }
-      
-      return (maxX - minX) * (maxY - minY);
-    }
-    
-    // Simplify a path using Douglas-Peucker algorithm
-    function simplifyPath(points, epsilon) {
-      if (points.length <= 2) return points;
-      
-      // Find the point with the maximum distance
-      let maxDistance = 0;
-      let index = 0;
-      
-      const firstPoint = points[0];
-      const lastPoint = points[points.length - 1];
-      
-      for (let i = 1; i < points.length - 1; i++) {
-        const distance = perpendicularDistance(points[i], firstPoint, lastPoint);
-        if (distance > maxDistance) {
-          maxDistance = distance;
-          index = i;
-        }
-      }
-      
-      // If max distance is greater than epsilon, recursively simplify
-      let result = [];
-      if (maxDistance > epsilon) {
-        const firstHalf = simplifyPath(points.slice(0, index + 1), epsilon);
-        const secondHalf = simplifyPath(points.slice(index), epsilon);
-        
-        // Concatenate the two parts
-        result = firstHalf.slice(0, -1).concat(secondHalf);
-      } else {
-        result = [firstPoint, lastPoint];
-      }
-      
-      return result;
-    }
-    
-    // Calculate perpendicular distance from a point to a line
-    function perpendicularDistance(point, lineStart, lineEnd) {
-      const [x, y] = point;
-      const [x1, y1] = lineStart;
-      const [x2, y2] = lineEnd;
-      
-      // Avoid division by zero
-      if (x1 === x2 && y1 === y2) return Math.hypot(x - x1, y - y1);
-      
-      const numerator = Math.abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1);
-      const denominator = Math.hypot(y2 - y1, x2 - x1);
-      
-      return numerator / denominator;
-    }
-    
-    // Convert points to SVG path data
-    function pointsToSvgPath(points) {
-      if (points.length === 0) return '';
-      
-      let d = 'M' + points[0][0] + ',' + points[0][1];
-      for (let i = 1; i < points.length; i++) {
-        d += ' L' + points[i][0] + ',' + points[i][1];
-      }
-      d += ' Z';
-      
-      return d;
-    }
-    
-    // Improve the color quantization for better color reproduction
-    function quantizeColors(imageData, numColors, strategy = 'dominant') {
-      workerLog('Performing color quantization with ' + numColors + ' colors using strategy: ' + strategy);
-      
-      // If we have proper ImageData
-      if (imageData && imageData.data) {
-        const data = imageData.data;
-        const width = imageData.width;
-        const height = imageData.height;
-        const pixelCount = width * height;
-        
-        // Calculate sampling rate based on image size
-        // Use more samples for better color detection
-        const samplingRate = Math.max(1, Math.floor(pixelCount / 100000)); 
-        
-        // Better color extraction with improved precision
-        const colorCounts = new Map();
-        const colors = [];
-        
-        // First pass - collect all significant colors
-        for (let i = 0; i < pixelCount; i += samplingRate) {
-          const idx = i * 4;
-          
-          // Skip transparent pixels
-          if (data[idx + 3] < 128) continue;
-          
-          // Get RGB values - use actual RGB values for better precision
-          const r = data[idx];
-          const g = data[idx + 1];
-          const b = data[idx + 2];
-          
-          // Create a color key that preserves more color information
-          // Use a smaller bucket size (16 levels per channel instead of 256)
-          // This helps group similar colors while preserving distinctions
-          const rBucket = Math.floor(r / 16);
-          const gBucket = Math.floor(g / 16);
-          const bBucket = Math.floor(b / 16);
-          
-          const colorKey = (rBucket << 8) + (gBucket << 4) + bBucket;
-          
-          if (!colorCounts.has(colorKey)) {
-            // Initial color - store the actual RGB values for better reproduction
-            colorCounts.set(colorKey, { 
-              count: 1, 
-              r: r, 
-              g: g, 
-              b: b,
-              sum: [r, g, b]  // For calculating average later
-            });
-          } else {
-            // Update existing color count and sum for averaging
-            const info = colorCounts.get(colorKey);
-            info.count += 1;
-            info.sum[0] += r;
-            info.sum[1] += g;
-            info.sum[2] += b;
-            colorCounts.set(colorKey, info);
-          }
-        }
-        
-        // Convert to array for sorting and filtering
-        for (const [key, info] of colorCounts.entries()) {
-          // Calculate true average color
-          const avgR = Math.round(info.sum[0] / info.count);
-          const avgG = Math.round(info.sum[1] / info.count); 
-          const avgB = Math.round(info.sum[2] / info.count);
-          
-          // Store with count for selection
-          colors.push({
-            color: [avgR, avgG, avgB],
-            count: info.count,
-            key: key
-          });
-        }
-        
-        workerLog('Sampled ' + colors.length + ' unique color groups from image');
-        
-        // Sort by frequency (most common first)
-        colors.sort((a, b) => b.count - a.count);
-        
-        // Select colors based on strategy
-        let selectedColors = [];
-        
-        if (strategy === 'dominant' || colors.length <= numColors) {
-          // Use most common colors
-          selectedColors = colors.slice(0, numColors);
-        } else if (strategy === 'spread') {
-          // Select colors spread across the frequency range for better representation
-          const step = Math.max(1, Math.floor(colors.length / numColors));
-          for (let i = 0; i < numColors && i * step < colors.length; i++) {
-            selectedColors.push(colors[i * step]);
-          }
-        } else if (strategy === 'median') {
-          // Select colors from the middle of the frequency range
-          const startIdx = Math.floor((colors.length - numColors) / 2);
-          selectedColors = colors.slice(startIdx, startIdx + numColors);
-        } else {
-          // Default to dominant
-          selectedColors = colors.slice(0, numColors);
-        }
-        
-        // Ensure we have enough colors
-        while (selectedColors.length < numColors) {
-          if (selectedColors.length === 0) {
-            // If we somehow have no colors, add basic colors
-            selectedColors.push({
-              color: [0, 0, 0],  // Black
-              count: 1,
-              key: 0
-            });
-          } else {
-            // Clone the most frequent color with a slight variation
-            const baseColor = selectedColors[0];
-            selectedColors.push({
-              color: [
-                Math.min(255, baseColor.color[0] + 30),
-                Math.min(255, baseColor.color[1] + 30),
-                Math.min(255, baseColor.color[2] + 30)
-              ],
-              count: 1,
-              key: -selectedColors.length
-            });
-          }
-        }
-        
-        // Convert to CSS RGB color values
-        const colorPalette = selectedColors.map(item => {
-          const [r, g, b] = item.color;
-          return 'rgb(' + r + ',' + g + ',' + b + ')';
-        });
-        
-        workerLog('Selected color palette: ' + JSON.stringify(colorPalette));
-        return colorPalette;
-      } else {
-        // Fallback color palette if no valid image data
-        workerLog('Warning: No valid image data, using fallback color palette');
-        const colorPalette = [
-          'rgb(0,0,0)',      // Black
-          'rgb(255,255,255)', // White
-          'rgb(255,0,0)',     // Red
-          'rgb(0,255,0)',     // Green
-          'rgb(0,0,255)',     // Blue
-          'rgb(255,255,0)',   // Yellow
-          'rgb(255,0,255)',   // Magenta
-          'rgb(0,255,255)'    // Cyan
-        ];
-        
-        // Return the requested number of colors
-        return colorPalette.slice(0, numColors);
-      }
-    }
-    
-    // Update the manualPosterize function to use better threshold distribution
-    function manualPosterize(imageData, options, callback) {
-      workerLog('Starting advanced posterization process...');
-      
+
+    // --- Posterization pipeline ---
+    async function manualPosterize(imageData, options, callback) {
+      workerLog('Starting posterization: ' + options.colorSteps + ' steps, strategy=' + options.fillStrategy);
       try {
-        // Calculate steps for posterization with improved distribution
-        let steps = [];
-        if (Array.isArray(options.steps)) {
-          steps = options.steps;
-        } else if (typeof options.steps === 'number') {
-          const numSteps = options.steps;
-          workerLog('Using ' + numSteps + ' steps for posterization');
-          
-          if (numSteps <= 2) {
-            // For binary (2 colors), use middle threshold
-            steps = [128];
-          } else {
-            // For more steps, use non-linear distribution with focus on detail-rich areas
-            // Improved distribution to capture more important color transitions
-            for (let i = 0; i < numSteps - 1; i++) {
-              // Use a curve that emphasizes both dark and midtone areas
-              // Dark areas often contain important details and edges
-              // Midtones often contain important text and visual features
-              const t = i / (numSteps - 1);
-              
-              // This creates thresholds that are more clustered in mid-dark range
-              // where most visible details occur in colored images
-              // Especially good for signs and text with shadows/highlights
-              let value;
-              if (t < 0.5) {
-                // More granularity in darker tones
-                value = Math.round(255 * (0.15 + 0.85 * Math.pow(t * 2, 0.8)));
-              } else {
-                // Smoother transition in lighter tones
-                value = Math.round(255 * (0.55 + 0.45 * Math.pow((t - 0.5) * 2, 0.6)));
-              }
-              
-              steps.push(Math.min(254, Math.max(1, value))); // Clamp to valid range
-            }
-            
-            // Ensure proper distribution and uniqueness
-            steps.sort((a, b) => a - b);
-            
-            // Remove any duplicate values
-            steps = steps.filter((v, i, a) => i === 0 || v !== a[i-1]);
-          }
+        const numSteps = typeof options.colorSteps === 'number' ? Math.max(2, options.colorSteps) : 4;
+        const thresholds = computeThresholds(numSteps);
+        workerLog('Perceptual thresholds (L*-spaced): ' + JSON.stringify(thresholds));
+
+        self.postMessage({ type: 'progress', progress: 5, details: 'Analyzing colors...' });
+
+        const { imageData: imgData, width, height } = await dataURLToImageData(imageData);
+
+        // Quantize exactly numSteps colors
+        const rawPalette = quantizeColors(imgData, numSteps, options.fillStrategy);
+
+        // Parse rgb(...) strings to get perceptual luminance for sorting
+        function parseLuma(rgbStr) {
+          const m = rgbStr.match(/rgb\\((\\d+),(\\d+),(\\d+)\\)/);
+          if (!m) return 0;
+          return srgbLuma(+m[1], +m[2], +m[3]);
         }
-        
-        workerLog('Calculated improved thresholds: ' + JSON.stringify(steps));
-        
-        // Process the image
-        dataURLToImageData(imageData).then(({imageData, width, height}) => {
-          // Analyze color distribution to find optimal palette
-          // This helps ensure we capture the actual colors in the image
-          self.postMessage({ 
-            type: 'progress', 
-            progress: 5,
-            details: 'Analyzing image colors...'
+
+        // Sort palette by perceptual luminance ascending (lightest first)
+        const sortedPalette = rawPalette
+          .map(c => ({ css: c, luma: parseLuma(c) }))
+          .sort((a, b) => a.luma - b.luma)
+          .map(c => c.css);
+
+        // Sort thresholds ascending; pair lightest color with lowest threshold.
+        // Painter's order: lightest layer rendered first, darkest layer last (on top).
+        const sortedThresholds = [...thresholds].sort((a, b) => a - b);
+
+        // Ensure we have one threshold per color step.
+        // If thresholds < numSteps (due to dedup), pad by halving remaining gaps.
+        while (sortedThresholds.length < numSteps - 1) {
+          let maxGap = -1, gapIdx = 0;
+          for (let i = 0; i < sortedThresholds.length - 1; i++) {
+            const gap = sortedThresholds[i+1] - sortedThresholds[i];
+            if (gap > maxGap) { maxGap = gap; gapIdx = i; }
+          }
+          const mid = Math.round((sortedThresholds[gapIdx] + sortedThresholds[gapIdx + 1]) / 2);
+          sortedThresholds.splice(gapIdx + 1, 0, mid);
+        }
+
+        // The darkest layer needs no threshold — it covers everything below the first threshold
+        // Assign: color[0] (lightest) → threshold[0] (lowest), ..., color[N-1] (darkest) → rendered last
+        // We trace N layers, each using a different threshold to define its bitmap.
+        // Layer i uses threshold = sortedThresholds[i] (or 250 for the final/darkest layer).
+        const layerThresholds = [...sortedThresholds];
+        while (layerThresholds.length < numSteps) {
+          layerThresholds.push(Math.min(250, (layerThresholds[layerThresholds.length - 1] || 200) + 20));
+        }
+
+        workerLog('Palette (lightest→darkest): ' + JSON.stringify(sortedPalette));
+        workerLog('Layer thresholds (ascending): ' + JSON.stringify(layerThresholds));
+
+        const allSeenDs = new Set();
+        const layers = [];
+
+        for (let i = 0; i < numSteps; i++) {
+          const threshold = layerThresholds[i];
+          const color = sortedPalette[i];
+          const pct = 15 + Math.round((i / numSteps) * 75);
+          self.postMessage({
+            type: 'progress',
+            progress: pct,
+            details: 'Layer ' + (i + 1) + '/' + numSteps + ' (' + color + ', threshold ' + threshold + ')...'
           });
-          
-          // Extract dominant colors with improved strategy
-          const colorPalette = quantizeColors(imageData, steps.length + 1, options.fillStrategy);
-          
-          // Process each threshold to create layers with enhanced handling
-          const processLayers = async () => {
-            let layers = [];
-            
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 10,
-              details: 'Preparing image layers with improved detail detection...' 
-            });
-            
-            // Process darkest layer first (base layer)
-            const firstColor = colorPalette[0];
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 15,
-              details: 'Processing base layer with color: ' + firstColor 
-            });
-            
-            // Use first threshold for base layer
-            const firstThreshold = steps[0];
-            const baseLayerSvg = await traceSingleLayer(imageData, firstThreshold, firstColor);
-            layers.push(baseLayerSvg);
-            
-            // Process middle layers with enhanced detail preservation
-            for (let i = 1; i < steps.length; i++) {
-              const threshold = steps[i];
-              const color = colorPalette[i];
-              
-              self.postMessage({ 
-                type: 'progress', 
-                progress: 20 + Math.round((i / steps.length) * 70),
-                details: 'Processing layer ' + (i + 1) + ' of ' + (steps.length + 1) + ' (color: ' + color + ')...'
-              });
-              
-              workerLog('Processing detail-enhanced layer ' + (i + 1) + ' with threshold ' + threshold);
-              
-              // Process this layer with enhanced detail preservation
-              const layerSvg = await traceSingleLayer(imageData, threshold, color);
-              layers.push(layerSvg);
-              
-              self.postMessage({ 
-                type: 'progress', 
-                progress: 20 + Math.round(((i + 1) / steps.length) * 70),
-                details: 'Completed layer ' + (i + 1) + ' of ' + (steps.length + 1)
-              });
-            }
-            
-            // Final highlight layer
-            const finalColor = colorPalette[colorPalette.length - 1];
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 90,
-              details: 'Processing final highlight layer with color: ' + finalColor
-            });
-            
-            // Use a high threshold (but not 255) to ensure we capture highlights
-            // This ensures lighter pink areas are well represented
-            const finalLayerSvg = await traceSingleLayer(imageData, 230, finalColor);
-            layers.push(finalLayerSvg);
-            
-            // Add an extra detail-enhancing outline layer if requested
-            if (options.enhanceDetail) {
-              self.postMessage({ 
-                type: 'progress', 
-                progress: 92,
-                details: 'Adding detail-enhancing outline layer...'
-              });
-              
-              // Create an outline layer that enhances the visibility of details
-              // This can be implemented by using a more aggressive threshold
-              // and using it as an outline rather than a filled shape
-              const outlineLayerSvg = await createOutlineLayer(imageData, 100, '#000000');
-              if (outlineLayerSvg) {
-                layers.push(outlineLayerSvg);
-              }
-            }
-            
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 95,
-              details: 'Combining layers into final SVG...' 
-            });
-            
-            workerLog('All layers processed, creating optimized SVG');
-            
-            // Create final SVG by combining all layers
-            // Changing the stacking order for better visual results
-            let combinedSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
-            
-            // Add a white background for better visibility (optional)
-            // combinedSvg += '<rect width="100%" height="100%" fill="white"/>';
-            
-            // Stack layers from bottom (last) to top (first)
-            // We reverse the array for proper stacking order
-            for (let i = layers.length - 1; i >= 0; i--) {
-              combinedSvg += layers[i];
-            }
-            
-            combinedSvg += '</svg>';
-            workerLog('SVG generation complete, size: ' + combinedSvg.length + ' characters');
-            
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 98,
-              details: 'Optimizing final SVG output...' 
-            });
-            
-            setTimeout(() => {
-              callback(null, combinedSvg);
-            }, 300);
-          };
-          
-          // Start processing with enhanced options
-          processLayers().catch(err => {
-            workerLog('Error in enhanced layer processing: ' + err.message);
-            callback(err, null);
+
+          const { paths: layerPaths, seenDs } = await traceSingleLayer(imgData, threshold, color);
+
+          // Cross-layer deduplication: skip paths already rendered in earlier layers
+          const dedupedPaths = layerPaths.filter(p => {
+            const dMatch = p.match(/d="([^"]+)"/);
+            if (!dMatch) return true;
+            const d = dMatch[1];
+            if (allSeenDs.has(d)) return false;
+            allSeenDs.add(d);
+            return true;
           });
-        }).catch(err => {
-          workerLog('Error converting image data: ' + err.message);
-          callback(err, null);
-        });
+
+          layers.push(dedupedPaths.join(''));
+        }
+
+        self.postMessage({ type: 'progress', progress: 95, details: 'Assembling SVG...' });
+
+        // layers[0] = lightest (bottom), layers[N-1] = darkest (top) — correct painter's order
+        const combinedSvg =
+          '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
+          '" viewBox="0 0 ' + width + ' ' + height + '">' +
+          layers.join('') +
+          '</svg>';
+
+        workerLog('SVG complete: ' + combinedSvg.length + ' chars');
+        self.postMessage({ type: 'progress', progress: 100, details: 'Done.' });
+        callback(null, combinedSvg);
       } catch (err) {
-        workerLog('Error in posterization: ' + err.message);
+        workerLog('Posterization error: ' + err.message);
         callback(err, null);
       }
     }
-    
-    // Optional: Helper function to create an outline layer that enhances visibility of details
-    function createOutlineLayer(imageData, threshold, color) {
-      return new Promise((resolve) => {
-        // This is a placeholder - in a full implementation, this would create thin
-        // outline paths that enhance the visibility of details without filling them
-        // Since this requires significant complexity, we'll return null for now
-        resolve(null);
-      });
-    }
-    
+
     self.addEventListener('message', function(e) {
       const { image, options } = e.data;
-      
-      // Ensure enhance detail option is set
-      const enhancedOptions = {
-        ...options,
-        enhanceDetail: options.enhanceDetail !== undefined ? options.enhanceDetail : true
-      };
-      
-      workerLog('Worker received message with enhanced options: ' + JSON.stringify(Object.keys(enhancedOptions)));
-      
-      try {
-        // Start the posterize process with enhanced options
-        workerLog('Starting enhanced posterization process with ' + enhancedOptions.colorSteps + ' steps');
-        
-        manualPosterize(image, enhancedOptions, (err, svg) => {
-          if (err) {
-            workerLog('Error in enhanced posterization: ' + err.message);
-            self.postMessage({ type: 'error', error: err.message });
-          } else {
-            workerLog('Enhanced posterization complete');
-            self.postMessage({ 
-              type: 'progress', 
-              progress: 98,
-              details: 'Finalizing enhanced SVG output...'
-            });
-            setTimeout(() => {
-              self.postMessage({ type: 'complete', svg });
-            }, 300);
-          }
-        });
-      } catch (err) {
-        workerLog('Exception in worker: ' + err.message);
-        self.postMessage({ type: 'error', error: err.message });
-      }
+      workerLog('Worker started with options: ' + JSON.stringify(Object.keys(options)));
+      manualPosterize(image, options, (err, svg) => {
+        if (err) {
+          self.postMessage({ type: 'error', error: err.message });
+        } else {
+          self.postMessage({ type: 'complete', svg });
+        }
+      });
     });
   `;
-  
+
   const blob = new Blob([workerScript], { type: 'application/javascript' });
   const workerUrl = URL.createObjectURL(blob);
-  
-  // Create the worker
   const worker = new Worker(workerUrl);
-  
-  // Set up message handling
+  let terminated = false;
+
+  const cleanup = () => {
+    if (!terminated) {
+      terminated = true;
+      URL.revokeObjectURL(workerUrl);
+      worker.terminate();
+    }
+  };
+
+  worker.onerror = (e) => {
+    if (logCallback) logCallback('WORKER_ERROR', `Worker uncaught error: ${e.message}`, true, formatTimestamp());
+    cleanup();
+    completeCallback(null, new Error(e.message || 'Worker error'));
+  };
+
   worker.addEventListener('message', (e) => {
     const { type, progress, details, svg, error, message } = e.data;
-    
     switch (type) {
       case 'progress':
         progressCallback(progress, details);
         break;
       case 'log':
-        console.log('[WORKER] ' + message);
-        if (message && typeof message === 'string') {
-          // Also forward worker logs to the callback
-          if (typeof logCallback === 'function') {
-            logCallback('WORKER', message, false, new Date().toISOString().split('T')[1].split('.')[0]);
-          }
-        }
+        if (logCallback) logCallback('WORKER', message, false, formatTimestamp());
         break;
       case 'complete':
-        URL.revokeObjectURL(workerUrl); // Clean up
+        cleanup();
         completeCallback(svg, null);
-        worker.terminate();
         break;
       case 'error':
-        URL.revokeObjectURL(workerUrl); // Clean up
+        cleanup();
         completeCallback(null, new Error(error));
-        worker.terminate();
         break;
     }
   });
-  
-  // Start the worker
+
   worker.postMessage({ image, options });
-  
-  // Return a function to terminate the worker if needed
-  return {
-    terminate: () => {
-      URL.revokeObjectURL(workerUrl);
-      worker.terminate();
-    }
-  };
+
+  return { terminate: cleanup };
 };
 
-// Updated posterize function that uses a Web Worker
 const posterize = (
   image: string,
-  options: any,
+  options: Record<string, unknown>,
   callback: (err: Error | null, svg?: string) => void,
-  logCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
+  logCallback?: LogCallback
 ) => {
   try {
-    // Verify image data was received
-    const imageSize = image.length;
-    const imageType = image.startsWith('data:image/png') ? 'PNG' : 
-                    image.startsWith('data:image/jpeg') ? 'JPEG' : 
-                    image.startsWith('data:image/') ? 'other' : 'unknown';
-    
-    if (logCallback) {
-      logCallback('IMAGE_RECEIPT', 'Image received for color processing: ' + imageSize + ' bytes, type: ' + imageType, false, new Date().toISOString().split('T')[1].split('.')[0]);
-    }
-    
-    // Check if this is a network client to add additional logging and handling
     const isNetwork = isNetworkClient();
-    if (isNetwork && logCallback) {
-      logCallback('NETWORK_TRACE', 'Processing color trace over network - this might take longer', false, new Date().toISOString().split('T')[1].split('.')[0]);
-    }
-    
-    // Log memory usage before posterization
-    if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
-      const memUsage = (window as any).performance.memory;
-      if (logCallback) {
-        logCallback('MEMORY', 'Before color tracing: ' + Math.round(memUsage.usedJSHeapSize / 1048576) + 'MB / ' + Math.round(memUsage.jsHeapSizeLimit / 1048576) + 'MB', false, new Date().toISOString().split('T')[1].split('.')[0]);
-      }
-    }
-    
-    // Start heartbeat to monitor posterization
-    const heartbeatInterval = isNetwork ? 1000 : 2000;
-    const heartbeat = createHeartbeat('Potrace color image processing', heartbeatInterval, logCallback);
-    
-    // Track start time
+    const heartbeat = createHeartbeat('Color image processing', isNetwork ? 1000 : 2000, logCallback);
     const startTime = performance.now();
-    if (logCallback) {
-      logCallback('COLOR_START', 'Starting color processing at ' + startTime + 'ms using Web Worker', false, new Date().toISOString().split('T')[1].split('.')[0]);
-    }
-    
-    // Prepare posterize options
-    const posterizeOptions = {
-      ...options,
-      steps: options.colorSteps || 4,
-      fillStrategy: options.fillStrategy || 'dominant',
-      // Use threshold from the regular options
-      threshold: options.threshold
-    };
-    
-    if (logCallback) {
-      logCallback('COLOR_METHOD', 'Using Potrace.posterize with ' + posterizeOptions.steps + ' steps, strategy: ' + posterizeOptions.fillStrategy, false, new Date().toISOString().split('T')[1].split('.')[0]);
-    }
-    
-    // Create a variable to store the latest progress details
-    let currentProgressDetails = 'Initializing color processing...';
-    
-    // Use a web worker to keep the UI responsive
-    const worker = createPosterizeWorker(
-      image, 
-      posterizeOptions,
+
+    logProcessingStep('COLOR_START', 'Starting color processing via Web Worker', false, logCallback);
+
+    const workerHandle = createPosterizeWorker(
+      image,
+      options,
       (progress, details) => {
-        if (details) {
-          currentProgressDetails = details;
-        }
-        if (logCallback) {
-          logCallback('COLOR_PROGRESS', 'Progress: ' + progress + '% - ' + currentProgressDetails, false, new Date().toISOString().split('T')[1].split('.')[0]);
-        }
-        
-        // We could emit an event here to update UI with detailed progress information
+        logProcessingStep('COLOR_PROGRESS', `${progress}% - ${details ?? ''}`, false, logCallback);
         if (typeof window !== 'undefined' && window.dispatchEvent) {
-          window.dispatchEvent(new CustomEvent('color-progress-update', {
-            detail: {
-              progress,
-              details: currentProgressDetails
-            }
-          }));
+          window.dispatchEvent(new CustomEvent('color-progress-update', { detail: { progress, details } }));
         }
       },
       (svg, error) => {
         heartbeat.stop();
-        
         if (error) {
-          if (logCallback) {
-            logCallback('COLOR_ERROR', 'Error during color processing: ' + error.message, true, new Date().toISOString().split('T')[1].split('.')[0]);
-          }
+          logProcessingStep('COLOR_ERROR', `Color processing error: ${error.message}`, true, logCallback);
           callback(error);
           return;
         }
-        
         if (!svg) {
-          const err = new Error('Failed to generate SVG in worker');
-          if (logCallback) {
-            logCallback('COLOR_ERROR', err.message, true, new Date().toISOString().split('T')[1].split('.')[0]);
-          }
+          const err = new Error('Worker returned empty SVG');
+          logProcessingStep('COLOR_ERROR', err.message, true, logCallback);
           callback(err);
           return;
         }
-        
-        // Processing completed
-        const endTime = performance.now();
-        
-        if (logCallback) {
-          logCallback('COLOR_COMPLETE', 'Color processing completed in ' + Math.round(endTime - startTime) + 'ms', false, new Date().toISOString().split('T')[1].split('.')[0]);
-          
-          // Log memory usage after processing
-          if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
-            const memUsage = (window as any).performance.memory;
-            logCallback('MEMORY', 'After color processing: ' + Math.round(memUsage.usedJSHeapSize / 1048576) + 'MB / ' + Math.round(memUsage.jsHeapSizeLimit / 1048576) + 'MB', false, new Date().toISOString().split('T')[1].split('.')[0]);
-          }
-        }
-        
+        logProcessingStep('COLOR_COMPLETE', `Done in ${Math.round(performance.now() - startTime)}ms`, false, logCallback);
         callback(null, svg);
       },
       logCallback
     );
-    
-    // Return the worker handle so it can be terminated if needed
-    return worker;
-    
+
+    return workerHandle;
   } catch (error) {
-    if (logCallback) {
-      logCallback('COLOR_SETUP_ERROR', 'Failed to initialize color processing: ' + error, true, new Date().toISOString().split('T')[1].split('.')[0]);
-    }
+    logProcessingStep('COLOR_SETUP_ERROR', `Failed to initialize color processing: ${error}`, true, logCallback);
     callback(error instanceof Error ? error : new Error(String(error)));
-    
-    // Return a dummy object with terminate function for consistent API
-    return {
-      terminate: () => {}
-    };
+    return { terminate: () => {} };
   }
 };
 
-// Check if image might be too complex
-const analyzeImageComplexity = (imageData: string): { complex: boolean, reason?: string, size?: number } => {
-  // This is a simple heuristic - we could develop more sophisticated analysis
-  // based on image data size, number of distinct colors, etc.
-  const complexity = imageData.length;
-  
-  logProcessingStep('ANALYZE', 'Image data length: ' + complexity);
-  
-  if (complexity > 5000000) {
-    return { complex: true, reason: 'Image data size is very large', size: complexity };
-  }
-  
-  if (complexity > 1000000) {
-    return { complex: true, reason: 'Image data is moderately complex', size: complexity };
-  }
-  
-  // Additional complexity checks could be added here
-  
-  return { complex: false, size: complexity };
+// Analyze actual pixel complexity rather than using data URL length
+const analyzeImageComplexity = (
+  imageData: string
+): Promise<{ complex: boolean; reason?: string; distinctColors?: number }> => {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        // Sample at most 200×200 pixels for speed
+        const sampleW = Math.min(200, img.naturalWidth);
+        const sampleH = Math.min(200, img.naturalHeight);
+        const canvas = document.createElement('canvas');
+        canvas.width = sampleW;
+        canvas.height = sampleH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve({ complex: false }); return; }
+        ctx.drawImage(img, 0, 0, sampleW, sampleH);
+        const { data } = ctx.getImageData(0, 0, sampleW, sampleH);
+
+        // Count distinct 5-bit colors
+        const seen = new Set<number>();
+        let edgePixels = 0;
+        for (let i = 0; i < sampleW * sampleH; i++) {
+          const idx = i * 4;
+          if (data[idx + 3] < 128) continue;
+          seen.add(((data[idx] >> 3) << 10) | ((data[idx+1] >> 3) << 5) | (data[idx+2] >> 3));
+        }
+
+        // Estimate edge density via horizontal gradient
+        for (let y = 0; y < sampleH; y++) {
+          for (let x = 1; x < sampleW - 1; x++) {
+            const i = (y * sampleW + x) * 4;
+            const lCur = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+            const lNext = 0.299*data[i+4] + 0.587*data[i+5] + 0.114*data[i+6];
+            if (Math.abs(lCur - lNext) > 20) edgePixels++;
+          }
+        }
+
+        const distinctColors = seen.size;
+        const edgeDensity = edgePixels / (sampleW * sampleH);
+        const complex = distinctColors > 800 || edgeDensity > 0.15;
+        const veryComplex = distinctColors > 2000 || edgeDensity > 0.3;
+
+        logProcessingStep('ANALYZE', `Distinct colors: ${distinctColors}, edge density: ${edgeDensity.toFixed(3)}`);
+        resolve({
+          complex: complex || veryComplex,
+          reason: veryComplex ? 'Very high color/edge complexity' : complex ? 'Moderate complexity' : undefined,
+          distinctColors
+        });
+      };
+      img.onerror = () => resolve({ complex: false });
+      img.src = imageData;
+    } catch {
+      resolve({ complex: false });
+    }
+  });
 };
 
-// Try to simplify complex images
-export const simplifyForComplexImages = (params: TracingParams): TracingParams => {
-  logProcessingStep('SIMPLIFY', 'Applying optimizations for complex image');
-  
-  // Much more aggressive simplification for complex images
-  return {
-    ...params,
-    // Aggressively remove small artifacts
-    turdSize: Math.max(params.turdSize, 15),
-    // Use an extremely tolerant optimization for complex images
-    optTolerance: 3.0,
-    // Use turn policy that works better for complex shapes
-    turnPolicy: 'minority',
-    // Higher threshold for better contrast in line detection
-    threshold: 180,
-    // Enhanced corner detection
-    alphaMax: 1.0,
-    // Disabling highest quality for better performance
-    highestQuality: false,
-    // Ensure opt curve is enabled for complex images
-    optCurve: true
-  };
-};
+export const simplifyForComplexImages = (params: TracingParams): TracingParams => ({
+  ...params,
+  turdSize: Math.max(params.turdSize, 15),
+  optTolerance: 3.0,
+  turnPolicy: 'minority',
+  threshold: 180,
+  alphaMax: 1.0,
+  highestQuality: false,
+  optCurve: true
+});
 
-// Scale image so that the largest dimension does not exceed a maximum value
 export const scaleToMaxDimension = (imageData: string, maxDimension = 1000): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      logProcessingStep('SCALE', `Ensuring image fits within ${maxDimension}px`);
-
       const img = new Image();
       img.onload = () => {
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-
-        if (originalWidth <= maxDimension && originalHeight <= maxDimension) {
-          resolve(imageData);
-          return;
-        }
-
-        // Determine scaling factor
-        const scale = originalWidth > originalHeight
-          ? maxDimension / originalWidth
-          : maxDimension / originalHeight;
-
+        const { width: ow, height: oh } = img;
+        if (ow <= maxDimension && oh <= maxDimension) { resolve(imageData); return; }
+        const scale = ow > oh ? maxDimension / ow : maxDimension / oh;
+        const nw = Math.round(ow * scale), nh = Math.round(oh * scale);
         const canvas = document.createElement('canvas');
-        const newWidth = Math.round(originalWidth * scale);
-        const newHeight = Math.round(originalHeight * scale);
-
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-
-        logProcessingStep('SCALE', `Scaling image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}`);
-
+        canvas.width = nw; canvas.height = nh;
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-
+        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-
+        // White fill for B&W compatibility; color mode worker composites over white separately
         ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, newWidth, newHeight);
-        ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-        const scaledData = canvas.toDataURL('image/png');
-        resolve(scaledData);
+        ctx.fillRect(0, 0, nw, nh);
+        ctx.drawImage(img, 0, 0, nw, nh);
+        logProcessingStep('SCALE', `Scaled ${ow}x${oh} → ${nw}x${nh}`);
+        resolve(canvas.toDataURL('image/png'));
       };
-
-      img.onerror = () => {
-        reject(new Error('Failed to load image for scaling'));
-      };
-
+      img.onerror = () => reject(new Error('Failed to load image for scaling'));
       img.src = imageData;
     } catch (error) {
-      logProcessingStep('SCALE', `Error during scaling: ${error}`, true);
       reject(error);
     }
   });
 };
 
-// Downscale image to reduce complexity
 const downscaleImage = (imageData: string, scale: number = 0.5): Promise<string> => {
   return new Promise((resolve, reject) => {
     try {
-      logProcessingStep('DOWNSCALE', 'Downscaling image by factor of ' + scale);
-      
       const img = new Image();
       img.onload = () => {
+        const nw = Math.max(1, Math.round(img.width * scale));
+        const nh = Math.max(1, Math.round(img.height * scale));
         const canvas = document.createElement('canvas');
-        const originalWidth = img.width;
-        const originalHeight = img.height;
-        
-        // Calculate new dimensions
-        const newWidth = Math.round(originalWidth * scale);
-        const newHeight = Math.round(originalHeight * scale);
-        
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        
-        logProcessingStep('DOWNSCALE', 'Original size: ' + originalWidth + 'x' + originalHeight + ', New size: ' + newWidth + 'x' + newHeight);
-        
+        canvas.width = nw; canvas.height = nh;
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-        
-        // Use better interpolation method for downscaling
+        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        
-        // Draw image with white background
         ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, newWidth, newHeight);
-        ctx.drawImage(img, 0, 0, newWidth, newHeight);
-        
-        // Get downscaled image data
-        const downscaledData = canvas.toDataURL('image/png');
-        logProcessingStep('DOWNSCALE', 'Downscaled image data length: ' + downscaledData.length);
-        
-        resolve(downscaledData);
+        ctx.fillRect(0, 0, nw, nh);
+        ctx.drawImage(img, 0, 0, nw, nh);
+        logProcessingStep('DOWNSCALE', `Downscaled by ${scale}: ${img.width}x${img.height} → ${nw}x${nh}`);
+        resolve(canvas.toDataURL('image/png'));
       };
-      
-      img.onerror = () => {
-        reject(new Error('Failed to load image for downscaling'));
-      };
-      
+      img.onerror = () => reject(new Error('Failed to load image for downscaling'));
       img.src = imageData;
     } catch (error) {
-      logProcessingStep('DOWNSCALE', 'Error during downscaling: ' + error, true);
       reject(error);
     }
   });
@@ -1296,239 +1049,131 @@ export const processImage = (
   imageData: string,
   params: TracingParams,
   progressCallback: (status: string) => void,
-  detailedLogCallback?: (step: string, message: string, isError: boolean, timestamp: string) => void
+  detailedLogCallback?: LogCallback
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    let workerHandle: { terminate: () => void } | null = null;
+    let traceHandle: { cancel: () => void } | null = null;
+    let finished = false;
+
+    const cleanupAndReject = (error: Error) => {
+      if (finished) return;
+      finished = true;
+      if (workerHandle) { try { workerHandle.terminate(); } catch (_) {} workerHandle = null; }
+      if (traceHandle) { try { traceHandle.cancel(); } catch (_) {} traceHandle = null; }
+      reject(error);
+    };
+
     try {
-      logProcessingStep('START', 'Beginning image processing with data length: ' + imageData.length, false, detailedLogCallback);
+      logProcessingStep('START', `Beginning image processing, data length: ${imageData.length}`, false, detailedLogCallback);
       progressCallback('loading');
 
-      // Check if this is a network client
       const isNetwork = isNetworkClient();
 
-      // For network clients, apply more aggressive downscaling
-      let processedImageData = imageData;
+      // Apply network simplification automatically when accessed over LAN
+      const effectiveParams = isNetwork ? simplifyForNetworkClients({ ...params }) : params;
 
-      const processNextStep = () => {
-        progressCallback('processing');
-        logProcessingStep('PROCESS', 'Processing image data', false, detailedLogCallback);
-        
-        setTimeout(() => {
-          progressCallback('analyzing');
-          
-          // Analyze image complexity
-          const complexityResult = analyzeImageComplexity(processedImageData);
-          logProcessingStep('ANALYZE', 'Complexity analysis result: ' + JSON.stringify(complexityResult), false, detailedLogCallback);
-          
-          if (isNetwork) {
-            logProcessingStep('NETWORK', 'Processing as network client - applying enhanced optimizations', false, detailedLogCallback);
-            
-            // If we're on a network client AND the image is complex, 
-            // downscale it even more for better performance
-            if (complexityResult.complex && processedImageData === imageData) {
-              logProcessingStep('NETWORK_SCALE', 'Further downscaling image for network processing', false, detailedLogCallback);
-              
-              // Apply more aggressive downscaling for network clients with complex images
-              downscaleImage(processedImageData, 0.3).then((scaledData) => {
-                processedImageData = scaledData;
-                logProcessingStep('NETWORK_SCALED', 'Downscaled image to ' + scaledData.length + ' bytes for network processing', false, detailedLogCallback);
-                processWithParams(processedImageData, params);
-              }).catch(err => {
-                logProcessingStep('ERROR', 'Failed to downscale image: ' + err.message, true, detailedLogCallback);
-                processWithParams(processedImageData, params);
-              });
-            } else {
-              processWithParams(processedImageData, params);
-            }
-          } else {
-            processWithParams(processedImageData, params);
+      const processWithParams = (imgData: string, processingParams: TracingParams) => {
+        progressCallback('tracing');
+        logProcessingStep('TRACE', `Starting tracing, data length: ${imgData.length}`, false, detailedLogCallback);
+
+        const timeoutMs = isNetwork ? 90000 : 180000;
+        const traceTimeout = setTimeout(() => {
+          logProcessingStep('ERROR', 'Image tracing timed out', true, detailedLogCallback);
+          progressCallback('error');
+          cleanupAndReject(new Error('Image tracing timed out. The image may be too complex. Try Complex Image Mode.'));
+        }, timeoutMs);
+
+        const onComplete = (err: Error | null, svg?: string) => {
+          if (finished) return;
+          clearTimeout(traceTimeout);
+          if (err) {
+            logProcessingStep('ERROR', `Tracing error: ${err.message}`, true, detailedLogCallback);
+            progressCallback('error');
+            cleanupAndReject(new Error(err.message));
+            return;
           }
-        }, isNetwork ? 300 : 100);
-      };
-      
-      const beginProcessing = () => {
-        if (isNetwork) {
-          logProcessingStep('NETWORK_SCALE', 'Downscaling image for network processing', false, detailedLogCallback);
-          downscaleImage(processedImageData, 0.5).then((scaledData) => {
-            processedImageData = scaledData;
-            logProcessingStep('NETWORK_SCALED', `Downscaled image to ${scaledData.length} bytes for network processing`, false, detailedLogCallback);
-            processNextStep();
-          }).catch(err => {
-            logProcessingStep('ERROR', `Failed to downscale image: ${err.message}`, true, detailedLogCallback);
-            processNextStep();
-          });
-        } else {
-          setTimeout(processNextStep, 100);
+          if (!svg) {
+            logProcessingStep('ERROR', 'Tracer returned empty SVG', true, detailedLogCallback);
+            progressCallback('error');
+            cleanupAndReject(new Error('Tracer returned empty SVG'));
+            return;
+          }
+          finished = true;
+          progressCallback('optimizing');
+          logProcessingStep('OPTIMIZE', `SVG generated: ${svg.length} chars`, false, detailedLogCallback);
+          progressCallback('done');
+          logProcessingStep('DONE', 'Processing complete', false, detailedLogCallback);
+          resolve(svg);
+        };
+
+        try {
+          if (processingParams.colorMode) {
+            logProcessingStep('MODE', 'Color mode (posterize) via Web Worker', false, detailedLogCallback);
+            progressCallback('colorProcessing');
+            workerHandle = posterize(imgData, processingParams as unknown as Record<string, unknown>, onComplete, detailedLogCallback);
+          } else {
+            traceHandle = trace(imgData, processingParams, onComplete, detailedLogCallback);
+          }
+        } catch (error) {
+          clearTimeout(traceTimeout);
+          logProcessingStep('ERROR', `Exception during tracing: ${error}`, true, detailedLogCallback);
+          progressCallback('error');
+          cleanupAndReject(error instanceof Error ? error : new Error(String(error)));
         }
       };
 
-      // Ensure image doesn't exceed max dimension before further processing
-      scaleToMaxDimension(imageData, 1000).then((scaledData) => {
-        processedImageData = scaledData;
-        beginProcessing();
-      }).catch(err => {
-        logProcessingStep('ERROR', `Failed to scale image: ${err.message}`, true, detailedLogCallback);
-        beginProcessing();
-      });
+      const processNextStep = async (imgData: string) => {
+        progressCallback('analyzing');
+        const complexityResult = await analyzeImageComplexity(imgData);
+        logProcessingStep('ANALYZE', `Complexity: ${JSON.stringify(complexityResult)}`, false, detailedLogCallback);
 
-      // Handle complex images with different strategy - we'll reuse this function
-      const processWithParams = async (imgData: string, processingParams: TracingParams) => {
-        progressCallback('tracing');
-        logProcessingStep('TRACE', 'Starting image tracing with data length: ' + imgData.length, false, detailedLogCallback);
-        
-        // Add a timeout to give the UI time to update before intensive processing
-        setTimeout(() => {
-          try {
-            // Set a longer timeout for the tracing operation
-            let traceTimeout = setTimeout(() => {
-              logProcessingStep('ERROR', 'Image tracing is taking too long, possibly stuck', true, detailedLogCallback);
-              progressCallback('error');
-              reject(new Error('Image tracing timed out. The image may be too complex. Try using Complex Image Mode or simplifying the image.'));
-            }, isNetwork ? 90000 : 180000); // Shorter timeout for network clients
-
-            // Choose between regular trace and posterize based on colorMode setting
-            if (processingParams.colorMode) {
-              logProcessingStep('MODE', 'Using color mode (posterize) with Web Worker', false, detailedLogCallback);
-              progressCallback('colorProcessing');
-              
-              const workerHandle = posterize(
-                imgData, 
-                processingParams,
-                (err: Error | null, svg?: string) => {
-                  clearTimeout(traceTimeout); // Clear the timeout if processing completes
-                  if (err) {
-                    logProcessingStep('ERROR', 'Error during color processing: ' + err.message, true, detailedLogCallback);
-                    progressCallback('error');
-                    reject(new Error('Failed to process color image: ' + err.message));
-                    return;
-                  }
-                  
-                  if (!svg) {
-                    logProcessingStep('ERROR', 'Potrace returned empty SVG from color processing', true, detailedLogCallback);
-                    progressCallback('error');
-                    reject(new Error('Potrace returned empty SVG from color processing'));
-                    return;
-                  }
-                  
-                  progressCallback('optimizing');
-                  logProcessingStep('OPTIMIZE', 'Color SVG generated, size: ' + svg.length + ' characters', false, detailedLogCallback);
-                  
-                  // Add a short delay before showing the result for better UX
-                  setTimeout(() => {
-                    progressCallback('done');
-                    logProcessingStep('DONE', 'Color image processing complete', false, detailedLogCallback);
-                    resolve(svg);
-                  }, 300);
-                },
-                detailedLogCallback
-              );
-              
-              // Update the timeout handler to terminate the worker if needed
-              const originalTraceTimeout = traceTimeout;
-              clearTimeout(originalTraceTimeout);
-              
-              traceTimeout = setTimeout(() => {
-                logProcessingStep('ERROR', 'Image tracing is taking too long, possibly stuck', true, detailedLogCallback);
-                
-                // Terminate the worker if it exists
-                if (workerHandle && typeof workerHandle.terminate === 'function') {
-                  logProcessingStep('WORKER_TERMINATE', 'Terminating stuck worker', true, detailedLogCallback);
-                  try {
-                    workerHandle.terminate();
-                  } catch (e) {
-                    logProcessingStep('WORKER_ERROR', 'Error terminating worker: ' + e, true, detailedLogCallback);
-                  }
-                }
-                
-                progressCallback('error');
-                reject(new Error('Image tracing timed out. The image may be too complex. Try using Complex Image Mode or simplifying the image.'));
-              }, isNetwork ? 90000 : 180000); // Shorter timeout for network clients
-              
-              // If process is aborted, we can use this to clean up
-              const originalReject = reject;
-              reject = (error) => {
-                clearTimeout(traceTimeout);
-                if (workerHandle && typeof workerHandle.terminate === 'function') {
-                  logProcessingStep('WORKER_CLEANUP', 'Cleaning up worker on error', false, detailedLogCallback);
-                  try {
-                    workerHandle.terminate();
-                  } catch (e) {
-                    logProcessingStep('WORKER_ERROR', 'Error terminating worker during cleanup: ' + e, false, detailedLogCallback);
-                  }
-                }
-                originalReject(error);
-              };
-            } else {
-              // Regular grayscale trace
-              trace(imgData, processingParams, (err: Error | null, svg?: string) => {
-                clearTimeout(traceTimeout); // Clear the timeout if tracing completes
-                if (err) {
-                  logProcessingStep('ERROR', 'Error during tracing: ' + err.message, true, detailedLogCallback);
-                  progressCallback('error');
-                  reject(new Error('Failed to trace image: ' + err.message));
-                  return;
-                }
-                
-                if (!svg) {
-                  logProcessingStep('ERROR', 'Potrace returned empty SVG', true, detailedLogCallback);
-                  progressCallback('error');
-                  reject(new Error('Potrace returned empty SVG'));
-                  return;
-                }
-                
-                progressCallback('optimizing');
-                logProcessingStep('OPTIMIZE', 'SVG generated, size: ' + svg.length + ' characters', false, detailedLogCallback);
-                
-                // Add a short delay before showing the result for better UX
-                setTimeout(() => {
-                  progressCallback('done');
-                  logProcessingStep('DONE', 'Image processing complete', false, detailedLogCallback);
-                  resolve(svg);
-                }, 300);
-              }, detailedLogCallback); // Pass the detailed log callback to the trace function
-            }
-          } catch (error) {
-            logProcessingStep('ERROR', 'Exception during tracing: ' + error, true, detailedLogCallback);
-            progressCallback('error');
-            reject(error instanceof Error ? error : new Error(String(error)));
-          }
-        }, isNetwork ? 500 : 100); // More delay for network clients
+        if (isNetwork && complexityResult.complex) {
+          logProcessingStep('NETWORK_SCALE', 'Further downscaling for network + complex image', false, detailedLogCallback);
+          downscaleImage(imgData, 0.3)
+            .then(scaled => processWithParams(scaled, effectiveParams))
+            .catch(() => processWithParams(imgData, effectiveParams));
+        } else {
+          processWithParams(imgData, effectiveParams);
+        }
       };
+
+      const beginProcessing = (imgData: string) => {
+        if (isNetwork) {
+          downscaleImage(imgData, 0.5)
+            .then(scaled => processNextStep(scaled))
+            .catch(() => processNextStep(imgData));
+        } else {
+          processNextStep(imgData);
+        }
+      };
+
+      scaleToMaxDimension(imageData, 1000)
+        .then(scaled => beginProcessing(scaled))
+        .catch(() => beginProcessing(imageData));
+
     } catch (error) {
-      logProcessingStep('ERROR', 'Exception during processing setup: ' + error, true, detailedLogCallback);
+      logProcessingStep('ERROR', `Exception during processing setup: ${error}`, true, detailedLogCallback);
       progressCallback('error');
-      reject(error instanceof Error ? error : new Error(String(error)));
+      cleanupAndReject(error instanceof Error ? error : new Error(String(error)));
     }
   });
 };
 
 export const getOptimizedFilename = (originalName: string): string => {
-  // Remove file extension
-  const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, "");
-
-  // Use slugify to handle international characters and spacing
+  const nameWithoutExtension = originalName.replace(/\.[^/.]+$/, '');
   const slug = slugify(nameWithoutExtension, { lower: true, strict: true });
-
   return slug || 'image';
 };
 
-// Even more aggressive parameters for network clients
 export const simplifyForNetworkClients = (params: TracingParams): TracingParams => {
-  const networkParams = { ...params };
-  
-  // Start with complex image optimizations
-  const complexParams = simplifyForComplexImages(networkParams);
-
-  // Then apply even more aggressive settings
-  // Increase threshold while capping at an upper bound to maintain contrast
-  complexParams.threshold = Math.min(255, complexParams.threshold + 30);
-  complexParams.turdSize = Math.max(15, complexParams.turdSize * 2);  // More aggressive noise filtering
-  complexParams.alphaMax = Math.min(0.5, complexParams.alphaMax - 0.1);
-  complexParams.optCurve = false; // Disable curve optimization to speed up processing
-  complexParams.optTolerance = 1.0; // Maximum tolerance for faster processing
-  
-  // Add a console log for debugging
-  console.log('Network optimized params:', complexParams);
-  
-  return complexParams;
-}; 
+  const complexParams = simplifyForComplexImages({ ...params });
+  return {
+    ...complexParams,
+    threshold: Math.min(255, complexParams.threshold + 30),
+    turdSize: Math.max(15, complexParams.turdSize * 2),
+    alphaMax: Math.max(0.1, complexParams.alphaMax - 0.1),
+    optCurve: false,
+    optTolerance: 1.0
+  };
+};

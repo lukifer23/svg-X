@@ -1,353 +1,286 @@
-<!-- Last checked: 2025-03-02 -->
+# SVG-X — Image to SVG Converter
 
-# SVG-X - Image to SVG Converter
+A desktop application (Electron + React) that converts raster images to scalable vector graphics using a dual-engine pipeline: **Potrace** for B&W tracing and a custom **color posterization engine** with perceptual color quantization, Sobel edge detection, Moore Neighbor contour tracing, and cubic Bezier fitting — all running in a Web Worker.
 
-A desktop application that converts raster images to SVG using Potrace.
+---
 
 ## Features
 
-- Upload any image file
-- Automatically converts to grayscale
-- Processes and traces the image to create an SVG
-- Download the resulting SVG
-- Customizable tracing parameters
-- **Complex Image Mode** for optimizing complex geometric patterns and dense line work
-- Fully responsive UI that works on both desktop and mobile devices
-- **Network Mode** - Access from other devices on the local network with optimized processing
-- **Memory Optimization** - Improved handling of large images with reduced memory footprint
+| Feature | Details |
+|---|---|
+| **B&W Tracing** | Potrace-powered, fully parameterized (threshold, turn policy, curve optimization, corner sharpness, speckle suppression) |
+| **Color Mode** | Custom posterization engine: CIE L\* perceptual thresholds, 5-bit color quantization, 4 fill strategies, painter's-order SVG assembly |
+| **Batch Conversion** | Electron-only; converts entire directories, collision-safe filenames, optional sharp pre-resize, retry-failed |
+| **Formats Supported** | PNG, JPG, GIF, BMP, **WEBP** — input and batch |
+| **Complex Image Mode** | One-click parameter preset for dense line work, technical drawings, geometric patterns |
+| **Network Mode** | LAN access from any device; auto-downscales for remote clients; CORS-enabled API endpoint |
+| **Processing Logs** | Timestamped per-run log with error-only filter, copy-to-clipboard |
+| **SVG Preview** | Side-by-side original vs SVG, file size + viewport dimensions, sanitized inline render, source view |
+| **Download** | Native Electron save dialog or browser blob download; clipboard copy |
+| **Settings Persistence** | All parameters saved to `localStorage` and restored on next launch |
+| **Responsive UI** | Mobile-optimized layout, touch-friendly controls |
+
+---
 
 ## How It Works
 
-The application follows these steps to convert raster images to SVG:
+### B&W Mode (Potrace)
 
-1. **Image Loading**: Uploads and loads the source image into memory
-2. **Preprocessing**: 
-   - Scales large images down to a maximum of 1000px on the longest side while preserving aspect ratio (`scaleToMaxDimension`)
-   - Draws the image to a canvas with a white background
+```
+Upload → Scale to ≤1000px → [Network: downscale 0.5×] → analyzeComplexity → Potrace.trace() → SVG
+```
 
-3. **Grayscale Conversion**:
-   - Processes each pixel using the luminance formula: `0.299*R + 0.587*G + 0.114*B`
-   - Creates a new grayscale image on a canvas
-   - This step runs automatically for every upload to ensure consistent tracing results
+1. Image is scaled to a maximum of 1000px on the longest side (aspect-ratio preserved, white composite)
+2. On LAN access, a further 0.5× downscale is applied; complex images get an additional 0.3× pass
+3. Image complexity is measured via pixel sampling: distinct color count and edge density
+4. Potrace traces contours, applies Bezier optimization, and emits SVG
 
-4. **Image Tracing**:
-   - Converts the canvas to a data URL (PNG format)
-   - Passes the data URL to Potrace's trace function with optimized parameters
-   - Potrace traces the image boundaries and generates vector paths
+### Color Mode (Web Worker)
 
-5. **SVG Generation**: 
-   - The traced image is converted to SVG format
-   - The SVG is displayed and made available for download
+```
+Upload → Scale to ≤1000px → Web Worker:
+  ├── Load image into OffscreenCanvas (composite over white)
+  ├── Quantize colors (5-bit bucketing + strategy: dominant/spread/mean/median)
+  ├── Compute perceptual CIE L* thresholds
+  ├── For each layer (lightest → darkest):
+  │     ├── Grayscale + Sobel edge detection
+  │     ├── Morphological bitmap enhancement
+  │     ├── Moore Neighbor contour tracing (Jacob's stopping criterion)
+  │     ├── Douglas-Peucker simplification (closed-path wrap-around aware)
+  │     └── Schneider cubic Bezier fitting (recursive split on max error)
+  └── Assemble SVG (painter's order, cross-layer path deduplication)
+```
 
-### Customizable Parameters
+### Color Fill Strategies
 
-Users can adjust the following parameters to optimize the SVG output:
+| Strategy | Behavior |
+|---|---|
+| **Dominant** | Most frequently occurring colors in the image |
+| **Spread** | Colors evenly spaced by perceptual luminance (sRGB → linear → Y) |
+| **Mean** | Colors distributed across perceptual luminance bands |
+| **Median** | Median-cut in RGB space — best overall color representation |
 
-- **Detail Level (turdSize)**: Controls the minimum size of shapes to be included (1-10)
-- **Threshold**: Sets the cutoff between black and white pixels (0-255)
-- **Corner Threshold (alphaMax)**: Affects how corners are detected and processed (0.1-1.5)
-- **Curve Optimization**: Enables smoother curves in the output SVG
+### Perceptual Threshold Distribution
 
-#### Foreground & Background Colors
+Thresholds are computed in **CIE L\* space** (L\* 5→95), converted to linear luminance, then to display-gamma 8-bit values. This gives perceptually uniform layer separation regardless of whether the image is dark or bright — no more all-thresholds-below-128 compression.
 
-The `color` option sets the fill color for traced paths, while `background` controls the canvas behind them. Adjusting these values can dramatically change the SVG appearance (for example, white paths on a black background for a negative effect).
+---
+
+## Settings Reference
+
+### B&W Mode Parameters
+
+| Parameter | Range | Default | Effect |
+|---|---|---|---|
+| **Speckle Suppression** (`turdSize`) | 1–100 | 2 | Removes shapes smaller than N pixels. Higher = cleaner but loses fine detail |
+| **Threshold** | 0–255 | 128 | Pixels darker than this value are treated as foreground |
+| **Corner Sharpness** (`alphaMax`) | 0.1–1.5 | 1.0 | Lower = sharper corners; higher = rounder curves |
+| **Curve Tolerance** (`optTolerance`) | 0.1–2.0 | 0.2 | Higher = more deviation allowed in Bezier curves (smaller files) |
+| **Curve Optimization** (`optCurve`) | on/off | on | Use Bezier curves instead of line segments |
+| **Black on White** (`blackOnWhite`) | on/off | on | Assumes dark foreground on light background |
+| **Invert** | on/off | off | Swap foreground/background before tracing |
+| **Highest Quality** | on/off | off | Disables shortcuts for maximum precision (slower) |
+
+### Turn Policy
+
+Controls how Potrace handles ambiguous boundary pixels during tracing:
+
+| Policy | Behavior |
+|---|---|
+| **Minority** *(recommended)* | Prefer the minority color at each ambiguity |
+| **Majority** | Prefer the majority color |
+| **Black** | Prefer to connect black areas |
+| **White** | Prefer to connect white areas |
+| **Left** | Always turn left |
+| **Right** | Always turn right |
+
+### Color Mode Parameters
+
+| Parameter | Range | Default | Effect |
+|---|---|---|---|
+| **Color Steps** | 2–8 | 4 | Number of color layers. More = more detail, slower |
+| **Fill Strategy** | dominant/spread/mean/median | dominant | How palette colors are selected |
 
 ### Complex Image Mode
 
-The application includes a **Complex Image Mode** specifically designed for handling:
-- Images with intricate geometric patterns
-- Dense line work or diagrams
-- Technical drawings and precise shapes
-
-To use this feature:
-1. Upload your image
-2. Open the Settings panel by clicking the gear icon
-3. Click the "Complex Image" button
-4. The image will be reprocessed with optimized settings for complex patterns
-
-This mode automatically adjusts multiple parameters to achieve better results with complex graphics:
-- Increases the detail level to reduce noise
-- Optimizes curve tolerance for cleaner lines
-- Adjusts threshold for better line detection
-- Sets turn policy for improved shape handling
-
-### Mobile Responsiveness
-
-SVG-X is now fully responsive and works on all device sizes:
-- Adapts layout for mobile screens
-- Touch-friendly controls
-- Optimized network panel for smaller screens
-- Accessible on phones and tablets via local network URLs
-
-### Local Network Access
-
-The application can be reached from other devices on the same network. After network hardening, SVG-X now retrieves active URLs from `/api/network-info` and refreshes the list every 30 seconds.
-
-The network panel (Globe icon in the corner) shows these addresses and lets you copy them. Example usage from another device:
+One-click preset optimized for dense line work, technical drawings, and geometric patterns:
 
 ```
-http://192.168.1.50:3000
+turdSize: 15  |  optTolerance: 3.0  |  threshold: 180
+turnPolicy: minority  |  alphaMax: 1.0  |  highestQuality: false
 ```
 
-The panel also lists `http://localhost:3000` for local access.
+On LAN connections, Complex Mode uses an even more aggressive preset (further threshold boost, doubled turdSize, curve optimization disabled).
 
-For developers and advanced users, the resolved URLs are logged to the console when the application starts:
-- In development mode: Check the terminal where you started the app
-- In the desktop app: The URLs are logged in the background console window
+---
+
+## Batch Conversion
+
+**Electron only** — requires filesystem access.
+
+1. Click **Batch Convert** in the header
+2. Select an **Input Directory** (PNG, JPG, GIF, BMP, WEBP files are detected automatically)
+3. Select an **Output Directory**
+4. Optionally enable **pre-resize** (via `sharp`) to set a max width/height before vectorization
+5. Click **Start Batch Processing**
+
+Features:
+- Shows current filename prominently during processing
+- Displays completed / failed / remaining counts with a progress bar
+- **Retry Failed** button re-queues only failed files (collision counter reset)
+- **Open Output Folder** after completion
+- Filename collision deduplication: `image.svg`, `image-1.svg`, `image-2.svg`, ...
+
+---
+
+## Network Mode
+
+When accessed from another device on the LAN, SVG-X automatically:
+- Applies `simplifyForNetworkClients` parameters (higher turdSize, lower optTolerance, no curve optimization)
+- Downscales images by 0.5× before processing; very complex images get 0.3×
+- Times out at 90 seconds (vs 180s for local)
+- The API endpoint `/api/network-info` returns local and network URLs
+
+The **Globe icon** in the corner opens the Network Info panel with copyable URLs. URLs are probed for reachability before being shown.
+
+---
 
 ## Installation
 
-### As a Desktop Application
+### Desktop Application (Electron)
 
-SVG-X is available as a standalone desktop application for Windows, macOS, and Linux. The desktop version offers the same functionality as the web version, but runs locally without requiring a browser.
+#### Windows
 
-#### Windows Installation
+- **Portable executable**: Run `SVG-X-1.1.0-x64.exe` directly — no installation
+- **Unpacked**: Extract `SVG-X-win-unpacked.zip` and run `SVG-X.exe`
 
-Two options are available for Windows:
+#### Development (all platforms)
 
-1. **Unpacked Application (Recommended)**:
-   - Download `SVG-X-win-unpacked.zip` from the latest release
-   - Extract the zip file to a location of your choice
-   - Run `SVG-X.exe` from the extracted directory
-
-2. **Portable Executable**:
-   - Download `SVG-X-1.1.0-x64.exe` from the latest release
-   - Run the executable directly - no installation required
-
-Both versions automatically provide access on your local network when running.
-
-#### macOS and Linux
-
-Coming soon! We're working on builds for these platforms.
-
-### Development Setup
-
-1. Install dependencies:
-```
+```bash
 npm install
-```
-
-2. Run the development server:
-```
-npm run dev
-```
-
-3. Or run with Electron:
-```
 npm run electron:dev
 ```
 
-## Building for Distribution
+This starts Vite on port 3001 and launches Electron, loading from the dev server.
 
-### Web Application
+### Web-only (browser)
 
-```
-npm run build
-```
-
-### Desktop Application
-
-#### Windows Builds
-
-Build a portable executable:
-```
-npm run build:portable-exe
-```
-
-Build an unpacked directory:
-```
-npm run electron:build:dir
-```
-
-Create a zip file of the unpacked directory:
-```
-npm run create-zip
-```
-
-The built application will be available in the `release` directory:
-- Portable executable: `release\SVG-X-1.1.0-x64.exe`
-- Unpacked application: `release\win-unpacked\`
-- Zip file: `release\SVG-X-win-unpacked.zip`
-
-#### All Platforms (may require additional configuration)
-
-```
-npm run electron:build
-```
-
-This will generate installers for your current platform in the `release` directory.
-
-### Platform-Specific Builds
-
-To build for a specific platform, add the platform flag:
-
-```
-# Windows
-npm run electron:build -- --win
-
-# macOS
-npm run electron:build -- --mac
-
-# Linux
-npm run electron:build -- --linux
-```
-
-## Key Implementation Details
-
-```typescript
-import type { PotraceOptions } from './utils/imageProcessor';
-
-// Critical configuration for Potrace tracing quality
-const potraceParams: PotraceOptions = {
-  turdSize: 2,        // Suppress speckles (smaller = more details)
-  alphaMax: 1,        // Corner threshold
-  optCurve: true,     // Optimize curves
-  optTolerance: 0.2,  // Curve optimization tolerance
-  threshold: 128,     // Black/white threshold
-  blackOnWhite: true, // Fill black areas
-  background: '#fff', // Background color
-  color: '#000'       // Foreground color
-};
-
-// Critical for proper Potrace processing - convert canvas to data URL
-const dataUrl = canvas.toDataURL('image/png');
-
-// Use Potrace.trace with data URL instead of raw pixel data
-(Potrace as any).trace(dataUrl, potraceParams, (err: Error | null, svg?: string) => {
-  // Handle result
-});
-```
-
-## Technical Details
-
-### Libraries Used
-
-- React with TypeScript
-- Potrace for image tracing
-- Tailwind CSS for styling
-- Vite for build and development
-- Electron for desktop application
-
-### Recent Fixes
-
-- Fixed SVG conversion functionality to properly implement the `processImage` function
-- Added batch processing capability for converting multiple images at once
-- Fixed Electron application mode detection for proper file loading
-- Fixed Potrace implementation to properly use the library's `trace` function with enhanced error handling
-- Corrected image data formatting for Potrace compatibility
-- Improved conversion parameters for better SVG quality
-- Optimized memory usage during image processing for better performance with large images
-- Enhanced network client handling for improved remote access performance
-- Streamlined Windows build process with portable executable option
-
-## Development
-
-1. Install dependencies:
-```
+```bash
 npm install
-```
-
-2. Run the development server:
-```
 npm run dev
 ```
 
-## Building for Production
+Opens at `http://localhost:3001`. Batch conversion and native save dialogs are unavailable without Electron.
+
+---
+
+## Build Commands
+
+| Command | Output |
+|---|---|
+| `npm run dev` | Vite dev server only (port 3001) |
+| `npm run electron:dev` | Vite + Electron (full desktop dev mode) |
+| `npm run build` | Vite production build → `dist/` |
+| `npm run electron:build:dir` | Vite build + unpacked Windows app → `release/win-unpacked/` |
+| `npm run build:portable-exe` | Vite build + unsigned Windows portable `.exe` → `release/` |
+| `npm run create-zip` | ZIP of `release/win-unpacked/` |
+| `npm run test` | Vitest unit tests |
+| `npm run lint` | ESLint |
+
+---
+
+## Architecture
 
 ```
-npm run build
+main.js (Electron main process)
+  ├── BrowserWindow (1200×800, contextIsolation)
+  ├── Express server (production: port 3001, serves dist/ + /api/network-info)
+  ├── IPC handlers: select-directory, read-directory, save-svg,
+  │   read-image-file, resize-image, show-save-dialog,
+  │   open-output-directory, join-paths, get-app-version, toggle-console
+  └── isPathSafe() — path.resolve() + path.relative() traversal guard
+
+preload.js
+  └── contextBridge → window.electronAPI (typed in src/electron.d.ts)
+
+src/ (React + Vite renderer)
+  ├── App.tsx — central state, status machine, log management
+  ├── components/
+  │   ├── FileUpload.tsx — drag-drop, validation (PNG/JPG/GIF/BMP/WEBP, ≤50MB)
+  │   ├── ImagePreview.tsx — side-by-side preview, monotone progress bar,
+  │   │   SVG dimensions, sanitized render, source view
+  │   ├── SettingsPanel.tsx — all Potrace params, focus-trapped modal,
+  │   │   controlled color inputs, visible turn policy descriptions
+  │   ├── DownloadButton.tsx — Electron save dialog or blob download, clipboard copy
+  │   ├── BatchConversion.tsx — directory batch, resize options, retry, progress
+  │   ├── ProcessingLogs.tsx — timestamped logs, error filter, copy
+  │   └── NetworkInfo.tsx — LAN URL display with reachability probing
+  └── utils/
+      ├── imageProcessor.ts — B&W trace, color posterize worker, complexity analysis
+      └── networkUtils.ts — WebRTC IP fallback + /api/network-info fetch
 ```
 
-## Known Limitations
+### Processing Status Flow
 
-- Large images are automatically scaled down to 1000px maximum dimension (`scaleToMaxDimension`)
-- Works best with high-contrast images
-- Processing may take some time depending on image complexity
+```
+idle → loading → analyzing → tracing | colorProcessing → optimizing → done
+                                                                     → error
+```
 
-## Future Improvements
-
-Potential enhancements to build upon this foundation:
-
-1. **Advanced Image Processing**:
-   - Pre-processing options (contrast, brightness adjustments)
-   - Edge detection filters to improve tracing quality
-   - Noise reduction algorithms
-
-2. **Tracing Options UI**:
-   - Adjustable parameters for Potrace (turdSize, threshold, etc.)
-   - Preview mode showing effect of different settings
-
-3. **Multi-format Support**:
-   - Output to additional vector formats (PDF, EPS)
-   - Batch processing multiple images
-
-4. **Optimization Options**:
-   - SVG path simplification controls
-   - File size optimization
-   - SVG viewBox and dimensions configuration
-
-5. **User Experience**:
-   - Savable presets for different types of images
-   - Progress indicators with more detailed status information
-   - Image history for recently converted images
+---
 
 ## Troubleshooting
 
-### Common Issues
+### Conversion hangs or times out
+- Try **Complex Image Mode** (Settings → Complex Image)
+- For very large images, the app auto-scales to 1000px — if still slow, reduce the image yourself first
+- Check **Processing Logs** (button below the preview) for specific error messages
 
-1. **No SVG Output / Conversion Hangs**
-   - Ensure you're using the canvas data URL method shown in the implementation
-   - Check that Potrace is receiving the image in the correct format (PNG data URL)
-   - Verify the image has sufficient contrast between light and dark areas
+### Poor SVG quality (B&W)
+- Lower `turdSize` (1–5) to preserve fine detail
+- Adjust `threshold` — if the image looks washed out, lower it; if too much noise, raise it
+- Try `optCurve: on` with lower `optTolerance` (0.1–0.3) for smoother curves
+- Toggle `Invert` for light-on-dark source images
 
-2. **Jimp Constructor Errors**
-   - These typically occur when raw pixel data is passed incorrectly to Potrace
-   - Always use the data URL approach as shown in the implementation
-   - Avoid using the direct Potrace constructor unless you're familiar with its internals
+### Poor SVG quality (Color Mode)
+- Try **Median** fill strategy for best overall color accuracy
+- Increase Color Steps (6–8) for more tonal range
+- **Spread** strategy works well for images with distinct light/dark zones
 
-3. **Poor Quality SVG Output**
-   - Try adjusting the `potraceParams` values for better results:
-     - Lower `turdSize` (1-3) for more details
-     - Adjust `threshold` for better black/white separation
-     - Set `optCurve: true` and lower `optTolerance` for smoother curves
+### Batch conversion — resize not working
+- Pre-resize requires the Electron desktop app with `sharp` available
+- A warning banner will appear in the batch modal if resize cannot be applied
 
-4. **Performance Issues**
-   - Large or complex images will take longer to process
-   - Consider implementing a worker thread for processing to avoid UI freezing
-   - Implement progress callbacks from Potrace for better user feedback
+### Windows security warning on first run
+- The portable executable is not code-signed — this is expected
+- Click "More info" → "Run anyway" in the Windows SmartScreen dialog
 
-### Windows Build Issues
+### Port 3001 already in use
+- Another process is using port 3001 — stop it or change the `PORT` constant in `main.js`
 
-#### Code Signing Errors
+---
 
-When building the Windows application, you may encounter code signing errors, especially if you don't have a code signing certificate. These errors can include:
+## Known Limitations
 
-```
-Cannot use 'in' operator to search for 'file' in undefined failedTask=build
-```
+- Batch conversion requires Electron (filesystem access)
+- Color mode processes one layer at a time sequentially — 8 steps on a large image can take 30–60 seconds
+- Very large or photo-realistic images work best in B&W mode; color mode is optimized for illustrations and graphics with distinct color areas
+- macOS and Linux builds are not pre-packaged — build from source with `npm run electron:build`
 
-To build without code signing:
+---
 
-1. Use the portable executable build script:
-   ```
-   npm run build:portable-exe
-   ```
+## Dependencies
 
-2. This script explicitly disables all code signing by setting the necessary environment variables.
-
-3. The built application will be available as a standalone executable in `release\` and the unpacked version in `release\win-unpacked\`.
-
-4. To create a zip file of the unpacked application:
-   ```
-   npm run create-zip
-   ```
-
-#### Running the Application After Building
-
-The application can be run directly from:
-- The portable executable `SVG-X-1.1.0-x64.exe`
-- The unpacked directory by executing `SVG-X.exe` from `release\win-unpacked\`
-
-For network access, the application will automatically start an Express server on port 3000 and will be available at:
-- `http://localhost:3000` (local access)
-- `http://[your-ip-address]:3000` (network access) 
+| Package | Role |
+|---|---|
+| `electron` ^30 | Desktop shell |
+| `react` ^18 | UI framework |
+| `potrace` ^2.1.8 | B&W vector tracing |
+| `sharp` ^0.33 | Server-side image resizing (batch pre-resize) |
+| `express` ^4.18 | Production asset server + `/api/network-info` |
+| `slugify` ^1.6 | Safe output filenames |
+| `lucide-react` ^0.344 | Icons |
+| `tailwindcss` ^3.4 | Styling |
+| `vite` + `@vitejs/plugin-react` | Build and dev server |
+| `vitest` | Unit tests |
+| `electron-builder` ^24 | Packaging |
