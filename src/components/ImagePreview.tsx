@@ -26,10 +26,16 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 };
 
-/** Parse width × height from an SVG's viewBox or width/height attributes. */
+/** Parse width × height from an SVG's viewBox or width/height attributes.
+ *  Handles both space-separated ("0 0 500 500") and comma-separated ("0,0,500,500") viewBox values. */
 function parseSvgDimensions(svgStr: string): { w: number; h: number } | null {
-  const vbMatch = svgStr.match(/viewBox="[^"]*?\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)"/);
-  if (vbMatch) return { w: Math.round(parseFloat(vbMatch[1])), h: Math.round(parseFloat(vbMatch[2])) };
+  const vbMatch = svgStr.match(/viewBox="([^"]*)"/);
+  if (vbMatch) {
+    const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+    if (parts.length >= 4 && !parts.some(isNaN)) {
+      return { w: Math.round(parts[2]), h: Math.round(parts[3]) };
+    }
+  }
   const wMatch = svgStr.match(/\bwidth="(\d+(?:\.\d+)?)"/);
   const hMatch = svgStr.match(/\bheight="(\d+(?:\.\d+)?)"/);
   if (wMatch && hMatch) return { w: Math.round(parseFloat(wMatch[1])), h: Math.round(parseFloat(hMatch[1])) };
@@ -152,10 +158,12 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                 <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-600 border-t-transparent flex-shrink-0" />
                 <span className="text-sm sm:text-base text-gray-700 font-medium">{statusLabel}</span>
               </div>
-              {progressDetails && (
-                <div className="mt-1 text-xs text-gray-500">
-                  {progressDetails}
-                  {progressPercent > 0 && <span className="ml-1 font-medium">{progressPercent}%</span>}
+              {(progressDetails || progressPercent > 0) && (
+                <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
+                  {progressDetails && <span className="truncate">{progressDetails}</span>}
+                  {progressPercent > 0 && (
+                    <span className="font-mono font-medium text-blue-600 flex-shrink-0">{progressPercent}%</span>
+                  )}
                 </div>
               )}
               <div className="mt-2 sm:mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">

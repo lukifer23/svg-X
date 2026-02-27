@@ -68,13 +68,18 @@ function App() {
   const [showElectronWarning, setShowElectronWarning] = useState(false);
   const [processingLogs, setProcessingLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
 
   // Use ref for log ID counter to survive HMR remounts without collisions
   const logIdCounter = useRef(0);
   const electronWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    setIsElectronAvailable(!!window.electronAPI);
+    const hasElectron = !!window.electronAPI;
+    setIsElectronAvailable(hasElectron);
+    if (hasElectron && window.electronAPI?.getAppVersion) {
+      window.electronAPI.getAppVersion().then(v => setAppVersion(v)).catch(() => {});
+    }
 
     const handleResize = () => setIsMobileView(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -200,7 +205,12 @@ function App() {
       <header className="max-w-5xl mx-auto mb-4 sm:mb-8 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gradient">SVG-X</h1>
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gradient">SVG-X</h1>
+              {appVersion && (
+                <span className="text-xs text-gray-400 font-mono">v{appVersion}</span>
+              )}
+            </div>
             <p className="text-sm sm:text-base text-gray-600 mt-1">Convert images to SVG with ease</p>
           </div>
 

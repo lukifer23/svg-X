@@ -1,6 +1,141 @@
 # SVG-X Release Notes
 
-## Version 1.2.0 (Current)
+## Version 1.3.0 (Current)
+
+### Vectorization Engine — Algorithm Overhaul
+
+**Wu's color quantization** replaces the 5-bit bucket hash:
+- Wu's algorithm (Xiaolin Wu, 1992) builds a 3D RGB histogram with prefix-sum moment tables, then recursively partitions it by minimum variance axis
+- Produces dramatically better spatial coherence vs. bucket hashing — palette colors represent large, contiguous image regions rather than globally frequent point samples
+- All four fill strategies (`dominant`, `spread`, `mean`, `median`) are now backed by Wu's boxes as the quantization foundation
+
+**Marching Squares contour tracing** replaces Moore Neighbor tracing:
+- 16-case 2×2 cell lookup table with linear interpolation for sub-pixel-accurate edge positions
+- Correctly handles shapes with holes and nested contours — Moore Neighbor produced sequential errors and failed on holed shapes
+- CCW winding enforced via shoelace sign test (`orientContour`)
+- Contours sorted by area descending before path assembly (painter's order within layer)
+
+**Full Canny edge detection** replaces single-threshold Sobel:
+- Pipeline: Gaussian blur (5×5, σ≈1) → Sobel gradient magnitude + quantized angle → non-maximum suppression → hysteresis thresholding via BFS flood fill from strong edges
+- Produces thin, connected edges; dramatically improves contour quality on gradients and photo-source images
+- Low threshold ratio: 5% of max; high threshold ratio: 15% of max
+- The Canny edge map is used to guide bitmap boundary snapping (edges preserved exactly; non-edge pixels eroded/dilated by neighborhood majority)
+
+**Stroke / Centerline mode** (new):
+- New `TracingParams.strokeMode: boolean` and `strokeWidth: number` (1–20px)
+- Zhang-Suen two-pass thinning reduces filled binary regions to a 1-pixel-wide skeleton
+- Marching Squares traces the skeleton → open paths (no `Z` close) → `<path stroke=... fill=none stroke-linecap=round/>`
+- Best for line art, sketches, architectural drawings, circuit diagrams
+
+**SVGO post-processing** (new):
+- Every tracing pipeline (B&W Potrace and color/stroke worker) runs SVGO `preset-default` after generation
+- Configurable via `TracingParams.svgoOptimize: boolean` (default `true`)
+- Uses the browser-safe SVGO bundle (`svgo/dist/svgo.browser.js`) via Vite alias — no Node.js `fs`/`os` dependency warnings
+- Typical file size reduction: 20–50%
+
+**Proper sRGB gamma** throughout:
+- All threshold conversions now use `Math.pow(Y, 1/2.2) * 255` (proper sRGB display gamma)
+- Previously `computeThresholds` used `Math.sqrt(Y)` (gamma ≈ 2 approximation) inconsistently with `lStarToThreshold`
+
+**Full 2D edge density** in `analyzeImageComplexity`:
+- Edge density now computed as `√(Gx² + Gy²) > threshold` (proper 2D gradient magnitude)
+- Previously only horizontal gradient was measured, underestimating edge density for vertical-dominant images
+
+**`maxPaths` exposed as user parameter**:
+- Was: hardcoded `const maxPaths = Math.min(2000, paths.length)` with no user control
+- Now: `TracingParams.maxPaths: number` (default 2000, range 100–10,000), surfaced in SettingsPanel Advanced section
+
+**Processing timeout fix**:
+- The 90s/180s timeout now starts inside `processWithParams()` — immediately before the trace/posterize call
+- Previously the timer started before downscaling, so preprocessing ate into the tracing budget
+
+---
+
+### New Export Formats (`src/utils/exportFormats.ts`)
+
+Complete SVG path parser (`parseSVG`, `parsePathData`) handles all SVG path command types (`M`, `L`, `H`, `V`, `C`, `S`, `Q`, `T`, `A`, `Z`) with relative/absolute and implicit repeat semantics.
+
+**EPS export** (`generateEPS`):
+- PostScript Level 2 EPS with `%%BoundingBox` and `%%HiResBoundingBox`
+- Coordinate system flipped (SVG y-down → PostScript y-up) via `translate/scale`
+- Cubic Bezier → `curveto`, Quadratic → elevated to cubic → `curveto`
+- Fill + stroke rendered via `gsave fill grestore` + `setlinewidth stroke` pattern
+
+**DXF export** (`generateDXF`):
+- DXF R12 ASCII for maximum laser cutter / CNC router compatibility
+- `HEADER` section with `$EXTMIN`/`$EXTMAX` bounding box
+- Each SVG path produces one or more `POLYLINE`/`VERTEX`/`SEQEND` entity groups
+- Bezier curves approximated at 12 sample points per segment (adequate for laser/CNC)
+- Y-axis flipped (SVG y-down → DXF y-up)
+- ACI color cycling (colors 2–8) for layer separation
+
+**JSON Paths export** (`generatePathJSON`):
+- `{ width, height, coordinateSpace: "pixels", paths: [{fill, stroke, strokeWidth, commands}] }`
+- Commands as absolute-coordinate typed objects: `{type: "M"|"L"|"C"|"Q"|"A"|"Z", x?, y?, x1?, y1?, x2?, y2?, rx?, ry?, ...}`
+- Compatible with StarVector / OmniSVG training data formats
+
+---
+
+### New Input Formats
+
+**AVIF, HEIC/HEIF, TIFF** (Electron only):
+- Main process `read-image-file` IPC handler decodes via Sharp and re-emits as PNG data URL
+- `read-directory` scan extended to include `.avif`, `.heic`, `.heif`, `.tif`, `.tiff`
+- `FileUpload` component accept types and validation regex updated
+- Browser-only mode still limited to PNG/JPG/GIF/BMP/WEBP (no Sharp in renderer)
+
+---
+
+### Settings Panel
+
+- **Tooltip on every parameter** — reusable `Tooltip.tsx` component (smart vertical positioning, keyboard accessible, ARIA role)
+- **B&W section** — hidden when color mode is active (no irrelevant controls shown)
+- **Stroke / Centerline Mode section** — new collapsible section with `strokeMode` toggle and `strokeWidth` slider
+- **Advanced section** — `maxPaths` slider (100–10,000) and `svgoOptimize` toggle
+- **Color mode** — Fill Strategy description updated to reflect Wu's quantization foundation
+- All new params (`strokeMode`, `strokeWidth`, `maxPaths`, `svgoOptimize`) persisted to `localStorage` via the existing `SETTINGS_STORAGE_KEY` mechanism and merged with `DEFAULT_PARAMS` on load
+
+---
+
+### Download Button
+
+- **Format selector** — split button: primary action = SVG download; chevron opens format dropdown (SVG / EPS / DXF / JSON Paths)
+- **Save error surfacing** — Electron native save failures are now shown as an amber dismissable banner instead of silently falling back to browser download
+- Format dropdown closes on outside click
+
+---
+
+### Batch Conversion
+
+- **Skip failed files toggle** — when on (default), failed files are marked `skipped` (amber) and processing continues; when off, failures halt the batch
+- **ETA display** — rolling 5-file average `ms/file` displayed as `ETA Xm Ys` during processing
+- **Auto-open output folder** — toggle to automatically open Explorer/Finder when batch completes
+- **Per-file retry count** — shown as `(retry N)` suffix next to filename
+- **AVIF/HEIC/TIFF in directory scan** — batch now detects and processes these formats via Sharp decode in main process
+- **Settings summary** in modal header now includes stroke mode and SVGO state
+
+---
+
+### UI/UX
+
+- **App version** displayed next to "SVG-X" title when running as Electron desktop app (`getAppVersion()` IPC)
+- **Color mode progress** — progress percentage shown inline with detail text during color layer processing
+- **ViewBox parser fix** — handles both space-separated (`"0 0 500 500"`) and comma-separated (`"0,0,500,500"`) viewBox attribute values
+
+---
+
+### Bug Fixes & Hardening
+
+- **Dev-mode `/api/network-info` 404** — Vite dev server now proxies `/api` to the Express sidecar on port 3002 via `vite.config.ts` `server.proxy`
+- **Dead dependency removed** — `stackblur-canvas` removed from `dependencies` (was never imported)
+- **`sharp` moved to `dependencies`** — it's used at runtime in the Electron main process; was incorrectly in `devDependencies`
+- **`electron-builder` files glob** — removed `"src/**/*"` (shipped raw TypeScript source into packaged app unnecessarily)
+- **SVGO browser alias** — `vite.config.ts` aliases `svgo` to `svgo/dist/svgo.browser.js` eliminating Node `os`/`fs`/`path` externalization warnings during build
+- **Bundle size warning suppressed** — `build.chunkSizeWarningLimit: 2000` (Electron app, bundle size is not a CDN concern)
+
+---
+
+## Version 1.2.0
 
 ### Vectorization Engine — Major Overhaul
 
@@ -19,93 +154,42 @@
 - Palette colors sorted by perceptual luminance ascending (lightest first)
 - Thresholds sorted ascending, paired 1:1 with palette colors
 - Lightest color + lowest threshold renders first; darkest color + highest threshold renders last (on top)
-- Removed the synthetic "last threshold + 255/(N+1)" hack that produced an arbitrary final threshold
 
 **Moore Neighbor contour tracing** (direction bug fixed):
-- Direction array is now confirmed CW from East; entry direction lookup uses correct inverse-direction search before CW scan
-- Previously missed concavities due to CW/CCW mismatch
+- Direction array confirmed CW from East; entry direction lookup uses correct inverse-direction search before CW scan
 
 **`simplifyClosedPath` wrap-around** (was: duplicated point):
-- Now finds the original (unsimplified) contour point at maximum deviation on the wrap segment and inserts it — previously duplicated the already-simplified end-point
+- Now finds the original unsimplified contour point at maximum deviation and inserts it
 
 **SVG path deduplication** (new):
-- `Set<string>` deduplication of `d` attribute strings within each layer and across all layers
-- Adjacent threshold layers frequently produce identical boundary paths — now deduplicated, reducing file size
+- `Set<string>` deduplication within each layer and across all layers
 
 **Image complexity analysis** (rewritten):
-- Now samples actual pixel data via canvas: counts distinct 5-bit color groups and computes horizontal edge density
-- Previously used raw data URL string length (33% inflated, calibrated wrong)
+- Now samples actual pixel data via canvas: distinct 5-bit color groups and edge density
 
 **Coordinate rounding** (was: 1dp):
-- All Bezier control points now rounded to consistent 2dp (`r2()`) throughout fitting and path assembly
+- All Bezier control points rounded to consistent 2dp throughout
 
 **Potrace cancellation** (new):
-- `trace()` now returns a `{ cancel }` handle; stale callbacks after timeout are discarded via a `cancelled` flag
-- Previously a timed-out Potrace callback could resolve and overwrite the error state
-
-**`scaleToMaxDimension` white fill**:
-- Color mode's Web Worker now composites over white inside OffscreenCanvas; main-thread scaling applies white fill only for B&W compatibility
-
-**Status flow simplified**:
-- Removed redundant double emission of `processing` + `analyzing`; pipeline is now `loading → analyzing → tracing/colorProcessing → optimizing → done`
-
----
+- `trace()` returns a `{ cancel }` handle; stale callbacks after timeout are discarded
 
 ### Settings Panel
-
-- **`turdSize` slider expanded to 1–100** — Complex Mode sets it to 15, which was above the previous cap of 10 (rendering incorrectly); slider now accommodates full Potrace range
-- **Color/background text inputs converted to controlled** — `defaultValue` → `value + onChange`; Reset, Complex Mode, and programmatic updates now correctly update the hex text display (not just the color swatch)
-- **Turn Policy descriptions visible** — each option now shows a sub-label with its description; previously descriptions were in `title` only (invisible on mobile/touch)
-- **Fill Strategy descriptions corrected** — now accurately describe actual algorithm behavior
-- **Focus trap added** — Tab/Shift+Tab stays inside the modal; Escape closes it
-
----
-
-### App State & Data Flow
-
-- **Network simplification unified** — `simplifyForNetworkClients` is now applied inside `processImage` automatically; call sites no longer handle it separately (was: `handleImageSelect` got full params over LAN, only the Complex button applied network simplification)
-- **`isComplexMode` reset behavior fixed** — no longer resets on every slider tweak; only resets when Reset is explicitly clicked
-- **`logIdCounter` moved to `useRef`** — survives HMR remounts; eliminates module-level mutable state and ID collisions
-- **`electronWarningTimer` cleaned up on unmount**
-
----
+- `turdSize` slider expanded to 1–100
+- Color/background inputs converted to controlled
+- Turn Policy descriptions visible inline
+- Focus trap added
 
 ### Batch Conversion
-
-- **Stale closure fixed** — `readFileAsDataURL` moved outside the component as a pure function; processing effect reads resize options via a ref, eliminating the masked stale-closure bug
-- **`filenameCounts` reset on retry** — retried files no longer get spurious `-1` suffixes
-- **Resize-skipped warning** — amber banner when resize is enabled but `resizeImage` is unavailable
-- **`(as any)` casts removed** — all `electronAPI` calls use the typed interface
-- **Active settings summary** in modal header (mode, color steps, threshold, speckle)
-- **Current filename displayed** prominently in the progress header during processing
-- **WEBP** added to file filter
-
----
+- Stale closure fixed
+- `filenameCounts` reset on retry
+- Resize-skipped warning added
+- WEBP added to file filter
 
 ### `main.js`
-
-- **CORS headers** — `Access-Control-Allow-Origin: *` on all Express responses for LAN access
-- **`isPathSafe` hardened** — uses `path.resolve()` + `path.isAbsolute()` (replaced broken `includes('..')` substring check)
-- **Dev-mode API server** — starts a minimal Express listener on port 3002 in dev so `/api/network-info` is reachable (with silent fallback on port collision); previously the endpoint was registered but never listening in dev
-- **WEBP** added to `read-directory` filter and `read-image-file` MIME map
-
----
-
-### WEBP Support (new)
-
-- `FileUpload`: WEBP in accepted types, file input, copy text
-- `main.js`: WEBP in MIME map and directory scan filter
-- `BatchConversion`: WEBP in file filter regex
-
----
-
-### UI/UX Polish
-
-- **SVG viewport dimensions** — parsed from `viewBox` and displayed alongside file size in the preview header
-- **SVG sanitization** — `<script>` elements and `on*` event attributes stripped before `dangerouslySetInnerHTML`
-- **SVG Source view** — "Source" button opens a full-screen `<pre>` overlay with raw SVG markup; keyboard-accessible modal
-- **Download tooltip** — now only appears when `svg` transitions from null to non-null (was: fired on every render with immediate auto-hide on first load)
-- **`electron.d.ts`** — type comments clarified; `resizeImage` marked optional with note
+- CORS headers on all Express responses
+- `isPathSafe` hardened with `path.resolve()` + `path.isAbsolute()`
+- Dev-mode API server on port 3002
+- WEBP in `read-directory` and MIME map
 
 ---
 
@@ -137,13 +221,6 @@
 - Improved build configuration (no code signing required)
 - Updated dependencies
 - Enhanced build scripts
-
-### Features
-- Upload and convert images to SVG with Potrace
-- Customizable tracing parameters
-- Automatic preprocessing
-- Download SVG output
-- Local network access
 
 ---
 

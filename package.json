@@ -1,9 +1,9 @@
 {
   "name": "svg-x",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.3.0",
   "main": "main.js",
-  "description": "A desktop application for converting images to SVG with customizable tracing options",
+  "description": "Desktop SVG vectorizer: Wu quantization, Canny edges, Marching Squares, Zhang-Suen stroke mode, EPS/DXF/JSON export",
   "author": "Luke S",
   "scripts": {
     "dev": "vite",
@@ -31,14 +31,15 @@
     "potrace": "^2.1.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "^0.33.5",
     "slugify": "^1.6.6",
-    "stackblur-canvas": "^2.7.0"
+    "svgo": "^3.3.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.4.18",
     "canvas": "^2.11.2",
     "concurrently": "^8.2.2",
@@ -51,10 +52,10 @@
     "globals": "^15.9.0",
     "jsdom": "^24.0.0",
     "postcss": "^8.4.35",
-    "sharp": "^0.33.5",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
+    "vite": "^7.3.1",
     "vitest": "^1.6.1",
     "wait-on": "^7.2.0"
   },
@@ -66,7 +67,6 @@
       "main.js",
       "preload.js",
       "icon.png",
-      "src/**/*",
       "package.json"
     ],
     "extraResources": [

@@ -11,9 +11,13 @@ const ACCEPTED_TYPES = new Set([
   'image/jpeg',
   'image/gif',
   'image/bmp',
-  'image/webp'
+  'image/webp',
+  'image/avif',
+  'image/heic',
+  'image/heif',
+  'image/tiff',
 ]);
-const ACCEPTED_EXTENSIONS = /\.(png|jpe?g|gif|bmp|webp)$/i;
+const ACCEPTED_EXTENSIONS = /\.(png|jpe?g|gif|bmp|webp|avif|heic|heif|tiff?)$/i;
 const MAX_SIZE_MB = 50;
 
 const FileUpload: React.FC<FileUploadProps> = ({ onImageSelect, isMobile = false }) => {
@@ -28,7 +32,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImageSelect, isMobile = false
     setSizeWarning(null);
 
     if (!ACCEPTED_TYPES.has(file.type) && !ACCEPTED_EXTENSIONS.test(file.name)) {
-      setError('Unsupported file type. Please select a PNG, JPG, GIF, BMP, or WEBP image.');
+      setError('Unsupported file type. Please select a PNG, JPG, GIF, BMP, WEBP, AVIF, HEIC, or TIFF image.');
       return;
     }
 
@@ -102,7 +106,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImageSelect, isMobile = false
         <input
           type="file"
           className="hidden"
-          accept="image/png,image/jpeg,image/gif,image/bmp,image/webp"
+          accept="image/png,image/jpeg,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif,image/tiff,.tif,.tiff,.avif,.heic,.heif"
           onChange={handleFileChange}
           ref={fileInputRef}
           aria-hidden="true"
@@ -124,7 +128,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onImageSelect, isMobile = false
             Upload Image
           </button>
           <p className="mt-3 sm:mt-4 text-xs text-gray-400">
-            Supports PNG, JPG, GIF, BMP, and WEBP — up to {MAX_SIZE_MB} MB
+            Supports PNG, JPG, GIF, BMP, WEBP, AVIF, HEIC, TIFF — up to {MAX_SIZE_MB} MB
           </p>
         </div>
       </div>

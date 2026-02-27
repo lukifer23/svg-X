@@ -129,9 +129,8 @@ function setupIPCHandlers() {
   ipcMain.handle('read-directory', async (_event, dirPath) => {
     try {
       const files = fs.readdirSync(dirPath);
-      const imageFiles = files.filter(file =>
-        ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'].includes(path.extname(file).toLowerCase())
-      );
+      const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.avif', '.heic', '.heif', '.tif', '.tiff']);
+      const imageFiles = files.filter(file => IMAGE_EXTS.has(path.extname(file).toLowerCase()));
       return imageFiles.map(file => path.join(dirPath, file));
     } catch (error) {
       return { error: error.message };
@@ -154,18 +153,26 @@ function setupIPCHandlers() {
     const resolvedPath = path.resolve(filePath);
     if (!path.isAbsolute(resolvedPath)) return { error: 'Invalid file path' };
     try {
-      const data = await fs.promises.readFile(resolvedPath);
       const ext = path.extname(resolvedPath).toLowerCase().substring(1);
-      const mimeMap = {
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        gif: 'image/gif',
-        bmp: 'image/bmp',
-        webp: 'image/webp'
-      };
-      const mime = mimeMap[ext] || 'application/octet-stream';
-      return `data:${mime};base64,${data.toString('base64')}`;
+      // Formats natively supported in browsers — pass through as-is
+      const NATIVE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp']);
+      // Formats requiring Sharp decode → PNG conversion for renderer compatibility
+      const SHARP_EXTS  = new Set(['avif', 'heic', 'heif', 'tif', 'tiff']);
+
+      if (NATIVE_EXTS.has(ext)) {
+        const data = await fs.promises.readFile(resolvedPath);
+        const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp' };
+        const mime = mimeMap[ext] || 'image/png';
+        return `data:${mime};base64,${data.toString('base64')}`;
+      }
+
+      if (SHARP_EXTS.has(ext)) {
+        // Decode via Sharp and re-emit as PNG so the renderer can handle it uniformly
+        const pngBuffer = await sharp(resolvedPath).png().toBuffer();
+        return `data:image/png;base64,${pngBuffer.toString('base64')}`;
+      }
+
+      return { error: `Unsupported file format: .${ext}` };
     } catch (error) {
       return { error: error.message };
     }
@@ -192,10 +199,18 @@ function setupIPCHandlers() {
     }
   });
 
-  ipcMain.handle('show-save-dialog', async (_event, { defaultName } = {}) => {
+  ipcMain.handle('show-save-dialog', async (_event, { defaultName, format } = {}) => {
+    const filterMap = {
+      svg:  [{ name: 'SVG Files',        extensions: ['svg']  }],
+      eps:  [{ name: 'EPS Files',        extensions: ['eps']  }],
+      dxf:  [{ name: 'DXF Files',        extensions: ['dxf']  }],
+      json: [{ name: 'JSON Path Files',  extensions: ['json'] }],
+    };
+    const ext = format || 'svg';
+    const base = (defaultName || 'image').replace(/\.[^/.]+$/, '');
     const result = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: defaultName || 'image.svg',
-      filters: [{ name: 'SVG Files', extensions: ['svg'] }]
+      defaultPath: `${base}.${ext}`,
+      filters: filterMap[ext] || filterMap.svg,
     });
     return result.canceled ? null : result.filePath;
   });

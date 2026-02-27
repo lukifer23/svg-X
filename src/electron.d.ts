@@ -23,8 +23,8 @@ declare global {
         maintainAspectRatio?: boolean;
       }) => Promise<string | { error: string }>;
 
-      // Native save dialog
-      showSaveDialog?: (options: { defaultName?: string }) => Promise<string | null>;
+      // Native save dialog — format controls file filter and default extension
+      showSaveDialog?: (options: { defaultName?: string; format?: 'svg' | 'eps' | 'dxf' | 'json' }) => Promise<string | null>;
 
       // Shell utilities
       openOutputDirectory?: (dirPath: string) => Promise<void>;

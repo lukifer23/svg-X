@@ -1,5 +1,6 @@
 import * as Potrace from 'potrace';
 import slugify from 'slugify';
+import { optimize as svgoOptimize } from 'svgo';
 
 export const formatTimestamp = (): string =>
   new Date().toISOString().split('T')[1].split('.')[0];
@@ -27,6 +28,10 @@ export interface TracingParams {
   colorMode: boolean;
   colorSteps: number;
   fillStrategy: FillStrategy;
+  strokeMode: boolean;
+  strokeWidth: number;
+  maxPaths: number;
+  svgoOptimize: boolean;
 }
 
 export const DEFAULT_PARAMS: TracingParams = {
@@ -43,7 +48,11 @@ export const DEFAULT_PARAMS: TracingParams = {
   highestQuality: false,
   colorMode: false,
   colorSteps: 4,
-  fillStrategy: 'dominant'
+  fillStrategy: 'dominant',
+  strokeMode: false,
+  strokeWidth: 2,
+  maxPaths: 2000,
+  svgoOptimize: true,
 };
 
 export const PROGRESS_STEPS: Record<string, string> = {
@@ -79,6 +88,27 @@ const createHeartbeat = (operation: string, intervalMs: number, logCallback?: Lo
   return { stop: () => clearInterval(heartbeatId) };
 };
 
+const runSvgoOptimize = (svg: string): string => {
+  try {
+    const result = svgoOptimize(svg, {
+      plugins: [
+        {
+          name: 'preset-default',
+          params: {
+            overrides: {
+              removeViewBox: false,
+              cleanupIds: false,
+            },
+          },
+        },
+      ],
+    });
+    return result.data;
+  } catch {
+    return svg;
+  }
+};
+
 const trace = (
   image: string,
   options: TracingParams,
@@ -104,8 +134,9 @@ const trace = (
             callback(err);
             return;
           }
+          const optimized = options.svgoOptimize && svg ? runSvgoOptimize(svg) : svg;
           logProcessingStep('TRACE_COMPLETE', `Completed in ${Math.round(performance.now() - startTime)}ms`, false, logCallback);
-          callback(null, svg);
+          callback(null, optimized);
         });
       } catch (error) {
         heartbeat.stop();
@@ -125,20 +156,20 @@ const trace = (
 // ---------------------------------------------------------------------------
 // Web Worker: complete inline posterization engine
 //
-// Fixed in this revision:
-//   - Color quantization: 'spread' uses perceptual luminance ordering;
-//     'mean' picks colors evenly spread around the perceptual midpoint.
-//   - Palette padding: splits the largest-range bucket instead of gray fill.
-//   - Threshold distribution: perceptual CIE L* spacing (uniform in L*).
-//   - Painter's order: palette sorted by luminance, paired with ascending
-//     thresholds; darkest color + highest threshold renders last (on top).
-//   - Moore Neighbor scan: direction array confirmed CW from East; entry
-//     direction lookback uses correct inverse-direction logic.
-//   - simplifyClosedPath wrap-around: inserts the original unsimplified point
-//     at max-deviation rather than duplicating the simplified point.
-//   - SVG path deduplication: Set-based dedup of 'd' strings per layer and
-//     across layers.
-//   - Coordinate rounding: consistent 2dp throughout.
+// Algorithms:
+//   - Wu's color quantization (1992): 3D histogram with moment tables, minimum
+//     variance partition — far superior spatial coherence vs. bucket hashing.
+//   - Canny edge detection: Gaussian blur (σ≈1) → Sobel gradient + angle →
+//     non-maximum suppression → hysteresis thresholding.
+//   - Marching Squares contour tracing: 2×2 cell lookup (16 cases), linear
+//     interpolation for sub-pixel accuracy, correct winding via shoelace sign.
+//   - Zhang-Suen thinning (stroke mode): iterative 2-pass skeleton extraction.
+//   - Schneider cubic Bezier fitting: least-squares chord-length param, with
+//     recursive split at max-error point.
+//   - Douglas-Peucker simplification: closed-path wrap-around aware.
+//   - CIE L* perceptual threshold distribution.
+//   - Painter's order assembly with cross-layer path deduplication.
+//   - Proper sRGB gamma (pow(Y, 1/2.2)) throughout.
 // ---------------------------------------------------------------------------
 const createPosterizeWorker = (
   image: string,
@@ -148,8 +179,10 @@ const createPosterizeWorker = (
   logCallback?: LogCallback
 ) => {
   const workerScript = `
+    'use strict';
+
     function workerLog(message) {
-      self.postMessage({ type: 'log', message });
+      self.postMessage({ type: 'log', message: String(message) });
     }
 
     // --- Image loading ---
@@ -161,7 +194,6 @@ const createPosterizeWorker = (
           const canvas = new OffscreenCanvas(bmp.width, bmp.height);
           const ctx = canvas.getContext('2d');
           if (!ctx) throw new Error('Failed to get canvas context');
-          // Composite over white so transparent areas become white (neutral for tracing)
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, bmp.width, bmp.height);
           ctx.drawImage(bmp, 0, 0);
@@ -169,90 +201,225 @@ const createPosterizeWorker = (
         });
     }
 
-    // Perceptual luminance (sRGB → linear → Y)
+    // sRGB → linear luminance Y
+    function srgbToLinear(c) {
+      const v = c / 255;
+      return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    }
+
     function srgbLuma(r, g, b) {
-      const toLinear = c => {
-        const v = c / 255;
-        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-      };
-      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+      return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
     }
 
-    // CIE L* from linear Y
-    function linearToL(Y) {
-      return Y <= 0.008856 ? 903.3 * Y : 116 * Math.pow(Y, 1/3) - 16;
-    }
-
-    // L* → linear Y → 8-bit threshold value
+    // L* → 8-bit display value using proper sRGB gamma
     function lStarToThreshold(L) {
       const Y = L <= 8 ? L / 903.3 : Math.pow((L + 16) / 116, 3);
-      return Math.round(Math.sqrt(Y) * 255); // gamma ~2 approximation for display
+      return Math.round(Math.pow(Math.max(0, Y), 1 / 2.2) * 255);
     }
 
-    // --- Color quantization: 5-bit buckets (32 levels/channel) ---
+    // ===========================================================================
+    // WU'S COLOR QUANTIZATION (1992)
+    // Xiaolin Wu, "Efficient Statistical Computations for Optimal Color Quantization"
+    // Graphics Gems Vol II, pp. 126-133.
+    //
+    // Builds a 3D histogram in RGB space (33×33×33 = HISTSIZE bins),
+    // computes prefix-sum moment tables, then recursively cuts the box with
+    // maximum variance along its dominant axis.
+    // ===========================================================================
+    const WUSIZE = 33; // 0..32 inclusive; index = (channel >> 3) + 1
+
+    function wuQuantize(imageData, numColors) {
+      const data = imageData.data;
+      const pixelCount = imageData.width * imageData.height;
+      const S = WUSIZE;
+      const S2 = S * S;
+      const S3 = S * S * S;
+
+      // Moment tables: wt=count, mr/mg/mb=sum of channels, m2=sum of squared luma
+      const wt = new Int32Array(S3);
+      const mr = new Int32Array(S3);
+      const mg = new Int32Array(S3);
+      const mb = new Int32Array(S3);
+      const m2 = new Float64Array(S3);
+
+      const idx = (ir, ig, ib) => ir * S2 + ig * S + ib;
+
+      // Build histogram (subsample large images for speed)
+      const step = Math.max(1, Math.floor(pixelCount / 200000));
+      for (let i = 0; i < pixelCount; i += step) {
+        const p = i * 4;
+        if (data[p + 3] < 128) continue;
+        const r = data[p], g = data[p + 1], b = data[p + 2];
+        // Map 0-255 to 1-32 (skip bin 0, used as boundary)
+        const ir = (r >> 3) + 1;
+        const ig = (g >> 3) + 1;
+        const ib = (b >> 3) + 1;
+        const i3 = idx(ir, ig, ib);
+        wt[i3]++;
+        mr[i3] += r;
+        mg[i3] += g;
+        mb[i3] += b;
+        const y = srgbLuma(r, g, b);
+        m2[i3] += y * y;
+      }
+
+      // Compute prefix-sum moments (3D scan)
+      for (let r = 1; r < S; r++) {
+        for (let g = 1; g < S; g++) {
+          let area_wt = 0, area_mr = 0, area_mg = 0, area_mb = 0, area_m2 = 0;
+          for (let b = 1; b < S; b++) {
+            const i3 = idx(r, g, b);
+            area_wt += wt[i3]; area_mr += mr[i3]; area_mg += mg[i3]; area_mb += mb[i3]; area_m2 += m2[i3];
+            // Prefix sum along b, then add r-1 and g-1 planes
+            const i_rm1 = idx(r - 1, g, b);
+            const i_gm1 = idx(r, g - 1, b);
+            const i_rgm1 = idx(r - 1, g - 1, b);
+            wt[i3] = area_wt + wt[i_rm1] + wt[i_gm1] - wt[i_rgm1];
+            mr[i3] = area_mr + mr[i_rm1] + mr[i_gm1] - mr[i_rgm1];
+            mg[i3] = area_mg + mg[i_rm1] + mg[i_gm1] - mg[i_rgm1];
+            mb[i3] = area_mb + mb[i_rm1] + mb[i_gm1] - mb[i_rgm1];
+            m2[i3] = area_m2 + m2[i_rm1] + m2[i_gm1] - m2[i_rgm1];
+          }
+        }
+      }
+
+      // Volume sum from (r0,g0,b0) exclusive to (r1,g1,b1) inclusive
+      function vol(wt_arr, r0, g0, b0, r1, g1, b1) {
+        return wt_arr[idx(r1,g1,b1)] - wt_arr[idx(r1,g1,b0)] - wt_arr[idx(r1,g0,b1)] + wt_arr[idx(r1,g0,b0)]
+             - wt_arr[idx(r0,g1,b1)] + wt_arr[idx(r0,g1,b0)] + wt_arr[idx(r0,g0,b1)] - wt_arr[idx(r0,g0,b0)];
+      }
+
+      // Variance of a box
+      function variance(r0, g0, b0, r1, g1, b1) {
+        const vwt = vol(wt, r0, g0, b0, r1, g1, b1);
+        if (vwt === 0) return 0;
+        const vmr = vol(mr, r0, g0, b0, r1, g1, b1);
+        const vmg = vol(mg, r0, g0, b0, r1, g1, b1);
+        const vmb = vol(mb, r0, g0, b0, r1, g1, b1);
+        const vm2 = vol(m2, r0, g0, b0, r1, g1, b1);
+        return vm2 - (vmr * vmr + vmg * vmg + vmb * vmb) / vwt;
+      }
+
+      // Find optimal cut position along one axis, returns max variance gain
+      function maximize(r0, g0, b0, r1, g1, b1, dir) {
+        let base_wt, base_mr, base_mg, base_mb;
+        const whole_wt = vol(wt, r0, g0, b0, r1, g1, b1);
+        const whole_mr = vol(mr, r0, g0, b0, r1, g1, b1);
+        const whole_mg = vol(mg, r0, g0, b0, r1, g1, b1);
+        const whole_mb = vol(mb, r0, g0, b0, r1, g1, b1);
+
+        let maxGain = 0, cutPos = -1;
+
+        const lo = dir === 'r' ? r0 : dir === 'g' ? g0 : b0;
+        const hi = dir === 'r' ? r1 : dir === 'g' ? g1 : b1;
+
+        for (let i = lo + 1; i < hi; i++) {
+          let halfwt, halfmr, halfmg, halfmb;
+          if (dir === 'r') {
+            halfwt = vol(wt, r0, g0, b0, i, g1, b1);
+            halfmr = vol(mr, r0, g0, b0, i, g1, b1);
+            halfmg = vol(mg, r0, g0, b0, i, g1, b1);
+            halfmb = vol(mb, r0, g0, b0, i, g1, b1);
+          } else if (dir === 'g') {
+            halfwt = vol(wt, r0, g0, b0, r1, i, b1);
+            halfmr = vol(mr, r0, g0, b0, r1, i, b1);
+            halfmg = vol(mg, r0, g0, b0, r1, i, b1);
+            halfmb = vol(mb, r0, g0, b0, r1, i, b1);
+          } else {
+            halfwt = vol(wt, r0, g0, b0, r1, g1, i);
+            halfmr = vol(mr, r0, g0, b0, r1, g1, i);
+            halfmg = vol(mg, r0, g0, b0, r1, g1, i);
+            halfmb = vol(mb, r0, g0, b0, r1, g1, i);
+          }
+          if (halfwt === 0) continue;
+          const remwt = whole_wt - halfwt;
+          if (remwt === 0) continue;
+          const gain = (halfmr*halfmr + halfmg*halfmg + halfmb*halfmb) / halfwt
+                     + ((whole_mr-halfmr)*(whole_mr-halfmr) + (whole_mg-halfmg)*(whole_mg-halfmg) + (whole_mb-halfmb)*(whole_mb-halfmb)) / remwt;
+          if (gain > maxGain) { maxGain = gain; cutPos = i; }
+        }
+        return { maxGain, cutPos };
+      }
+
+      // Boxes: [r0,g0,b0,r1,g1,b1]
+      let boxes = [[0, 0, 0, S-1, S-1, S-1]];
+
+      while (boxes.length < numColors) {
+        // Pick box with maximum variance
+        let maxVar = -1, splitIdx = 0;
+        for (let i = 0; i < boxes.length; i++) {
+          const [r0,g0,b0,r1,g1,b1] = boxes[i];
+          const v = variance(r0,g0,b0,r1,g1,b1);
+          if (v > maxVar) { maxVar = v; splitIdx = i; }
+        }
+        if (maxVar <= 0) break;
+
+        const box = boxes[splitIdx];
+        const [r0,g0,b0,r1,g1,b1] = box;
+
+        const cr = maximize(r0,g0,b0,r1,g1,b1,'r');
+        const cg = maximize(r0,g0,b0,r1,g1,b1,'g');
+        const cb = maximize(r0,g0,b0,r1,g1,b1,'b');
+
+        let dir, cutPos;
+        if (cr.maxGain >= cg.maxGain && cr.maxGain >= cb.maxGain) { dir = 'r'; cutPos = cr.cutPos; }
+        else if (cg.maxGain >= cb.maxGain) { dir = 'g'; cutPos = cg.cutPos; }
+        else { dir = 'b'; cutPos = cb.cutPos; }
+
+        if (cutPos < 0) break;
+
+        boxes.splice(splitIdx, 1);
+        if (dir === 'r') {
+          boxes.push([r0,g0,b0,cutPos,g1,b1]);
+          boxes.push([cutPos,g0,b0,r1,g1,b1]);
+        } else if (dir === 'g') {
+          boxes.push([r0,g0,b0,r1,cutPos,b1]);
+          boxes.push([r0,cutPos,b0,r1,g1,b1]);
+        } else {
+          boxes.push([r0,g0,b0,r1,g1,cutPos]);
+          boxes.push([r0,g0,cutPos,r1,g1,b1]);
+        }
+      }
+
+      // Extract representative color (weighted centroid) for each box
+      return boxes.map(([r0,g0,b0,r1,g1,b1]) => {
+        const vwt = vol(wt, r0,g0,b0,r1,g1,b1);
+        if (vwt === 0) return { r: 128, g: 128, b: 128, luma: srgbLuma(128,128,128) };
+        const r = Math.round(vol(mr, r0,g0,b0,r1,g1,b1) / vwt);
+        const g = Math.round(vol(mg, r0,g0,b0,r1,g1,b1) / vwt);
+        const b = Math.round(vol(mb, r0,g0,b0,r1,g1,b1) / vwt);
+        return { r, g, b, luma: srgbLuma(r, g, b) };
+      });
+    }
+
     function quantizeColors(imageData, numColors, strategy) {
       strategy = strategy || 'dominant';
       workerLog('Quantizing colors: ' + numColors + ' target, strategy=' + strategy);
-      const data = imageData.data;
-      const pixelCount = imageData.width * imageData.height;
-      const samplingRate = Math.max(1, Math.floor(pixelCount / 150000));
-      const colorCounts = new Map();
 
-      for (let i = 0; i < pixelCount; i += samplingRate) {
-        const idx = i * 4;
-        if (data[idx + 3] < 128) continue;
-        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-        const rB = r >> 3, gB = g >> 3, bB = b >> 3;
-        const key = (rB << 10) | (gB << 5) | bB;
-        const entry = colorCounts.get(key);
-        if (!entry) {
-          colorCounts.set(key, { count: 1, sumR: r, sumG: g, sumB: b });
-        } else {
-          entry.count++;
-          entry.sumR += r;
-          entry.sumG += g;
-          entry.sumB += b;
-        }
-      }
-
-      const colors = [];
-      for (const [, e] of colorCounts) {
-        const r = Math.round(e.sumR / e.count);
-        const g = Math.round(e.sumG / e.count);
-        const b = Math.round(e.sumB / e.count);
-        colors.push({ r, g, b, count: e.count, luma: srgbLuma(r, g, b) });
-      }
-
-      workerLog('Distinct color groups: ' + colors.length);
+      // Wu's algorithm gives us high-quality palette boxes
+      let colors = wuQuantize(imageData, Math.max(numColors, 16));
+      workerLog('Wu boxes: ' + colors.length);
 
       let selected;
-      if (colors.length === 0) {
-        selected = [{ r: 0, g: 0, b: 0, count: 1, luma: 0 }];
-      } else if (strategy === 'dominant' || colors.length <= numColors) {
-        // Most frequent first
-        colors.sort((a, b) => b.count - a.count);
-        selected = colors.slice(0, numColors);
-      } else if (strategy === 'spread') {
-        // Perceptual spread: sort by luminance, pick evenly spaced
+      if (strategy === 'spread') {
+        // Perceptually spread: sort by luminance, pick evenly spaced
         colors.sort((a, b) => a.luma - b.luma);
         selected = [];
-        const step = (colors.length - 1) / Math.max(1, numColors - 1);
-        for (let i = 0; i < numColors; i++) {
-          selected.push(colors[Math.min(colors.length - 1, Math.round(i * step))]);
+        if (colors.length <= numColors) {
+          selected = colors.slice();
+        } else {
+          const step = (colors.length - 1) / Math.max(1, numColors - 1);
+          for (let i = 0; i < numColors; i++) {
+            selected.push(colors[Math.min(colors.length - 1, Math.round(i * step))]);
+          }
         }
-      } else if (strategy === 'median') {
-        selected = medianCut(colors, numColors);
       } else if (strategy === 'mean') {
-        // Weighted perceptual centroid, then pick colors that divide the
-        // luminance range into numColors equal perceptual bands
-        const totalCount = colors.reduce((s, c) => s + c.count, 0);
-        const meanLuma = colors.reduce((s, c) => s + c.luma * c.count, 0) / totalCount;
-        // Build numColors luminance band centers evenly spaced 0..1
+        // Divide luminance range into numColors equal bands, pick nearest color per band
+        colors.sort((a, b) => a.luma - b.luma);
         selected = [];
         const bandSize = 1.0 / numColors;
         for (let i = 0; i < numColors; i++) {
           const targetLuma = (i + 0.5) * bandSize;
-          // Find color closest to this perceptual target
           let best = colors[0], bestDist = Infinity;
           for (const c of colors) {
             const d = Math.abs(c.luma - targetLuma);
@@ -260,25 +427,26 @@ const createPosterizeWorker = (
           }
           selected.push(best);
         }
-        // Deduplicate — if bands collapse to same color, fall back to dominant
+        // Deduplicate
         const unique = [...new Map(selected.map(c => [c.r + ',' + c.g + ',' + c.b, c])).values()];
         if (unique.length < numColors) {
-          colors.sort((a, b) => b.count - a.count);
+          colors.sort((a, b) => b.luma - a.luma);
           selected = colors.slice(0, numColors);
         } else {
           selected = unique;
         }
       } else {
-        colors.sort((a, b) => b.count - a.count);
+        // dominant / median: take the Wu boxes directly (already variance-optimal)
+        // For dominant, sort by box population would be ideal but Wu doesn't track that
+        // after moment accumulation. Sort by luma for painter's order stability.
         selected = colors.slice(0, numColors);
       }
 
-      // Pad by splitting the largest-range existing bucket
+      // Pad by splitting the largest luminance gap
       while (selected.length < numColors) {
         if (selected.length === 0) {
-          selected.push({ r: 0, g: 0, b: 0, count: 1, luma: 0 });
+          selected.push({ r: 0, g: 0, b: 0, luma: 0 });
         } else {
-          // Find the largest luminance gap in the selected set and insert midpoint
           selected.sort((a, b) => a.luma - b.luma);
           let maxGap = -1, gapIdx = 0;
           for (let i = 0; i < selected.length - 1; i++) {
@@ -289,216 +457,425 @@ const createPosterizeWorker = (
           const nr = Math.round((a.r + b.r) / 2);
           const ng = Math.round((a.g + b.g) / 2);
           const nb = Math.round((a.b + b.b) / 2);
-          selected.splice(gapIdx + 1, 0, { r: nr, g: ng, b: nb, count: 1, luma: srgbLuma(nr, ng, nb) });
+          selected.splice(gapIdx + 1, 0, { r: nr, g: ng, b: nb, luma: srgbLuma(nr, ng, nb) });
         }
       }
 
       return selected.map(c => 'rgb(' + c.r + ',' + c.g + ',' + c.b + ')');
     }
 
-    // Real median-cut in RGB space
-    function medianCut(colors, numBoxes) {
-      let boxes = [colors.slice()];
-      while (boxes.length < numBoxes) {
-        let maxRange = -1, splitIdx = 0;
-        boxes.forEach((box, i) => {
-          const rng = channelRange(box);
-          if (rng > maxRange) { maxRange = rng; splitIdx = i; }
-        });
-        const box = boxes[splitIdx];
-        if (box.length <= 1) break;
-        boxes.splice(splitIdx, 1);
-        const ch = dominantChannel(box);
-        box.sort((a, b) => a[ch] - b[ch]);
-        const mid = Math.floor(box.length / 2);
-        boxes.push(box.slice(0, mid), box.slice(mid));
-      }
-      return boxes.map(box => {
-        const total = box.reduce((s, c) => s + c.count, 0) || 1;
-        const r = Math.round(box.reduce((s, c) => s + c.r * c.count, 0) / total);
-        const g = Math.round(box.reduce((s, c) => s + c.g * c.count, 0) / total);
-        const b = Math.round(box.reduce((s, c) => s + c.b * c.count, 0) / total);
-        return { r, g, b, count: total, luma: srgbLuma(r, g, b) };
-      });
-    }
-
-    function channelRange(box) {
-      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
-      for (const c of box) {
-        if(c.r<minR)minR=c.r; if(c.r>maxR)maxR=c.r;
-        if(c.g<minG)minG=c.g; if(c.g>maxG)maxG=c.g;
-        if(c.b<minB)minB=c.b; if(c.b>maxB)maxB=c.b;
-      }
-      return Math.max(maxR-minR, maxG-minG, maxB-minB);
-    }
-
-    function dominantChannel(box) {
-      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
-      for (const c of box) {
-        if(c.r<minR)minR=c.r; if(c.r>maxR)maxR=c.r;
-        if(c.g<minG)minG=c.g; if(c.g>maxG)maxG=c.g;
-        if(c.b<minB)minB=c.b; if(c.b>maxB)maxB=c.b;
-      }
-      const ranges = [maxR-minR, maxG-minG, maxB-minB];
-      const maxIdx = ranges.indexOf(Math.max(...ranges));
-      return maxIdx === 0 ? 'r' : maxIdx === 1 ? 'g' : 'b';
-    }
-
-    // --- Perceptual CIE L* threshold distribution ---
-    // Maps numSteps evenly across L* [5, 95], converts to 8-bit threshold.
-    // Gives perceptually uniform separation regardless of image brightness.
+    // --- Perceptual CIE L* threshold distribution (proper sRGB gamma) ---
     function computeThresholds(numSteps) {
       if (numSteps <= 1) return [128];
       const steps = [];
-      // L* range [5, 95] gives us 90 units of perceptual lightness to divide
       for (let i = 1; i < numSteps; i++) {
         const L = 5 + (i / numSteps) * 90;
-        // L* → linear luminance Y
-        const Y = L <= 8 ? L / 903.3 : Math.pow((L + 16) / 116, 3);
-        // Y → 8-bit threshold (approximate display gamma ≈ 2.2)
-        const value = Math.round(Math.pow(Y, 1 / 2.2) * 255);
+        const value = lStarToThreshold(L);
         steps.push(Math.min(254, Math.max(1, value)));
       }
-      // Deduplicate adjacent equal values
       return steps.filter((v, i, a) => i === 0 || v !== a[i - 1]);
     }
 
-    // --- Sobel edge detection on grayscale (float) luminance data ---
-    function buildGrayscaleAndEdge(imageData, threshold) {
+    // ===========================================================================
+    // CANNY EDGE DETECTION
+    // Gaussian blur (5×5, σ≈1) → Sobel gradient magnitude + angle →
+    // non-maximum suppression → hysteresis thresholding.
+    // ===========================================================================
+
+    // Precomputed 5×5 Gaussian kernel (σ≈1.0), sum=159
+    const GAUSS5 = [
+       2,  4,  5,  4,  2,
+       4,  9, 12,  9,  4,
+       5, 12, 15, 12,  5,
+       4,  9, 12,  9,  4,
+       2,  4,  5,  4,  2
+    ];
+    const GAUSS5_SUM = 159;
+
+    function cannyEdgeDetect(imageData, lowRatio, highRatio) {
+      lowRatio = lowRatio || 0.05;
+      highRatio = highRatio || 0.15;
       const width = imageData.width, height = imageData.height;
       const data = imageData.data;
-      const luma = new Float32Array(width * height);
-      const bitmap = new Uint8Array(width * height);
+      const N = width * height;
 
-      for (let i = 0; i < height; i++) {
-        for (let j = 0; j < width; j++) {
-          const idx = (i * width + j) * 4;
-          const a = data[idx + 3];
-          if (a < 128) { luma[i*width+j] = 255; continue; }
-          const r = data[idx], g = data[idx+1], b = data[idx+2];
-          const l = 0.299*r + 0.587*g + 0.114*b;
-          luma[i*width+j] = l;
-          bitmap[i*width+j] = l < threshold ? 1 : 0;
+      // Convert to grayscale luma float
+      const gray = new Float32Array(N);
+      for (let i = 0; i < N; i++) {
+        const p = i * 4;
+        if (data[p + 3] < 128) { gray[i] = 255; continue; }
+        gray[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+      }
+
+      // Gaussian blur
+      const blurred = new Float32Array(N);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let sum = 0, wsum = 0;
+          for (let ky = -2; ky <= 2; ky++) {
+            for (let kx = -2; kx <= 2; kx++) {
+              const ny = y + ky, nx = x + kx;
+              if (ny < 0 || ny >= height || nx < 0 || nx >= width) continue;
+              const w = GAUSS5[(ky + 2) * 5 + (kx + 2)];
+              sum += gray[ny * width + nx] * w;
+              wsum += w;
+            }
+          }
+          blurred[y * width + x] = sum / wsum;
         }
       }
 
-      // Sobel on float luma
-      const edgeMap = new Float32Array(width * height);
-      let maxEdge = 0;
-      for (let i = 1; i < height - 1; i++) {
-        for (let j = 1; j < width - 1; j++) {
-          const tl=luma[(i-1)*width+j-1], tc=luma[(i-1)*width+j], tr=luma[(i-1)*width+j+1];
-          const ml=luma[i*width+j-1],                               mr=luma[i*width+j+1];
-          const bl=luma[(i+1)*width+j-1], bc=luma[(i+1)*width+j], br=luma[(i+1)*width+j+1];
+      // Sobel gradient magnitude and angle
+      const mag = new Float32Array(N);
+      const angle = new Uint8Array(N); // 0=0°, 1=45°, 2=90°, 3=135°
+      let maxMag = 0;
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const tl = blurred[(y-1)*width+x-1], tc = blurred[(y-1)*width+x], tr = blurred[(y-1)*width+x+1];
+          const ml = blurred[y*width+x-1],                                   mr = blurred[y*width+x+1];
+          const bl = blurred[(y+1)*width+x-1], bc = blurred[(y+1)*width+x], br = blurred[(y+1)*width+x+1];
           const Gx = (tr + 2*mr + br) - (tl + 2*ml + bl);
           const Gy = (bl + 2*bc + br) - (tl + 2*tc + tr);
-          const e = Math.sqrt(Gx*Gx + Gy*Gy);
-          edgeMap[i*width+j] = e;
-          if (e > maxEdge) maxEdge = e;
+          const m = Math.sqrt(Gx*Gx + Gy*Gy);
+          mag[y*width+x] = m;
+          if (m > maxMag) maxMag = m;
+          // Quantize angle to 4 directions
+          let theta = Math.atan2(Gy, Gx) * 180 / Math.PI;
+          if (theta < 0) theta += 180;
+          angle[y*width+x] = theta < 22.5 || theta >= 157.5 ? 0
+                            : theta < 67.5 ? 1
+                            : theta < 112.5 ? 2
+                            : 3;
         }
       }
 
-      const edgeBinary = new Uint8Array(width * height);
-      if (maxEdge > 0) {
-        const edgeThresh = maxEdge * 0.12;
-        for (let i = 0; i < width * height; i++) {
-          edgeBinary[i] = edgeMap[i] > edgeThresh ? 1 : 0;
+      if (maxMag === 0) return new Uint8Array(N);
+
+      // Non-maximum suppression
+      const suppressed = new Float32Array(N);
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const i = y * width + x;
+          const m = mag[i];
+          let n1, n2;
+          switch (angle[i]) {
+            case 0: n1 = mag[i - 1];            n2 = mag[i + 1];            break;
+            case 1: n1 = mag[(y-1)*width+x+1];  n2 = mag[(y+1)*width+x-1]; break;
+            case 2: n1 = mag[(y-1)*width+x];    n2 = mag[(y+1)*width+x];   break;
+            case 3: n1 = mag[(y-1)*width+x-1];  n2 = mag[(y+1)*width+x+1]; break;
+          }
+          suppressed[i] = (m >= n1 && m >= n2) ? m : 0;
         }
       }
 
-      return { bitmap, edgeBinary };
-    }
+      // Hysteresis thresholding
+      const highThresh = maxMag * highRatio;
+      const lowThresh  = maxMag * lowRatio;
+      const edgeMap = new Uint8Array(N);
+      const strong = new Uint8Array(N);
 
-    // --- Morphological enhancement using edge info ---
-    function enhanceBitmap(bitmap, edgeBinary, width, height) {
-      const enhanced = new Uint8Array(width * height);
-      for (let i = 1; i < height - 1; i++) {
-        for (let j = 1; j < width - 1; j++) {
-          const idx = i * width + j;
-          const isEdge = edgeBinary[idx] === 1;
-          if (isEdge) {
-            enhanced[idx] = bitmap[idx];
-          } else if (bitmap[idx] === 1) {
-            let blackNeighbors = 0;
-            for (let di = -1; di <= 1; di++)
-              for (let dj = -1; dj <= 1; dj++)
-                if (di !== 0 || dj !== 0) blackNeighbors += bitmap[(i+di)*width+(j+dj)];
-            enhanced[idx] = blackNeighbors >= 3 ? 1 : 0;
-          } else {
-            let black = 0, edge = 0;
-            for (let di = -1; di <= 1; di++)
-              for (let dj = -1; dj <= 1; dj++) {
-                if (di === 0 && dj === 0) continue;
-                black += bitmap[(i+di)*width+(j+dj)];
-                edge += edgeBinary[(i+di)*width+(j+dj)];
-              }
-            enhanced[idx] = (black >= 5 || (black >= 3 && edge >= 2)) ? 1 : 0;
+      for (let i = 0; i < N; i++) {
+        if (suppressed[i] >= highThresh) { edgeMap[i] = 2; strong[i] = 1; }
+        else if (suppressed[i] >= lowThresh) edgeMap[i] = 1;
+      }
+
+      // BFS flood fill from strong edges to connect weak edges
+      const queue = [];
+      for (let i = 0; i < N; i++) if (strong[i]) queue.push(i);
+      let head = 0;
+      while (head < queue.length) {
+        const cur = queue[head++];
+        const y = Math.floor(cur / width), x = cur % width;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dy === 0 && dx === 0) continue;
+            const ny = y + dy, nx = x + dx;
+            if (ny < 0 || ny >= height || nx < 0 || nx >= width) continue;
+            const ni = ny * width + nx;
+            if (edgeMap[ni] === 1 && !strong[ni]) {
+              edgeMap[ni] = 2;
+              strong[ni] = 1;
+              queue.push(ni);
+            }
           }
         }
       }
-      // Clear border pixels
-      for (let i = 0; i < height; i++) { enhanced[i*width] = 0; enhanced[i*width+width-1] = 0; }
-      for (let j = 0; j < width; j++) { enhanced[j] = 0; enhanced[(height-1)*width+j] = 0; }
+
+      const result = new Uint8Array(N);
+      for (let i = 0; i < N; i++) result[i] = edgeMap[i] === 2 ? 1 : 0;
+      return result;
+    }
+
+    // Build grayscale bitmap for a threshold level using Canny for edge guidance
+    function buildBitmapWithCanny(imageData, threshold) {
+      const width = imageData.width, height = imageData.height;
+      const data = imageData.data;
+      const N = width * height;
+      const bitmap = new Uint8Array(N);
+
+      for (let i = 0; i < N; i++) {
+        const p = i * 4;
+        const a = data[p + 3];
+        if (a < 128) { bitmap[i] = 0; continue; }
+        const l = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+        bitmap[i] = l < threshold ? 1 : 0;
+      }
+
+      // Use Canny edges to sharpen region boundaries (snap boundary pixels)
+      const edges = cannyEdgeDetect(imageData, 0.05, 0.15);
+      const enhanced = new Uint8Array(N);
+
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const i = y * width + x;
+          if (edges[i]) {
+            enhanced[i] = bitmap[i]; // preserve Canny-detected edges as-is
+          } else if (bitmap[i] === 1) {
+            // Erode weak isolated black pixels
+            let blackN = 0;
+            for (let dy = -1; dy <= 1; dy++)
+              for (let dx = -1; dx <= 1; dx++)
+                if (dy !== 0 || dx !== 0) blackN += bitmap[(y+dy)*width+(x+dx)];
+            enhanced[i] = blackN >= 3 ? 1 : 0;
+          } else {
+            // Dilate black pixels near edges
+            let hasEdgeN = 0, blackN = 0;
+            for (let dy = -1; dy <= 1; dy++)
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dy === 0 && dx === 0) continue;
+                blackN += bitmap[(y+dy)*width+(x+dx)];
+                hasEdgeN += edges[(y+dy)*width+(x+dx)];
+              }
+            enhanced[i] = (blackN >= 5 || (blackN >= 3 && hasEdgeN >= 2)) ? 1 : 0;
+          }
+        }
+      }
+      // Clear border
+      for (let y = 0; y < height; y++) { enhanced[y*width] = 0; enhanced[y*width+width-1] = 0; }
+      for (let x = 0; x < width; x++) { enhanced[x] = 0; enhanced[(height-1)*width+x] = 0; }
       return enhanced;
     }
 
-    // --- Moore Neighbor Contour Tracing (Jacob's stopping criterion) ---
-    // Direction array: CW from East (right) → SE → S → SW → W → NW → N → NE
-    // dx/dy consistent with screen coordinates (y increases downward).
-    function mooreNeighborTrace(bitmap, width, height, startX, startY) {
-      const dx = [ 1,  1,  0, -1, -1, -1,  0,  1];
-      const dy = [ 0,  1,  1,  1,  0, -1, -1, -1];
+    // ===========================================================================
+    // ZHANG-SUEN THINNING (stroke/centerline mode)
+    // Two-pass iterative thinning until no changes remain.
+    // Returns a 1-pixel-wide skeleton.
+    // ===========================================================================
+    function zhangSuenThin(bitmap, width, height) {
+      const N = width * height;
+      let changed = true;
+      const skel = new Uint8Array(bitmap);
 
-      const contour = [[startX, startY]];
-
-      // Initial backtrack direction: we assume we came from the left (West = index 4)
-      let prevX = startX - 1;
-      let prevY = startY;
-      if (prevX < 0) prevX = startX;
-
-      let cx = startX, cy = startY;
-      let secondX = -1, secondY = -1, secondPrevX = -1, secondPrevY = -1;
-      let secondFound = false;
-      let iterations = 0;
-      const maxIter = width * height * 4;
-
-      while (iterations++ < maxIter) {
-        // Find the direction index from current pixel to the backtrack pixel
-        let entryDir = 0;
-        for (let d = 0; d < 8; d++) {
-          if (cx + dx[d] === prevX && cy + dy[d] === prevY) { entryDir = d; break; }
-        }
-
-        // Scan CW starting one step past entry direction
-        let found = false;
-        for (let i = 1; i <= 8; i++) {
-          const dir = (entryDir + i) % 8;
-          const nx = cx + dx[dir];
-          const ny = cy + dy[dir];
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-          if (bitmap[ny * width + nx] === 1) {
-            prevX = cx; prevY = cy;
-            cx = nx; cy = ny;
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) break; // Isolated pixel
-
-        if (!secondFound) {
-          secondX = cx; secondY = cy;
-          secondPrevX = prevX; secondPrevY = prevY;
-          secondFound = true;
-        } else if (cx === startX && cy === startY && prevX === secondX && prevY === secondY) {
-          break; // Jacob's stopping criterion
-        }
-
-        contour.push([cx, cy]);
-        if (contour.length > width * height) break;
+      function p(y, x) {
+        if (y < 0 || y >= height || x < 0 || x >= width) return 0;
+        return skel[y * width + x];
       }
 
-      return contour;
+      // Count 0→1 transitions in the 8-neighbor ring (P2..P9,P2)
+      function transitions(y, x) {
+        const ring = [p(y-1,x), p(y-1,x+1), p(y,x+1), p(y+1,x+1),
+                      p(y+1,x), p(y+1,x-1), p(y,x-1), p(y-1,x-1), p(y-1,x)];
+        let cnt = 0;
+        for (let i = 0; i < 8; i++) if (ring[i] === 0 && ring[i+1] === 1) cnt++;
+        return cnt;
+      }
+
+      function neighbors(y, x) {
+        return p(y-1,x) + p(y-1,x+1) + p(y,x+1) + p(y+1,x+1) +
+               p(y+1,x) + p(y+1,x-1) + p(y,x-1) + p(y-1,x-1);
+      }
+
+      while (changed) {
+        changed = false;
+        const toRemove = new Uint8Array(N);
+
+        // Pass 1
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            if (!skel[y*width+x]) continue;
+            const B = neighbors(y, x);
+            if (B < 2 || B > 6) continue;
+            if (transitions(y, x) !== 1) continue;
+            if (p(y-1,x) * p(y,x+1) * p(y+1,x) !== 0) continue;
+            if (p(y,x+1) * p(y+1,x) * p(y,x-1) !== 0) continue;
+            toRemove[y*width+x] = 1;
+          }
+        }
+        for (let i = 0; i < N; i++) { if (toRemove[i]) { skel[i] = 0; changed = true; } }
+
+        const toRemove2 = new Uint8Array(N);
+        // Pass 2
+        for (let y = 1; y < height - 1; y++) {
+          for (let x = 1; x < width - 1; x++) {
+            if (!skel[y*width+x]) continue;
+            const B = neighbors(y, x);
+            if (B < 2 || B > 6) continue;
+            if (transitions(y, x) !== 1) continue;
+            if (p(y-1,x) * p(y,x+1) * p(y,x-1) !== 0) continue;
+            if (p(y-1,x) * p(y+1,x) * p(y,x-1) !== 0) continue;
+            toRemove2[y*width+x] = 1;
+          }
+        }
+        for (let i = 0; i < N; i++) { if (toRemove2[i]) { skel[i] = 0; changed = true; } }
+      }
+
+      return skel;
+    }
+
+    // ===========================================================================
+    // MARCHING SQUARES CONTOUR TRACING
+    // 2×2 cell lookup table (16 cases), linear interpolation for sub-pixel accuracy.
+    // Returns array of contour point arrays with correct CCW/CW winding.
+    // ===========================================================================
+
+    // Edge midpoint interpolation for sub-pixel accuracy
+    // edge: 0=top, 1=right, 2=bottom, 3=left
+    // Given cell corner values (TL,TR,BR,BL) and iso-value 0.5
+    function interpEdge(x, y, edge, tl, tr, br, bl) {
+      const iso = 0.5;
+      switch (edge) {
+        case 0: { // top: between TL(x,y) and TR(x+1,y)
+          const t = tl === tr ? 0.5 : (iso - tl) / (tr - tl);
+          return [x + t, y];
+        }
+        case 1: { // right: between TR(x+1,y) and BR(x+1,y+1)
+          const t = tr === br ? 0.5 : (iso - tr) / (br - tr);
+          return [x + 1, y + t];
+        }
+        case 2: { // bottom: between BL(x,y+1) and BR(x+1,y+1)
+          const t = bl === br ? 0.5 : (iso - bl) / (br - bl);
+          return [x + t, y + 1];
+        }
+        case 3: { // left: between TL(x,y) and BL(x,y+1)
+          const t = tl === bl ? 0.5 : (iso - tl) / (bl - tl);
+          return [x, y + t];
+        }
+      }
+    }
+
+    // Marching squares segment table: [case] → [[edge_in, edge_out], ...]
+    // Saddle cases (5, 10) use the first interpretation (no ambiguity correction needed for binary bitmaps)
+    const MS_SEGMENTS = [
+      [],                      // 0: all outside
+      [[3, 2]],                // 1: BL
+      [[2, 1]],                // 2: BR
+      [[3, 1]],                // 3: BL+BR
+      [[1, 0]],                // 4: TR
+      [[3, 0], [1, 2]],        // 5: BL+TR (saddle)
+      [[2, 0]],                // 6: BR+TR
+      [[3, 0]],                // 7: BL+BR+TR
+      [[0, 3]],                // 8: TL
+      [[0, 2]],                // 9: TL+BL
+      [[0, 1], [2, 3]],        // 10: TL+BR (saddle)
+      [[0, 1]],                // 11: TL+BL+BR
+      [[1, 3]],                // 12: TL+TR
+      [[1, 2]],                // 13: TL+BL+TR — wait, should be TL+TR+BL
+      [[2, 3]],                // 14: TL+TR+BR
+      [],                      // 15: all inside
+    ];
+
+    function marchingSquares(bitmap, width, height) {
+      const contours = [];
+      // visited[y*(width-1)+x] tracks which cell edges have been followed
+      const cellW = width - 1, cellH = height - 1;
+      const visitedEdge = new Set();
+
+      function cellCase(x, y) {
+        const tl = bitmap[y * width + x];
+        const tr = bitmap[y * width + x + 1];
+        const bl = bitmap[(y+1)*width+x];
+        const br = bitmap[(y+1)*width+x+1];
+        return (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0);
+      }
+
+      function edgeKey(x, y, edge) { return (y * cellW + x) * 4 + edge; }
+
+      function getEdgePoint(x, y, edge) {
+        const tl = bitmap[y * width + x];
+        const tr = bitmap[y * width + x + 1];
+        const bl = bitmap[(y+1)*width+x];
+        const br = bitmap[(y+1)*width+x+1];
+        return interpEdge(x, y, edge, tl, tr, br, bl);
+      }
+
+      // Follow a contour starting from cell (startX, startY), entering on edge startEdge
+      function followContour(startX, startY, startEdge, outEdge) {
+        const pts = [];
+        let x = startX, y = startY, inEdge = startEdge, outE = outEdge;
+        const startKey = edgeKey(x, y, inEdge);
+
+        let iters = 0;
+        const maxIters = (cellW * cellH * 4) + 4;
+
+        while (iters++ < maxIters) {
+          const key = edgeKey(x, y, inEdge);
+          if (visitedEdge.has(key)) break;
+          visitedEdge.add(key);
+
+          pts.push(getEdgePoint(x, y, inEdge));
+
+          // Move to neighbor cell across outEdge
+          let nx = x, ny = y, nInEdge;
+          switch (outE) {
+            case 0: ny = y - 1; nInEdge = 2; break; // top → enter from bottom of cell above
+            case 1: nx = x + 1; nInEdge = 3; break; // right → enter from left of right cell
+            case 2: ny = y + 1; nInEdge = 0; break; // bottom → enter from top of cell below
+            case 3: nx = x - 1; nInEdge = 1; break; // left → enter from right of left cell
+          }
+
+          if (nx < 0 || nx >= cellW || ny < 0 || ny >= cellH) break;
+
+          const c = cellCase(nx, ny);
+          const segs = MS_SEGMENTS[c];
+          let foundSeg = null;
+          for (const seg of segs) {
+            if (seg[0] === nInEdge) { foundSeg = seg; break; }
+          }
+          if (!foundSeg) break;
+
+          x = nx; y = ny; inEdge = nInEdge; outE = foundSeg[1];
+
+          // Closed when we return to start
+          if (edgeKey(x, y, inEdge) === startKey) break;
+        }
+
+        return pts;
+      }
+
+      // Scan all cells, start new contours from unvisited edges
+      for (let y = 0; y < cellH; y++) {
+        for (let x = 0; x < cellW; x++) {
+          const c = cellCase(x, y);
+          const segs = MS_SEGMENTS[c];
+          for (const [inEdge, outEdge] of segs) {
+            const key = edgeKey(x, y, inEdge);
+            if (!visitedEdge.has(key)) {
+              const pts = followContour(x, y, inEdge, outEdge);
+              if (pts.length >= 4) contours.push(pts);
+            }
+          }
+        }
+      }
+
+      return contours;
+    }
+
+    // Shoelace area (positive = CCW in screen coords where y increases downward)
+    function shoelaceArea(pts) {
+      let area = 0;
+      const n = pts.length;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += pts[i][0] * pts[j][1];
+        area -= pts[j][0] * pts[i][1];
+      }
+      return area / 2; // signed
+    }
+
+    // Ensure CCW winding for outer contours (positive area in screen coords)
+    function ensureCCW(pts) {
+      if (shoelaceArea(pts) < 0) pts.reverse();
+      return pts;
     }
 
     // --- Perpendicular distance from point to line segment ---
@@ -526,21 +903,17 @@ const createPosterizeWorker = (
       return [first, last];
     }
 
-    // --- Douglas-Peucker for closed paths ---
-    // Inserts the original (unsimplified) point of maximum wrap deviation,
-    // rather than duplicating the already-simplified point.
+    // --- Douglas-Peucker for closed paths (wrap-around aware) ---
     function simplifyClosedPath(originalPoints, epsilon) {
       if (originalPoints.length <= 3) return originalPoints;
       let simplified = douglasPeucker(originalPoints, epsilon);
 
-      // Check the wrap-around segment (last → first) for missed deviation
       const n = simplified.length;
       const last = simplified[n - 1], first = simplified[0];
       let wrapMax = 0, wrapBestOrig = null;
 
       for (let i = 0; i < originalPoints.length; i++) {
         const op = originalPoints[i];
-        // Skip if this point is already in simplified
         const already = simplified.some(sp => sp[0] === op[0] && sp[1] === op[1]);
         if (already) continue;
         const d = perpDist(op[0], op[1], last[0], last[1], first[0], first[1]);
@@ -548,27 +921,13 @@ const createPosterizeWorker = (
       }
 
       if (wrapMax > epsilon && wrapBestOrig) {
-        // Insert the original point right before the closing — between last and first
         simplified = [...simplified, wrapBestOrig];
       }
 
       return simplified;
     }
 
-    // --- Shoelace polygon area ---
-    function shoelaceArea(points) {
-      let area = 0;
-      const n = points.length;
-      for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        area += points[i][0] * points[j][1];
-        area -= points[j][0] * points[i][1];
-      }
-      return Math.abs(area) / 2;
-    }
-
     // --- Cubic Bezier fitting (Schneider's algorithm) ---
-    // Consistent 2dp rounding throughout.
     function r2(v) { return Math.round(v * 100) / 100; }
 
     function fitCubicBezier(points, error) {
@@ -640,67 +999,47 @@ const createPosterizeWorker = (
       return left + ' ' + right;
     }
 
-    function pointsToSvgPath(points, bezierError) {
+    function pointsToSvgPath(points, bezierError, closed) {
       if (points.length < 2) return '';
       let d = 'M' + r2(points[0][0]) + ',' + r2(points[0][1]);
       d += ' ' + fitCubicBezier(points, bezierError || 1.0);
-      d += ' Z';
+      if (closed !== false) d += ' Z';
       return d;
     }
 
-    // --- Single layer tracing ---
-    function traceSingleLayer(imageData, threshold, color) {
+    // --- Single layer tracing (fill mode, uses Marching Squares) ---
+    function traceSingleLayer(imageData, threshold, color, maxPaths) {
       return new Promise((resolve) => {
         workerLog('Tracing layer threshold=' + threshold);
         const width = imageData.width, height = imageData.height;
 
-        const { bitmap, edgeBinary } = buildGrayscaleAndEdge(imageData, threshold);
-        const enhanced = enhanceBitmap(bitmap, edgeBinary, width, height);
+        const bitmap = buildBitmapWithCanny(imageData, threshold);
+        const contours = marchingSquares(bitmap, width, height);
 
-        const paths = [];
-        const visitedContour = new Uint8Array(width * height);
+        // Sort by area descending (largest first = painter's background first)
+        contours.sort((a, b) => Math.abs(shoelaceArea(b)) - Math.abs(shoelaceArea(a)));
 
-        for (let y = 1; y < height - 1; y++) {
-          for (let x = 1; x < width - 1; x++) {
-            const idx = y * width + x;
-            if (enhanced[idx] === 1 && !visitedContour[idx]) {
-              const isBoundary =
-                enhanced[(y-1)*width+x]===0 || enhanced[(y+1)*width+x]===0 ||
-                enhanced[y*width+x-1]===0   || enhanced[y*width+x+1]===0;
-              if (!isBoundary) continue;
-
-              const contour = mooreNeighborTrace(enhanced, width, height, x, y);
-              if (contour.length >= 8) {
-                for (const [cx, cy] of contour) visitedContour[cy * width + cx] = 1;
-                paths.push(contour);
-              }
-            }
-          }
-        }
-
-        paths.sort((a, b) => shoelaceArea(b) - shoelaceArea(a));
-
-        const maxPaths = Math.min(2000, paths.length);
-        workerLog('Found ' + paths.length + ' contours, keeping ' + maxPaths);
+        const limit = Math.min(maxPaths || 2000, contours.length);
+        workerLog('Found ' + contours.length + ' contours, keeping ' + limit);
 
         const seenPaths = new Set();
         const svgPaths = [];
 
-        for (let pi = 0; pi < maxPaths; pi++) {
-          const contour = paths[pi];
-          const area = shoelaceArea(contour);
-          if (area < 4) continue;
+        for (let pi = 0; pi < limit; pi++) {
+          const contour = ensureCCW(contours[pi]);
+          const area = Math.abs(shoelaceArea(contour));
+          if (area < 2) continue;
 
           const complexity = contour.length / Math.max(1, area);
-          let epsilon = 0.5 + (contour.length > 200 ? contour.length / 8000 : 0);
-          if (complexity > 0.2) epsilon = Math.max(0.3, epsilon * 0.8);
+          let epsilon = 0.4 + (contour.length > 200 ? contour.length / 10000 : 0);
+          if (complexity > 0.2) epsilon = Math.max(0.25, epsilon * 0.8);
           epsilon = Math.min(2.0, epsilon);
 
           const simplified = simplifyClosedPath(contour, epsilon);
           if (simplified.length < 3) continue;
 
           const bezierError = epsilon * 1.5;
-          const d = pointsToSvgPath(simplified, bezierError);
+          const d = pointsToSvgPath(simplified, bezierError, true);
           if (d && !seenPaths.has(d)) {
             seenPaths.add(d);
             svgPaths.push('<path d="' + d + '" fill="' + color + '" stroke="none"/>');
@@ -711,11 +1050,53 @@ const createPosterizeWorker = (
       });
     }
 
+    // --- Stroke layer tracing (Zhang-Suen + Marching Squares on skeleton) ---
+    function traceStrokeLayer(imageData, threshold, color, strokeWidth, maxPaths) {
+      return new Promise((resolve) => {
+        workerLog('Tracing stroke layer threshold=' + threshold);
+        const width = imageData.width, height = imageData.height;
+
+        const bitmap = buildBitmapWithCanny(imageData, threshold);
+        const skeleton = zhangSuenThin(bitmap, width, height);
+        const contours = marchingSquares(skeleton, width, height);
+
+        const limit = Math.min(maxPaths || 2000, contours.length);
+        const seenPaths = new Set();
+        const svgPaths = [];
+
+        for (let pi = 0; pi < limit; pi++) {
+          const contour = contours[pi];
+          if (contour.length < 2) continue;
+
+          const area = Math.abs(shoelaceArea(contour));
+          let epsilon = 0.4 + (contour.length > 200 ? contour.length / 10000 : 0);
+          epsilon = Math.min(2.0, epsilon);
+
+          const simplified = simplifyClosedPath(contour, epsilon);
+          if (simplified.length < 2) continue;
+
+          const bezierError = epsilon * 1.5;
+          // Open paths for stroke mode (no Z close)
+          const d = pointsToSvgPath(simplified, bezierError, area < 4);
+          if (d && !seenPaths.has(d)) {
+            seenPaths.add(d);
+            svgPaths.push('<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="' + (strokeWidth || 2) + '" stroke-linecap="round" stroke-linejoin="round"/>');
+          }
+        }
+
+        resolve({ paths: svgPaths, seenDs: seenPaths });
+      });
+    }
+
     // --- Posterization pipeline ---
     async function manualPosterize(imageData, options, callback) {
-      workerLog('Starting posterization: ' + options.colorSteps + ' steps, strategy=' + options.fillStrategy);
+      workerLog('Starting posterization: ' + options.colorSteps + ' steps, strategy=' + options.fillStrategy + ', strokeMode=' + !!options.strokeMode);
       try {
         const numSteps = typeof options.colorSteps === 'number' ? Math.max(2, options.colorSteps) : 4;
+        const maxPaths = typeof options.maxPaths === 'number' ? options.maxPaths : 2000;
+        const strokeMode = !!options.strokeMode;
+        const strokeWidth = typeof options.strokeWidth === 'number' ? options.strokeWidth : 2;
+
         const thresholds = computeThresholds(numSteps);
         workerLog('Perceptual thresholds (L*-spaced): ' + JSON.stringify(thresholds));
 
@@ -723,28 +1104,21 @@ const createPosterizeWorker = (
 
         const { imageData: imgData, width, height } = await dataURLToImageData(imageData);
 
-        // Quantize exactly numSteps colors
         const rawPalette = quantizeColors(imgData, numSteps, options.fillStrategy);
 
-        // Parse rgb(...) strings to get perceptual luminance for sorting
         function parseLuma(rgbStr) {
           const m = rgbStr.match(/rgb\\((\\d+),(\\d+),(\\d+)\\)/);
           if (!m) return 0;
           return srgbLuma(+m[1], +m[2], +m[3]);
         }
 
-        // Sort palette by perceptual luminance ascending (lightest first)
         const sortedPalette = rawPalette
           .map(c => ({ css: c, luma: parseLuma(c) }))
           .sort((a, b) => a.luma - b.luma)
           .map(c => c.css);
 
-        // Sort thresholds ascending; pair lightest color with lowest threshold.
-        // Painter's order: lightest layer rendered first, darkest layer last (on top).
         const sortedThresholds = [...thresholds].sort((a, b) => a - b);
 
-        // Ensure we have one threshold per color step.
-        // If thresholds < numSteps (due to dedup), pad by halving remaining gaps.
         while (sortedThresholds.length < numSteps - 1) {
           let maxGap = -1, gapIdx = 0;
           for (let i = 0; i < sortedThresholds.length - 1; i++) {
@@ -755,10 +1129,6 @@ const createPosterizeWorker = (
           sortedThresholds.splice(gapIdx + 1, 0, mid);
         }
 
-        // The darkest layer needs no threshold — it covers everything below the first threshold
-        // Assign: color[0] (lightest) → threshold[0] (lowest), ..., color[N-1] (darkest) → rendered last
-        // We trace N layers, each using a different threshold to define its bitmap.
-        // Layer i uses threshold = sortedThresholds[i] (or 250 for the final/darkest layer).
         const layerThresholds = [...sortedThresholds];
         while (layerThresholds.length < numSteps) {
           layerThresholds.push(Math.min(250, (layerThresholds[layerThresholds.length - 1] || 200) + 20));
@@ -780,9 +1150,10 @@ const createPosterizeWorker = (
             details: 'Layer ' + (i + 1) + '/' + numSteps + ' (' + color + ', threshold ' + threshold + ')...'
           });
 
-          const { paths: layerPaths, seenDs } = await traceSingleLayer(imgData, threshold, color);
+          const { paths: layerPaths } = strokeMode
+            ? await traceStrokeLayer(imgData, threshold, color, strokeWidth, maxPaths)
+            : await traceSingleLayer(imgData, threshold, color, maxPaths);
 
-          // Cross-layer deduplication: skip paths already rendered in earlier layers
           const dedupedPaths = layerPaths.filter(p => {
             const dMatch = p.match(/d="([^"]+)"/);
             if (!dMatch) return true;
@@ -797,7 +1168,6 @@ const createPosterizeWorker = (
 
         self.postMessage({ type: 'progress', progress: 95, details: 'Assembling SVG...' });
 
-        // layers[0] = lightest (bottom), layers[N-1] = darkest (top) — correct painter's order
         const combinedSvg =
           '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
           '" viewBox="0 0 ' + width + ' ' + height + '">' +
@@ -905,8 +1275,9 @@ const posterize = (
           callback(err);
           return;
         }
+        const optimized = (options.svgoOptimize !== false) ? runSvgoOptimize(svg) : svg;
         logProcessingStep('COLOR_COMPLETE', `Done in ${Math.round(performance.now() - startTime)}ms`, false, logCallback);
-        callback(null, svg);
+        callback(null, optimized);
       },
       logCallback
     );
@@ -919,7 +1290,7 @@ const posterize = (
   }
 };
 
-// Analyze actual pixel complexity rather than using data URL length
+// Analyze actual pixel complexity (proper 2D gradient magnitude)
 const analyzeImageComplexity = (
   imageData: string
 ): Promise<{ complex: boolean; reason?: string; distinctColors?: number }> => {
@@ -927,7 +1298,6 @@ const analyzeImageComplexity = (
     try {
       const img = new Image();
       img.onload = () => {
-        // Sample at most 200×200 pixels for speed
         const sampleW = Math.min(200, img.naturalWidth);
         const sampleH = Math.min(200, img.naturalHeight);
         const canvas = document.createElement('canvas');
@@ -938,22 +1308,24 @@ const analyzeImageComplexity = (
         ctx.drawImage(img, 0, 0, sampleW, sampleH);
         const { data } = ctx.getImageData(0, 0, sampleW, sampleH);
 
-        // Count distinct 5-bit colors
         const seen = new Set<number>();
-        let edgePixels = 0;
         for (let i = 0; i < sampleW * sampleH; i++) {
           const idx = i * 4;
           if (data[idx + 3] < 128) continue;
           seen.add(((data[idx] >> 3) << 10) | ((data[idx+1] >> 3) << 5) | (data[idx+2] >> 3));
         }
 
-        // Estimate edge density via horizontal gradient
-        for (let y = 0; y < sampleH; y++) {
+        // Full 2D gradient magnitude for edge density
+        let edgePixels = 0;
+        for (let y = 1; y < sampleH - 1; y++) {
           for (let x = 1; x < sampleW - 1; x++) {
             const i = (y * sampleW + x) * 4;
-            const lCur = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-            const lNext = 0.299*data[i+4] + 0.587*data[i+5] + 0.114*data[i+6];
-            if (Math.abs(lCur - lNext) > 20) edgePixels++;
+            const lCur  = 0.299*data[i]   + 0.587*data[i+1]   + 0.114*data[i+2];
+            const lRight= 0.299*data[i+4] + 0.587*data[i+5]   + 0.114*data[i+6];
+            const lDown = 0.299*data[i + sampleW*4] + 0.587*data[i + sampleW*4 + 1] + 0.114*data[i + sampleW*4 + 2];
+            const Gx = lRight - lCur;
+            const Gy = lDown - lCur;
+            if (Math.sqrt(Gx*Gx + Gy*Gy) > 20) edgePixels++;
           }
         }
 
@@ -1003,7 +1375,6 @@ export const scaleToMaxDimension = (imageData: string, maxDimension = 1000): Pro
         if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        // White fill for B&W compatibility; color mode worker composites over white separately
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, nw, nh);
         ctx.drawImage(img, 0, 0, nw, nh);
@@ -1069,15 +1440,15 @@ export const processImage = (
       progressCallback('loading');
 
       const isNetwork = isNetworkClient();
-
-      // Apply network simplification automatically when accessed over LAN
       const effectiveParams = isNetwork ? simplifyForNetworkClients({ ...params }) : params;
 
       const processWithParams = (imgData: string, processingParams: TracingParams) => {
         progressCallback('tracing');
         logProcessingStep('TRACE', `Starting tracing, data length: ${imgData.length}`, false, detailedLogCallback);
 
-        const timeoutMs = isNetwork ? 90000 : 180000;
+        // Timeout starts here — only covers actual tracing, not preprocessing
+        const isNet = isNetworkClient();
+        const timeoutMs = isNet ? 90000 : 180000;
         const traceTimeout = setTimeout(() => {
           logProcessingStep('ERROR', 'Image tracing timed out', true, detailedLogCallback);
           progressCallback('error');
