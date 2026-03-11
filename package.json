@@ -26,7 +26,7 @@
     "build:portable-exe": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --config.win.sign=false --config.win.signDlls=false --config.win.signAndEditExecutable=false --config.win.verifyUpdateCodeSignature=false --publish never"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "express": "^4.22.1",
     "lucide-react": "^0.344.0",
     "potrace": "^2.1.8",
     "react": "^18.3.1",
