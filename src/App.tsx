@@ -73,6 +73,8 @@ function App() {
   // Use ref for log ID counter to survive HMR remounts without collisions
   const logIdCounter = useRef(0);
   const electronWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeRequestId = useRef(0);
+  const activeAbortController = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const hasElectron = !!window.electronAPI;
@@ -114,6 +116,10 @@ function App() {
 
   const applyParams = useCallback(async (params: TracingParams) => {
     if (!image) return;
+    const requestId = ++activeRequestId.current;
+    activeAbortController.current?.abort();
+    const abortController = new AbortController();
+    activeAbortController.current = abortController;
     setProcessingLogs([]);
     const isNetwork = isNetworkClient();
     try {
@@ -123,11 +129,14 @@ function App() {
       const svgData = await processImageWithPotrace(
         image, params,
         newStatus => setStatus(newStatus as ConversionStatus),
-        handleLogEntry
+        handleLogEntry,
+        abortController.signal
       );
+      if (requestId !== activeRequestId.current) return;
       setSvg(svgData);
       setStatus('done');
     } catch (err) {
+      if (requestId !== activeRequestId.current) return;
       setError(handleNetworkError(err, isNetwork));
       setStatus('error');
     }
@@ -143,6 +152,10 @@ function App() {
   }, [potraceParams, applyParams]);
 
   const handleImageSelect = useCallback(async (imageData: string, file: File) => {
+    const requestId = ++activeRequestId.current;
+    activeAbortController.current?.abort();
+    const abortController = new AbortController();
+    activeAbortController.current = abortController;
     setImage(imageData);
     setFileName(getOptimizedFilename(file.name));
     setSvg(null);
@@ -154,19 +167,22 @@ function App() {
       const svgData = await processImageWithPotrace(
         imageData, potraceParams,
         newStatus => setStatus(newStatus as ConversionStatus),
-        handleLogEntry
+        handleLogEntry,
+        abortController.signal
       );
+      if (requestId !== activeRequestId.current) return;
       setSvg(svgData);
       setStatus('done');
     } catch (err) {
+      if (requestId !== activeRequestId.current) return;
       setError(handleNetworkError(err, isNetwork));
       setStatus('error');
     }
   }, [potraceParams, handleLogEntry]);
 
   const processImageForBatch = useCallback(async (imageData: string, params: TracingParams) => {
-    return processImageWithPotrace(imageData, params, () => {}, handleLogEntry);
-  }, [handleLogEntry]);
+    return processImageWithPotrace(imageData, params, () => {}, undefined);
+  }, []);
 
   const handleBatchButtonClick = () => {
     if (isElectronAvailable) {
@@ -286,8 +302,17 @@ function App() {
 
         {image && (
           <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mt-4 sm:mt-6 animate-fade-in">
+            {(status === 'loading' || status === 'analyzing' || status === 'tracing' || status === 'colorProcessing' || status === 'optimizing') && (
+              <button
+                onClick={() => activeAbortController.current?.abort()}
+                className="btn bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm"
+              >
+                Cancel Processing
+              </button>
+            )}
             <button
               onClick={() => {
+                activeAbortController.current?.abort();
                 setImage(null);
                 setSvg(null);
                 setStatus('idle');
@@ -299,6 +324,7 @@ function App() {
             </button>
             <button
               onClick={applyCurrentParams}
+              disabled={status === 'loading' || status === 'analyzing' || status === 'tracing' || status === 'colorProcessing' || status === 'optimizing'}
               className="btn btn-primary text-xs sm:text-sm"
             >
               Re-process

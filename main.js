@@ -14,7 +14,8 @@ const sharp = require('sharp');
 let mainWindow = null;
 let serverProcess = null;
 
-const PORT = 3001;
+const PORT = Number(process.env.SVGX_PORT || process.env.PORT || 3001);
+const HOST = process.env.SVGX_HOST || (process.env.SVGX_LAN === '1' ? '0.0.0.0' : '127.0.0.1');
 const isDev = !app.isPackaged;
 
 function getLocalIpAddresses() {
@@ -31,8 +32,11 @@ function getLocalIpAddresses() {
 }
 
 // CORS headers for all Express responses (enables LAN access from other devices)
-expressApp.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+expressApp.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin || `http://localhost:${PORT}`);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   next();
@@ -46,8 +50,14 @@ expressApp.get('/api/network-info', (_req, res) => {
     networkUrls: ips.map(ip => `http://${ip}:${PORT}`)
   });
 });
+expressApp.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 function createWindow() {
+  const iconCandidates = [
+    path.join(__dirname, 'icon.png'),
+    path.join(__dirname, 'icon.svg')
+  ];
+  const iconPath = iconCandidates.find(candidate => fs.existsSync(candidate));
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -57,7 +67,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     title: 'SVG-X',
-    icon: path.join(__dirname, 'icon.png')
+    icon: iconPath
   });
 
   if (isDev) {
@@ -82,7 +92,7 @@ function createWindow() {
     expressApp.use(express.static(distPath));
     expressApp.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
-    const server = expressApp.listen(PORT, '0.0.0.0', () => {
+    const server = expressApp.listen(PORT, HOST, () => {
       const ips = getLocalIpAddresses();
       console.log(`SVG-X server: http://localhost:${PORT}`);
       console.log(`Network: http://${ips[0]}:${PORT}`);
@@ -128,7 +138,7 @@ function setupIPCHandlers() {
 
   ipcMain.handle('read-directory', async (_event, dirPath) => {
     try {
-      const files = fs.readdirSync(dirPath);
+      const files = await fs.promises.readdir(dirPath);
       const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.avif', '.heic', '.heif', '.tif', '.tiff']);
       const imageFiles = files.filter(file => IMAGE_EXTS.has(path.extname(file).toLowerCase()));
       return imageFiles.map(file => path.join(dirPath, file));
@@ -245,7 +255,7 @@ app.on('ready', () => {
   // In dev mode, start a minimal Express server for the /api/network-info endpoint only.
   // Vite handles all other requests. This avoids the network-info 404 in dev.
   if (isDev) {
-    expressApp.listen(PORT + 1, '0.0.0.0', () => {
+    expressApp.listen(PORT + 1, HOST, () => {
       console.log(`SVG-X API server (dev): http://localhost:${PORT + 1}`);
     }).on('error', () => {
       // Port in use — silently skip; WebRTC fallback handles network info

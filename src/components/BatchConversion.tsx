@@ -26,6 +26,11 @@ interface ProcessingItem {
   retryCount: number;
 }
 
+interface FailureRecord {
+  fileName: string;
+  error: string;
+}
+
 interface ResizeOptions {
   enabled: boolean;
   width: number;
@@ -90,6 +95,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
   // ETA tracking
   const [avgMsPerFile, setAvgMsPerFile] = useState<number | null>(null);
   const [etaMs, setEtaMs] = useState<number | null>(null);
+  const [failureReport, setFailureReport] = useState<FailureRecord[]>([]);
 
   const resizeOptionsRef = useRef<ResizeOptions>(resizeOptions);
   const skipFailedRef = useRef(skipFailed);
@@ -103,6 +109,15 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
   useEffect(() => { resizeOptionsRef.current = resizeOptions; }, [resizeOptions]);
   useEffect(() => { skipFailedRef.current = skipFailed; }, [skipFailed]);
   useEffect(() => { filenameCounts.current = {}; }, [inputDirectory]);
+  const updateItemAtIndex = useCallback((idx: number, update: Partial<ProcessingItem>) => {
+    setProcessingItems(prev => {
+      if (idx < 0 || idx >= prev.length) return prev;
+      const next = prev.slice();
+      next[idx] = { ...next[idx], ...update };
+      return next;
+    });
+  }, []);
+
 
   useEffect(() => {
     const hasElectron = !!window.electronAPI;
@@ -179,6 +194,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
     setAvgMsPerFile(null);
     setEtaMs(null);
     setStats({ total: processingItems.length, completed: 0, failed: 0, skipped: 0 });
+    setFailureReport([]);
     setProcessingItems(items => items.map(item => ({ ...item, status: 'pending', error: undefined })));
     setIsProcessing(true);
     setCurrentFileIndex(0);
@@ -240,9 +256,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
 
       fileStartTime.current = performance.now();
 
-      setProcessingItems(prev =>
-        prev.map((item, idx) => idx === currentFileIndex ? { ...item, status: 'processing' } : item)
-      );
+      updateItemAtIndex(currentFileIndex, { status: 'processing' });
 
       try {
         const fileData = await readFileAsDataURL(currentItem.filePath, resizeOptionsRef.current);
@@ -269,9 +283,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
         const avg = recent.reduce((s, v) => s + v, 0) / recent.length;
         setAvgMsPerFile(avg);
 
-        setProcessingItems(prev =>
-          prev.map((item, idx) => idx === currentFileIndex ? { ...item, status: 'completed' } : item)
-        );
+        updateItemAtIndex(currentFileIndex, { status: 'completed' });
         setStats(prev => {
           const remaining = prev.total - prev.completed - 1 - prev.failed - prev.skipped;
           setEtaMs(remaining > 0 ? remaining * avg : null);
@@ -281,19 +293,16 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
         const errMsg = error instanceof Error ? error.message : String(error);
 
         if (skipFailedRef.current) {
-          setProcessingItems(prev =>
-            prev.map((item, idx) => idx === currentFileIndex
-              ? { ...item, status: 'skipped', error: errMsg }
-              : item)
-          );
+          updateItemAtIndex(currentFileIndex, { status: 'skipped', error: errMsg });
           setStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+          setFailureReport(prev => [...prev, { fileName: currentItem.fileName, error: errMsg }]);
         } else {
-          setProcessingItems(prev =>
-            prev.map((item, idx) => idx === currentFileIndex
-              ? { ...item, status: 'failed', error: errMsg }
-              : item)
-          );
+          updateItemAtIndex(currentFileIndex, { status: 'failed', error: errMsg });
           setStats(prev => ({ ...prev, failed: prev.failed + 1 }));
+          setFailureReport(prev => [...prev, { fileName: currentItem.fileName, error: errMsg }]);
+          setIsProcessing(false);
+          setCurrentFileIndex(-1);
+          return;
         }
       }
 
@@ -303,7 +312,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [isProcessing, currentFileIndex, outputDirectory, potraceParams, processImage]);
+  }, [isProcessing, currentFileIndex, outputDirectory, potraceParams, processImage, updateItemAtIndex]);
 
   // Auto-open output folder when batch completes
   const prevIsProcessing = useRef(isProcessing);
@@ -553,6 +562,16 @@ const BatchConversion: React.FC<BatchConversionProps> = ({ potraceParams, onClos
             )}
 
             {/* Action buttons */}
+            {batchDone && failureReport.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="font-semibold mb-1">Failure Report ({failureReport.length})</div>
+                <div className="max-h-24 overflow-y-auto space-y-1">
+                  {failureReport.map((f, idx) => (
+                    <div key={`${f.fileName}-${idx}`}>{f.fileName}: {f.error}</div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex flex-wrap justify-end gap-2">
               {batchDone && hasFailed && (
                 <button onClick={retryFailed} className="btn btn-secondary flex items-center gap-2">

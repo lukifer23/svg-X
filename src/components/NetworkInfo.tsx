@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Globe, Copy, Check, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Globe, Copy, Check, X } from 'lucide-react';
 import { getNetworkUrls } from '../utils/networkUtils';
 
 interface NetworkInfoProps {
@@ -29,6 +29,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
   // Start completely collapsed by default
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const fallbackUrls = useMemo(() => buildFallbackUrls(networkInfo.localUrl), [networkInfo.localUrl]);
 
   useEffect(() => {
     async function fetchNetworkInfo() {
@@ -70,9 +71,6 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
       </button>
     );
   }
-
-  // When expanded, show a modal-like popup
-  const fallbackUrls = useMemo(() => buildFallbackUrls(networkInfo.localUrl), [networkInfo.localUrl]);
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">

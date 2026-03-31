@@ -1,6 +1,25 @@
 # SVG-X Release Notes
 
-## Version 1.3.0 (Current)
+## Version 1.4.0 (Current)
+
+### End-to-End Performance + Accuracy Overhaul
+
+- Fixed Wu quantization variance objective mismatch to improve palette correctness.
+- Implemented true `median` fill strategy behavior instead of aliasing `dominant`.
+- Corrected color layer ordering to preserve expected luminance mapping.
+- Added asymptotic decider handling for Marching Squares saddle cases (`5`, `10`) to reduce topology artifacts.
+- Eliminated redundant per-layer Canny recomputation by sharing a single edge map per image.
+- Reworked path dedup to hashed keys for lower memory pressure and faster comparisons.
+- Added stage-level processing metrics (`scale`, `analyze`, `networkDownscale`, `traceOrPosterize`, `svgo`, `total`).
+- Added abort propagation (`AbortSignal`) through conversion flow and stale-request gating in the UI.
+- Optimized batch item updates to avoid repeated full-array remaps and added end-of-batch failure reporting.
+- Enforced halt-on-failure semantics when `skipFailed` is disabled.
+- Hardened network/runtime config with env-driven host/port and improved reachability checks via `/api/health`.
+- Added CI workflow for lint/test/build validation and aligned packaging docs/assets with current build config.
+
+---
+
+## Version 1.3.0
 
 ### Vectorization Engine — Algorithm Overhaul
 

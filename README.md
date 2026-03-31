@@ -239,7 +239,7 @@ The **Globe icon** in the corner opens the Network Info panel with copyable URLs
 
 #### Windows
 
-- **Portable executable**: Run `SVG-X-1.3.0-x64.exe` directly — no installation
+- **Portable executable**: Run `SVG-X-1.4.0-x64.exe` directly — no installation
 - **Unpacked**: Extract and run `SVG-X.exe`
 
 #### Development (all platforms)
@@ -271,8 +271,9 @@ Opens at `http://localhost:3001`. Batch conversion, native save dialogs, and AVI
 | `npm run build` | Vite production build → `dist/` |
 | `npm run electron:build:dir` | Vite build + unpacked Windows app → `release/win-unpacked/` |
 | `npm run build:portable-exe` | Vite build + unsigned Windows portable `.exe` → `release/` |
-| `npm run create-zip` | ZIP of `release/win-unpacked/` |
 | `npm run test` | Vitest unit tests |
+| `npm run test:bench` | Baseline perf/throughput checks |
+| `npm run ci:check` | Lint + tests + production build |
 | `npm run lint` | ESLint |
 
 ---
@@ -404,8 +405,11 @@ ImageData
 - The portable executable is not code-signed — this is expected
 - Click "More info" → "Run anyway" in the Windows SmartScreen dialog
 
-### Port 3001 already in use
-- Another process is using port 3001 — stop it or change the `PORT` constant in `main.js`
+### Port conflicts
+- Override host/port via environment:
+  - `SVGX_PORT=3005`
+  - `SVGX_HOST=127.0.0.1`
+  - `SVGX_LAN=1` (bind `0.0.0.0`)
 
 ---
 

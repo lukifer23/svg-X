@@ -55,15 +55,15 @@ async function getLocalIPs(): Promise<string[]> {
  */
 async function isReachable(url: string): Promise<boolean> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1000);
+  const timeout = setTimeout(() => controller.abort(), 1500);
   try {
-    await fetch(url, {
+    const response = await fetch(`${url.replace(/\/$/, '')}/api/health`, {
       method: 'GET',
-      mode: 'no-cors',
+      mode: 'cors',
       signal: controller.signal,
       cache: 'no-store'
     });
-    return true;
+    return response.ok;
   } catch {
     return false;
   } finally {

@@ -67,6 +67,18 @@ export const PROGRESS_STEPS: Record<string, string> = {
 };
 
 type LogCallback = (step: string, message: string, isError: boolean, timestamp: string) => void;
+type StageMetricName =
+  | 'scale'
+  | 'analyze'
+  | 'networkDownscale'
+  | 'traceOrPosterize'
+  | 'svgo'
+  | 'total';
+
+const nowMs = (): number =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
 
 const logProcessingStep = (
   step: string,
@@ -79,6 +91,10 @@ const logProcessingStep = (
   if (logCallback) {
     logCallback(step, message, isError, timestamp);
   }
+};
+
+const logStageMetric = (name: StageMetricName, elapsedMs: number, logCallback?: LogCallback) => {
+  logProcessingStep('METRIC', `${name}=${Math.round(elapsedMs)}ms`, false, logCallback);
 };
 
 const createHeartbeat = (operation: string, intervalMs: number, logCallback?: LogCallback) => {
@@ -115,6 +131,10 @@ const trace = (
   callback: (err: Error | null, svg?: string) => void,
   logCallback?: LogCallback
 ) => {
+  type PotraceModule = {
+    trace: (img: string, opts: TracingParams, cb: (err: Error | null, svg?: string) => void) => void;
+  };
+  const potraceApi = Potrace as unknown as PotraceModule;
   let cancelled = false;
 
   try {
@@ -123,10 +143,13 @@ const trace = (
     const startTime = performance.now();
 
     logProcessingStep('TRACE_START', 'Starting Potrace', false, logCallback);
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('color-progress-update', { detail: { progress: 15, details: 'Potrace tracing...' } }));
+    }
 
     setTimeout(() => {
       try {
-        (Potrace as any).trace(image, options, (err: Error | null, svg?: string) => {
+        potraceApi.trace(image, options, (err: Error | null, svg?: string) => {
           heartbeat.stop();
           if (cancelled) return;
           if (err) {
@@ -136,6 +159,9 @@ const trace = (
           }
           const optimized = options.svgoOptimize && svg ? runSvgoOptimize(svg) : svg;
           logProcessingStep('TRACE_COMPLETE', `Completed in ${Math.round(performance.now() - startTime)}ms`, false, logCallback);
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('color-progress-update', { detail: { progress: 100, details: 'Done.' } }));
+          }
           callback(null, optimized);
         });
       } catch (error) {
@@ -178,6 +204,7 @@ const createPosterizeWorker = (
   completeCallback: (svg: string | null, error: Error | null) => void,
   logCallback?: LogCallback
 ) => {
+  if (!(createPosterizeWorker as unknown as { scriptUrl?: string }).scriptUrl) {
   const workerScript = `
     'use strict';
 
@@ -235,7 +262,7 @@ const createPosterizeWorker = (
       const S2 = S * S;
       const S3 = S * S * S;
 
-      // Moment tables: wt=count, mr/mg/mb=sum of channels, m2=sum of squared luma
+      // Moment tables: wt=count, mr/mg/mb=sum of channels, m2=sum of squared channels
       const wt = new Int32Array(S3);
       const mr = new Int32Array(S3);
       const mg = new Int32Array(S3);
@@ -259,8 +286,7 @@ const createPosterizeWorker = (
         mr[i3] += r;
         mg[i3] += g;
         mb[i3] += b;
-        const y = srgbLuma(r, g, b);
-        m2[i3] += y * y;
+        m2[i3] += (r * r) + (g * g) + (b * b);
       }
 
       // Compute prefix-sum moments (3D scan)
@@ -435,10 +461,18 @@ const createPosterizeWorker = (
         } else {
           selected = unique;
         }
+      } else if (strategy === 'median') {
+        // Median: sort by luminance and pick middle colors for balanced tones
+        colors.sort((a, b) => a.luma - b.luma);
+        selected = [];
+        if (colors.length <= numColors) {
+          selected = colors.slice();
+        } else {
+          const start = Math.max(0, Math.floor((colors.length - numColors) / 2));
+          selected = colors.slice(start, start + numColors);
+        }
       } else {
-        // dominant / median: take the Wu boxes directly (already variance-optimal)
-        // For dominant, sort by box population would be ideal but Wu doesn't track that
-        // after moment accumulation. Sort by luma for painter's order stability.
+        // Dominant: take Wu boxes directly, then stabilize order by luminance.
         selected = colors.slice(0, numColors);
       }
 
@@ -606,8 +640,8 @@ const createPosterizeWorker = (
       return result;
     }
 
-    // Build grayscale bitmap for a threshold level using Canny for edge guidance
-    function buildBitmapWithCanny(imageData, threshold) {
+    // Build grayscale bitmap for a threshold level using a precomputed Canny map.
+    function buildBitmapWithCanny(imageData, threshold, edges) {
       const width = imageData.width, height = imageData.height;
       const data = imageData.data;
       const N = width * height;
@@ -621,8 +655,6 @@ const createPosterizeWorker = (
         bitmap[i] = l < threshold ? 1 : 0;
       }
 
-      // Use Canny edges to sharpen region boundaries (snap boundary pixels)
-      const edges = cannyEdgeDetect(imageData, 0.05, 0.15);
       const enhanced = new Uint8Array(N);
 
       for (let y = 1; y < height - 1; y++) {
@@ -769,10 +801,20 @@ const createPosterizeWorker = (
       [[0, 1], [2, 3]],        // 10: TL+BR (saddle)
       [[0, 1]],                // 11: TL+BL+BR
       [[1, 3]],                // 12: TL+TR
-      [[1, 2]],                // 13: TL+BL+TR — wait, should be TL+TR+BL
+      [[1, 2]],                // 13: TL+TR+BL
       [[2, 3]],                // 14: TL+TR+BR
       [],                      // 15: all inside
     ];
+
+    function getSegmentsForCell(c, tl, tr, br, bl) {
+      if (c === 5 || c === 10) {
+        // Asymptotic decider for saddle cells improves topology stability.
+        const center = (tl + tr + br + bl) * 0.25;
+        if (c === 5) return center >= 0.5 ? [[3, 0], [1, 2]] : [[3, 2], [1, 0]];
+        return center >= 0.5 ? [[0, 1], [2, 3]] : [[0, 3], [2, 1]];
+      }
+      return MS_SEGMENTS[c];
+    }
 
     function marchingSquares(bitmap, width, height) {
       const contours = [];
@@ -826,7 +868,11 @@ const createPosterizeWorker = (
           if (nx < 0 || nx >= cellW || ny < 0 || ny >= cellH) break;
 
           const c = cellCase(nx, ny);
-          const segs = MS_SEGMENTS[c];
+          const ntl = bitmap[ny * width + nx];
+          const ntr = bitmap[ny * width + nx + 1];
+          const nbl = bitmap[(ny + 1) * width + nx];
+          const nbr = bitmap[(ny + 1) * width + nx + 1];
+          const segs = getSegmentsForCell(c, ntl, ntr, nbr, nbl);
           let foundSeg = null;
           for (const seg of segs) {
             if (seg[0] === nInEdge) { foundSeg = seg; break; }
@@ -846,7 +892,11 @@ const createPosterizeWorker = (
       for (let y = 0; y < cellH; y++) {
         for (let x = 0; x < cellW; x++) {
           const c = cellCase(x, y);
-          const segs = MS_SEGMENTS[c];
+          const tl = bitmap[y * width + x];
+          const tr = bitmap[y * width + x + 1];
+          const bl = bitmap[(y + 1) * width + x];
+          const br = bitmap[(y + 1) * width + x + 1];
+          const segs = getSegmentsForCell(c, tl, tr, br, bl);
           for (const [inEdge, outEdge] of segs) {
             const key = edgeKey(x, y, inEdge);
             if (!visitedEdge.has(key)) {
@@ -1008,12 +1058,21 @@ const createPosterizeWorker = (
     }
 
     // --- Single layer tracing (fill mode, uses Marching Squares) ---
-    function traceSingleLayer(imageData, threshold, color, maxPaths) {
+    function hashPathData(d) {
+      let h = 2166136261;
+      for (let i = 0; i < d.length; i++) {
+        h ^= d.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return (h >>> 0).toString(16);
+    }
+
+    function traceSingleLayer(imageData, threshold, color, maxPaths, edges) {
       return new Promise((resolve) => {
         workerLog('Tracing layer threshold=' + threshold);
         const width = imageData.width, height = imageData.height;
 
-        const bitmap = buildBitmapWithCanny(imageData, threshold);
+        const bitmap = buildBitmapWithCanny(imageData, threshold, edges);
         const contours = marchingSquares(bitmap, width, height);
 
         // Sort by area descending (largest first = painter's background first)
@@ -1040,8 +1099,10 @@ const createPosterizeWorker = (
 
           const bezierError = epsilon * 1.5;
           const d = pointsToSvgPath(simplified, bezierError, true);
-          if (d && !seenPaths.has(d)) {
-            seenPaths.add(d);
+          if (d) {
+            const key = hashPathData(d);
+            if (seenPaths.has(key)) continue;
+            seenPaths.add(key);
             svgPaths.push('<path d="' + d + '" fill="' + color + '" stroke="none"/>');
           }
         }
@@ -1051,12 +1112,12 @@ const createPosterizeWorker = (
     }
 
     // --- Stroke layer tracing (Zhang-Suen + Marching Squares on skeleton) ---
-    function traceStrokeLayer(imageData, threshold, color, strokeWidth, maxPaths) {
+    function traceStrokeLayer(imageData, threshold, color, strokeWidth, maxPaths, edges) {
       return new Promise((resolve) => {
         workerLog('Tracing stroke layer threshold=' + threshold);
         const width = imageData.width, height = imageData.height;
 
-        const bitmap = buildBitmapWithCanny(imageData, threshold);
+        const bitmap = buildBitmapWithCanny(imageData, threshold, edges);
         const skeleton = zhangSuenThin(bitmap, width, height);
         const contours = marchingSquares(skeleton, width, height);
 
@@ -1078,8 +1139,10 @@ const createPosterizeWorker = (
           const bezierError = epsilon * 1.5;
           // Open paths for stroke mode (no Z close)
           const d = pointsToSvgPath(simplified, bezierError, area < 4);
-          if (d && !seenPaths.has(d)) {
-            seenPaths.add(d);
+          if (d) {
+            const key = hashPathData(d);
+            if (seenPaths.has(key)) continue;
+            seenPaths.add(key);
             svgPaths.push('<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="' + (strokeWidth || 2) + '" stroke-linecap="round" stroke-linejoin="round"/>');
           }
         }
@@ -1114,7 +1177,7 @@ const createPosterizeWorker = (
 
         const sortedPalette = rawPalette
           .map(c => ({ css: c, luma: parseLuma(c) }))
-          .sort((a, b) => a.luma - b.luma)
+          .sort((a, b) => b.luma - a.luma)
           .map(c => c.css);
 
         const sortedThresholds = [...thresholds].sort((a, b) => a - b);
@@ -1134,12 +1197,13 @@ const createPosterizeWorker = (
           layerThresholds.push(Math.min(250, (layerThresholds[layerThresholds.length - 1] || 200) + 20));
         }
 
-        workerLog('Palette (lightest→darkest): ' + JSON.stringify(sortedPalette));
+        workerLog('Palette (darkest→lightest): ' + JSON.stringify(sortedPalette));
         workerLog('Layer thresholds (ascending): ' + JSON.stringify(layerThresholds));
 
         const allSeenDs = new Set();
         const layers = [];
 
+        const edgeMap = cannyEdgeDetect(imgData, 0.05, 0.15);
         for (let i = 0; i < numSteps; i++) {
           const threshold = layerThresholds[i];
           const color = sortedPalette[i];
@@ -1151,15 +1215,16 @@ const createPosterizeWorker = (
           });
 
           const { paths: layerPaths } = strokeMode
-            ? await traceStrokeLayer(imgData, threshold, color, strokeWidth, maxPaths)
-            : await traceSingleLayer(imgData, threshold, color, maxPaths);
+            ? await traceStrokeLayer(imgData, threshold, color, strokeWidth, maxPaths, edgeMap)
+            : await traceSingleLayer(imgData, threshold, color, maxPaths, edgeMap);
 
           const dedupedPaths = layerPaths.filter(p => {
             const dMatch = p.match(/d="([^"]+)"/);
             if (!dMatch) return true;
             const d = dMatch[1];
-            if (allSeenDs.has(d)) return false;
-            allSeenDs.add(d);
+            const key = hashPathData(d);
+            if (allSeenDs.has(key)) return false;
+            allSeenDs.add(key);
             return true;
           });
 
@@ -1195,16 +1260,16 @@ const createPosterizeWorker = (
       });
     });
   `;
-
-  const blob = new Blob([workerScript], { type: 'application/javascript' });
-  const workerUrl = URL.createObjectURL(blob);
-  const worker = new Worker(workerUrl);
+    const blob = new Blob([workerScript], { type: 'application/javascript' });
+    (createPosterizeWorker as unknown as { scriptUrl?: string }).scriptUrl = URL.createObjectURL(blob);
+  }
+  const scriptUrl = (createPosterizeWorker as unknown as { scriptUrl: string }).scriptUrl;
+  const worker = new Worker(scriptUrl);
   let terminated = false;
 
   const cleanup = () => {
     if (!terminated) {
       terminated = true;
-      URL.revokeObjectURL(workerUrl);
       worker.terminate();
     }
   };
@@ -1420,29 +1485,46 @@ export const processImage = (
   imageData: string,
   params: TracingParams,
   progressCallback: (status: string) => void,
-  detailedLogCallback?: LogCallback
+  detailedLogCallback?: LogCallback,
+  signal?: AbortSignal
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     let workerHandle: { terminate: () => void } | null = null;
     let traceHandle: { cancel: () => void } | null = null;
     let finished = false;
 
+    const totalStart = nowMs();
+    const cleanupAbort = () => {
+      if (signal) signal.removeEventListener('abort', onAbort);
+    };
+
+    const onAbort = () => {
+      progressCallback('error');
+      cleanupAndReject(new Error('Processing aborted'));
+    };
+
     const cleanupAndReject = (error: Error) => {
       if (finished) return;
       finished = true;
-      if (workerHandle) { try { workerHandle.terminate(); } catch (_) {} workerHandle = null; }
-      if (traceHandle) { try { traceHandle.cancel(); } catch (_) {} traceHandle = null; }
+      if (workerHandle) { try { workerHandle.terminate(); } catch { /* ignore cleanup failures */ } workerHandle = null; }
+      if (traceHandle) { try { traceHandle.cancel(); } catch { /* ignore cleanup failures */ } traceHandle = null; }
+      cleanupAbort();
       reject(error);
     };
 
     try {
       logProcessingStep('START', `Beginning image processing, data length: ${imageData.length}`, false, detailedLogCallback);
+      if (signal?.aborted) {
+        cleanupAndReject(new Error('Processing aborted'));
+        return;
+      }
+      signal?.addEventListener('abort', onAbort);
       progressCallback('loading');
 
       const isNetwork = isNetworkClient();
       const effectiveParams = isNetwork ? simplifyForNetworkClients({ ...params }) : params;
 
-      const processWithParams = (imgData: string, processingParams: TracingParams) => {
+      const processWithParams = (imgData: string, processingParams: TracingParams, traceStartMs: number) => {
         progressCallback('tracing');
         logProcessingStep('TRACE', `Starting tracing, data length: ${imgData.length}`, false, detailedLogCallback);
 
@@ -1471,8 +1553,13 @@ export const processImage = (
             return;
           }
           finished = true;
+          cleanupAbort();
+          logStageMetric('traceOrPosterize', nowMs() - traceStartMs, detailedLogCallback);
           progressCallback('optimizing');
+          const svgoStart = nowMs();
           logProcessingStep('OPTIMIZE', `SVG generated: ${svg.length} chars`, false, detailedLogCallback);
+          logStageMetric('svgo', nowMs() - svgoStart, detailedLogCallback);
+          logStageMetric('total', nowMs() - totalStart, detailedLogCallback);
           progressCallback('done');
           logProcessingStep('DONE', 'Processing complete', false, detailedLogCallback);
           resolve(svg);
@@ -1495,17 +1582,24 @@ export const processImage = (
       };
 
       const processNextStep = async (imgData: string) => {
+        if (signal?.aborted) return;
         progressCallback('analyzing');
+        const analyzeStart = nowMs();
         const complexityResult = await analyzeImageComplexity(imgData);
+        logStageMetric('analyze', nowMs() - analyzeStart, detailedLogCallback);
         logProcessingStep('ANALYZE', `Complexity: ${JSON.stringify(complexityResult)}`, false, detailedLogCallback);
 
         if (isNetwork && complexityResult.complex) {
           logProcessingStep('NETWORK_SCALE', 'Further downscaling for network + complex image', false, detailedLogCallback);
+          const networkScaleStart = nowMs();
           downscaleImage(imgData, 0.3)
-            .then(scaled => processWithParams(scaled, effectiveParams))
-            .catch(() => processWithParams(imgData, effectiveParams));
+            .then(scaled => {
+              logStageMetric('networkDownscale', nowMs() - networkScaleStart, detailedLogCallback);
+              processWithParams(scaled, effectiveParams, nowMs());
+            })
+            .catch(() => processWithParams(imgData, effectiveParams, nowMs()));
         } else {
-          processWithParams(imgData, effectiveParams);
+          processWithParams(imgData, effectiveParams, nowMs());
         }
       };
 
@@ -1519,8 +1613,12 @@ export const processImage = (
         }
       };
 
+      const scaleStart = nowMs();
       scaleToMaxDimension(imageData, 1000)
-        .then(scaled => beginProcessing(scaled))
+        .then(scaled => {
+          logStageMetric('scale', nowMs() - scaleStart, detailedLogCallback);
+          beginProcessing(scaled);
+        })
         .catch(() => beginProcessing(imageData));
 
     } catch (error) {
