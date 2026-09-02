@@ -14,4 +14,12 @@ Current absolute acceptance gates include:
 - cancellation followed by a successful recovery conversion;
 - no serious or critical Axe findings in idle and converted flows.
 
+The 1.5x throughput criterion is a release acceptance measurement and must be
+run on controlled, otherwise-idle hardware with the same browser, fixture, and
+four-logical-CPU profile used by `npm run test:e2e:performance`. GitHub's shared
+Windows runners enforce a separate 1.25x regression floor through
+`SVGX_MIN_BATCH_SPEEDUP`; that noisier signal catches a lost worker-pool benefit
+but is not evidence that the 1.5x release criterion passed. The default remains
+1.5x whenever the environment variable is absent.
+
 The historical pre-recovery checkout failed before tests because its dependency install did not complete. Do not invent a relative speed or quality claim against it. A future released baseline must store hardware, fixture hashes, settings, raw timings, SSIM, and Delta E values before percentage comparisons become release gates.

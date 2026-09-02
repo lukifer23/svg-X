@@ -74,9 +74,13 @@ jobs:
       - run: npm run test:e2e:web:functional
 
   performance:
-    name: Batch performance
+    name: Batch performance regression
     needs: validate
-    runs-on: macos-latest
+    runs-on: windows-latest
+    # Shared hosted runners are intentionally a regression signal, not the
+    # controlled-hardware 1.50x release acceptance measurement.
+    env:
+      SVGX_MIN_BATCH_SPEEDUP: "1.25"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

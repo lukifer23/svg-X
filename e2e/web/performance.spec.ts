@@ -4,6 +4,12 @@ test("eight-image production worker batch improves throughput without runaway me
   page,
   browserName,
 }) => {
+  const configuredFloor = process.env.SVGX_MIN_BATCH_SPEEDUP;
+  const minimumSpeedup = configuredFloor ? Number(configuredFloor) : 1.5;
+  if (!Number.isFinite(minimumSpeedup) || minimumSpeedup <= 1)
+    throw new Error(
+      `SVGX_MIN_BATCH_SPEEDUP must be a finite number greater than 1, received ${configuredFloor}`,
+    );
   test.skip(
     browserName !== "chromium",
     "Chromium provides stable heap telemetry",
@@ -101,11 +107,11 @@ test("eight-image production worker batch improves throughput without runaway me
   const result = await runBenchmark();
 
   console.log(
-    `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput, ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB heap growth on ${result.hardwareConcurrency} logical CPUs`,
+    `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput against ${minimumSpeedup.toFixed(2)}x floor, ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB heap growth on ${result.hardwareConcurrency} logical CPUs`,
   );
   expect(result.heapGrowth).toBeLessThan(256 * 1024 * 1024);
   if (result.hardwareConcurrency >= 3)
     expect(result.sequentialMs / result.concurrentMs).toBeGreaterThanOrEqual(
-      1.5,
+      minimumSpeedup,
     );
 });
