@@ -25,6 +25,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:bench": "vitest run --config vitest.config.ts src/utils/imageProcessor.bench.test.ts",
     "test:e2e:web": "playwright test",
+    "test:e2e:web:functional": "playwright test --grep-invert \"production worker batch\"",
+    "test:e2e:performance": "playwright test e2e/web/performance.spec.ts --project=chromium --workers=1 --retries=0",
     "test:e2e:package": "node scripts/run-packaged-e2e.mjs",
     "verify:assets": "node scripts/verify-assets.mjs",
     "ci:check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run verify:assets && npm run build && npm audit --audit-level=moderate",
