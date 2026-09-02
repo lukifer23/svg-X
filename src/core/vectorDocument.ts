@@ -104,6 +104,8 @@ export type VectorWorkerResponse =
       version: 1;
       jobId: string;
       document: VectorDocument;
+      rawSvg: string;
+      outputPaths: number;
       vectorizeMs: number;
     }
   | { type: "error"; version: 1; jobId: string; error: string };

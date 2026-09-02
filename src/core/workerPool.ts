@@ -15,7 +15,12 @@ interface WorkItem {
   priority: "interactive" | "batch";
   signal?: AbortSignal;
   onProgress?: (progress: ConversionProgress) => void;
-  resolve: (result: { document: VectorDocument; vectorizeMs: number }) => void;
+  resolve: (result: {
+    document: VectorDocument;
+    rawSvg: string;
+    outputPaths: number;
+    vectorizeMs: number;
+  }) => void;
   reject: (error: Error) => void;
 }
 
@@ -66,6 +71,8 @@ export class VectorWorkerPool {
     if (message.type === "complete")
       item.resolve({
         document: message.document,
+        rawSvg: message.rawSvg,
+        outputPaths: message.outputPaths,
         vectorizeMs: message.vectorizeMs,
       });
     else item.reject(new Error(message.error));
@@ -115,9 +122,12 @@ export class VectorWorkerPool {
     this.dispatch();
   }
 
-  run(
-    args: Omit<WorkItem, "resolve" | "reject">,
-  ): Promise<{ document: VectorDocument; vectorizeMs: number }> {
+  run(args: Omit<WorkItem, "resolve" | "reject">): Promise<{
+    document: VectorDocument;
+    rawSvg: string;
+    outputPaths: number;
+    vectorizeMs: number;
+  }> {
     return new Promise((resolve, reject) => {
       const item: WorkItem = { ...args, resolve, reject };
       if (item.signal?.aborted) {

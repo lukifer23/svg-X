@@ -1,6 +1,5 @@
 import slugify from "slugify";
 import { optimize as svgoOptimize } from "svgo";
-import { countSubpaths, serializeVectorDocument } from "../core/serialize";
 import { getVectorWorkerPool } from "../core/workerPool";
 import type {
   ConversionResult,
@@ -234,8 +233,7 @@ export const processImageDetailed = async (
   });
   progressCallback("optimizing");
   const optimizeStart = now();
-  const rawSvg = serializeVectorDocument(result.document);
-  const svg = params.svgoOptimize ? optimizeSvg(rawSvg) : rawSvg;
+  const svg = params.svgoOptimize ? optimizeSvg(result.rawSvg) : result.rawSvg;
   const optimizeMs = now() - optimizeStart;
   const totalMs = now() - totalStart;
   progressCallback("done");
@@ -255,7 +253,7 @@ export const processImageDetailed = async (
       optimizeMs,
       totalMs,
       inputPixels: decoded.width * decoded.height,
-      outputPaths: countSubpaths(result.document),
+      outputPaths: result.outputPaths,
     },
   };
 };

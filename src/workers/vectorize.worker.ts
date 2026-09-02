@@ -3,6 +3,7 @@
 import { traceBlackAndWhite } from "../core/bwTrace";
 import { traceCenterlines } from "../core/centerline";
 import { traceColorDocument } from "../core/colorTrace";
+import { countSubpaths, serializeVectorDocument } from "../core/serialize";
 import type {
   VectorWorkerRequest,
   VectorWorkerResponse,
@@ -59,13 +60,18 @@ workerScope.onmessage = (
               request.height,
               request.options,
             );
+    const vectorizeMs = performance.now() - started;
+    const rawSvg = serializeVectorDocument(document);
+    const outputPaths = countSubpaths(document);
     if (cancelled.delete(request.jobId)) return;
     post({
       type: "complete",
       version: 1,
       jobId: request.jobId,
       document,
-      vectorizeMs: performance.now() - started,
+      rawSvg,
+      outputPaths,
+      vectorizeMs,
     });
   } catch (error) {
     if (cancelled.delete(request.jobId)) return;
