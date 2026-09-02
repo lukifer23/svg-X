@@ -36,6 +36,13 @@ try {
   await window.waitForLoadState("domcontentloaded");
   if ((await window.title()) !== "SVG-X - Image to SVG Converter")
     throw new Error(`Unexpected packaged title: ${await window.title()}`);
+  const desktopVersion = await window.evaluate(() =>
+    window.electronAPI?.getAppVersion?.(),
+  );
+  if (desktopVersion !== "1.4.0")
+    throw new Error(
+      `Packaged preload bridge was unavailable: ${String(desktopVersion)}`,
+    );
   const health = await fetch(`http://127.0.0.1:${port}/api/health`).then(
     (response) => response.json(),
   );

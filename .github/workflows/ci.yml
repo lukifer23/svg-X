@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run --auto-servernum npm run test:e2e:package
+            DEBUG=pw:browser* ELECTRON_ENABLE_LOGGING=1 xvfb-run --auto-servernum npm run test:e2e:package
           else
             npm run test:e2e:package
           fi

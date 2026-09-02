@@ -96,6 +96,10 @@
       }
     ],
     "asar": true,
+    "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/@img/**/*"
+    ],
     "directories": {
       "buildResources": "assets",
       "output": "release"
