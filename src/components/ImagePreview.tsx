@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon, Code, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Image as ImageIcon, Code, X } from "lucide-react";
 
 interface ImagePreviewProps {
   image: string;
@@ -17,7 +17,7 @@ const STATUS_FLOOR: Record<string, number> = {
   colorProcessing: 55,
   optimizing: 90,
   done: 100,
-  error: 0
+  error: 0,
 };
 
 const formatBytes = (bytes: number): string => {
@@ -31,14 +31,21 @@ const formatBytes = (bytes: number): string => {
 function parseSvgDimensions(svgStr: string): { w: number; h: number } | null {
   const vbMatch = svgStr.match(/viewBox="([^"]*)"/);
   if (vbMatch) {
-    const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+    const parts = vbMatch[1]
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (parts.length >= 4 && !parts.some(isNaN)) {
       return { w: Math.round(parts[2]), h: Math.round(parts[3]) };
     }
   }
   const wMatch = svgStr.match(/\bwidth="(\d+(?:\.\d+)?)"/);
   const hMatch = svgStr.match(/\bheight="(\d+(?:\.\d+)?)"/);
-  if (wMatch && hMatch) return { w: Math.round(parseFloat(wMatch[1])), h: Math.round(parseFloat(hMatch[1])) };
+  if (wMatch && hMatch)
+    return {
+      w: Math.round(parseFloat(wMatch[1])),
+      h: Math.round(parseFloat(hMatch[1])),
+    };
   return null;
 }
 
@@ -48,8 +55,8 @@ function parseSvgDimensions(svgStr: string): { w: number; h: number } | null {
  */
 function sanitizeSvg(svgStr: string): string {
   return svgStr
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/\bon\w+\s*=/gi, 'data-removed=');
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/\bon\w+\s*=/gi, "data-removed=");
 }
 
 const ImagePreview: React.FC<ImagePreviewProps> = ({
@@ -57,58 +64,32 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   svg,
   status,
   progressSteps,
-  isMobile = false
+  isMobile = false,
 }) => {
-  const [progressPercent, setProgressPercent] = useState(0);
-  const [progressDetails, setProgressDetails] = useState('');
-  const [imgDimensions, setImgDimensions] = useState<{ w: number; h: number } | null>(null);
+  const [imgDimensions, setImgDimensions] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
   const [showSource, setShowSource] = useState(false);
-  const highWaterMark = useRef(0);
+  const progressPercent = STATUS_FLOOR[status] ?? 0;
+  const progressDetails = "";
 
   useEffect(() => {
-    if (status === 'loading' || status === 'analyzing') {
-      highWaterMark.current = 0;
-      setProgressPercent(0);
-      setProgressDetails('');
-    }
-  }, [status]);
-
-  useEffect(() => {
-    const handler = (e: CustomEvent) => {
-      const { progress, details } = e.detail;
-      const floor = STATUS_FLOOR['colorProcessing'] ?? 0;
-      const mapped = floor + Math.round((progress / 100) * (90 - floor));
-      const clamped = Math.max(highWaterMark.current, mapped);
-      highWaterMark.current = clamped;
-      setProgressPercent(clamped);
-      if (details) setProgressDetails(details);
-    };
-    window.addEventListener('color-progress-update', handler as EventListener);
-    return () => window.removeEventListener('color-progress-update', handler as EventListener);
-  }, []);
-
-  useEffect(() => {
-    if (status !== 'colorProcessing') {
-      setProgressDetails('');
-      const floor = STATUS_FLOOR[status] ?? 0;
-      const next = Math.max(highWaterMark.current, floor);
-      highWaterMark.current = next;
-      setProgressPercent(next);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    if (!image) { setImgDimensions(null); return; }
     const img = new Image();
-    img.onload = () => setImgDimensions({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onload = () =>
+      setImgDimensions({ w: img.naturalWidth, h: img.naturalHeight });
     img.src = image;
   }, [image]);
 
-  const isProcessing = status !== 'idle' && status !== 'done' && status !== 'error';
+  const isProcessing =
+    status !== "idle" && status !== "done" && status !== "error";
   const statusLabel = progressSteps[status] ?? status;
 
   const svgForDisplay = svg
-    ? sanitizeSvg(svg).replace(/^(<svg\b)/, '$1 preserveAspectRatio="xMidYMid meet"')
+    ? sanitizeSvg(svg).replace(
+        /^(<svg\b)/,
+        '$1 preserveAspectRatio="xMidYMid meet"',
+      )
     : null;
 
   const svgSize = svg ? formatBytes(new Blob([svg]).size) : null;
@@ -128,7 +109,11 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <Code className="w-4 h-4 text-blue-600" />
                 SVG Source
-                {svgSize && <span className="text-xs text-gray-400 font-normal font-mono">{svgSize}</span>}
+                {svgSize && (
+                  <span className="text-xs text-gray-400 font-normal font-mono">
+                    {svgSize}
+                  </span>
+                )}
               </h3>
               <button
                 onClick={() => setShowSource(false)}
@@ -151,18 +136,30 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
           Preview
         </h2>
 
-        <div className={`grid ${isMobile ? 'grid-cols-1' : 'sm:grid-cols-2'} gap-4 sm:gap-6`}>
+        <div
+          className={`grid ${isMobile ? "grid-cols-1" : "sm:grid-cols-2"} gap-4 sm:gap-6`}
+        >
           {isProcessing && (
-            <div className={`${isMobile ? 'col-span-1' : 'sm:col-span-2'} bg-glass border border-gray-200 rounded-xl p-3 sm:p-4 mb-2 animate-fade-in shadow-soft`}>
+            <div
+              className={`${isMobile ? "col-span-1" : "sm:col-span-2"} bg-glass border border-gray-200 rounded-xl p-3 sm:p-4 mb-2 animate-fade-in shadow-soft`}
+              role="status"
+              aria-live="polite"
+            >
               <div className="flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-2 border-blue-600 border-t-transparent flex-shrink-0" />
-                <span className="text-sm sm:text-base text-gray-700 font-medium">{statusLabel}</span>
+                <span className="text-sm sm:text-base text-gray-700 font-medium">
+                  {statusLabel}
+                </span>
               </div>
               {(progressDetails || progressPercent > 0) && (
                 <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
-                  {progressDetails && <span className="truncate">{progressDetails}</span>}
+                  {progressDetails && (
+                    <span className="truncate">{progressDetails}</span>
+                  )}
                   {progressPercent > 0 && (
-                    <span className="font-mono font-medium text-blue-600 flex-shrink-0">{progressPercent}%</span>
+                    <span className="font-mono font-medium text-blue-600 flex-shrink-0">
+                      {progressPercent}%
+                    </span>
                   )}
                 </div>
               )}
@@ -177,9 +174,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
 
           <div>
             <div className="flex items-baseline justify-between mb-1 sm:mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">Original Image</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                Original Image
+              </p>
               {imgDimensions && (
-                <span className="text-xs text-gray-400 font-mono">{imgDimensions.w} × {imgDimensions.h}</span>
+                <span className="text-xs text-gray-400 font-mono">
+                  {imgDimensions.w} × {imgDimensions.h}
+                </span>
               )}
             </div>
             <div className="relative overflow-hidden rounded-lg border border-gray-200 bg-white shadow-soft group">
@@ -192,17 +193,26 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
             </div>
           </div>
 
-          <div className="animate-slide-in-right" style={{ animationDelay: '0.2s' }}>
+          <div
+            className="animate-slide-in-right"
+            style={{ animationDelay: "0.2s" }}
+          >
             <div className="flex items-baseline justify-between mb-1 sm:mb-2">
-              <p className="text-xs sm:text-sm text-gray-600 font-medium">SVG Output</p>
+              <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                SVG Output
+              </p>
               <div className="flex items-center gap-2">
-                {svgDimensions && status === 'done' && (
-                  <span className="text-xs text-gray-400 font-mono">{svgDimensions.w} × {svgDimensions.h}</span>
+                {svgDimensions && status === "done" && (
+                  <span className="text-xs text-gray-400 font-mono">
+                    {svgDimensions.w} × {svgDimensions.h}
+                  </span>
                 )}
-                {svgSize && status === 'done' && (
-                  <span className="text-xs text-gray-400 font-mono">{svgSize}</span>
+                {svgSize && status === "done" && (
+                  <span className="text-xs text-gray-400 font-mono">
+                    {svgSize}
+                  </span>
                 )}
-                {svg && status === 'done' && (
+                {svg && status === "done" && (
                   <button
                     onClick={() => setShowSource(true)}
                     className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition-colors"
@@ -219,28 +229,32 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-4 w-full h-[200px] sm:h-[300px] flex items-center justify-center shadow-soft hover:shadow-md transition-all duration-300 overflow-hidden">
                 <div
                   dangerouslySetInnerHTML={{ __html: svgForDisplay }}
-                  className="max-w-full max-h-full w-full h-full flex items-center justify-center"
+                  className="max-w-full max-h-full w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
                 />
               </div>
             ) : (
               <div className="h-[200px] sm:h-[300px] border border-gray-200 rounded-lg bg-white/50 flex items-center justify-center p-2 sm:p-4 text-center shadow-soft">
                 <span className="text-xs sm:text-sm text-gray-400">
-                  {status === 'idle'
-                    ? 'Upload an image to see the SVG output'
-                    : status === 'error'
-                    ? 'Conversion failed — see error above'
-                    : 'Processing...'}
+                  {status === "idle"
+                    ? "Upload an image to see the SVG output"
+                    : status === "error"
+                      ? "Conversion failed — see error above"
+                      : "Processing..."}
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        {status === 'done' && svg && (
-          <div className="mt-3 sm:mt-4 bg-green-50 border border-green-100 rounded-lg p-2 sm:p-3 text-green-700 text-xs sm:text-sm animate-fade-in">
+        {status === "done" && svg && (
+          <div
+            className="mt-3 sm:mt-4 bg-green-50 border border-green-100 rounded-lg p-2 sm:p-3 text-green-700 text-xs sm:text-sm animate-fade-in"
+            role="status"
+            aria-live="polite"
+          >
             <p className="font-medium">Conversion complete!</p>
             <p className="text-xs mt-1 text-green-600">
-              Your SVG is ready to download{svgSize ? ` (${svgSize})` : ''}.
+              Your SVG is ready to download{svgSize ? ` (${svgSize})` : ""}.
             </p>
           </div>
         )}

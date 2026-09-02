@@ -4,7 +4,7 @@
 
 /// <reference types="vite/client" />
 
-declare module 'potrace' {
+declare module "potrace" {
   export class Potrace {
     constructor();
     setParameters(options: {
@@ -12,17 +12,20 @@ declare module 'potrace' {
       alphaMax?: number;
       optCurve?: boolean;
     }): void;
-    loadImage(data: {
-      data: Uint8Array;
-      width: number;
-      height: number;
-    }, callback: (err: Error | null) => void): void;
+    loadImage(
+      data: {
+        data: Uint8Array;
+        width: number;
+        height: number;
+      },
+      callback: (err: Error | null) => void,
+    ): void;
     process(callback: (err: Error | null) => void): void;
     getSVG(): string;
   }
 }
 
-declare module 'potrace' {
+declare module "potrace" {
   interface PotraceOptions {
     turdSize?: number;
     alphaMax?: number;

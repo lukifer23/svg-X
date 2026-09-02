@@ -16,6 +16,7 @@ node_modules
 dist
 dist-ssr
 release
+*.tsbuildinfo
 *.local
 
 # Specifically exclude large files

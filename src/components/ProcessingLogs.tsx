@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { X, AlertCircle, Copy, Check, Trash2 } from 'lucide-react';
+import React, { useRef, useEffect, useState } from "react";
+import { X, AlertCircle, Copy, Check, Trash2 } from "lucide-react";
 
 interface LogEntry {
   id: string;
@@ -16,24 +16,29 @@ interface ProcessingLogsProps {
   onClear: () => void;
 }
 
-const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose, onClear }) => {
+const ProcessingLogs: React.FC<ProcessingLogsProps> = ({
+  logs,
+  visible,
+  onClose,
+  onClear,
+}) => {
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (visible && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [logs, visible]);
 
-  const displayedLogs = errorsOnly ? logs.filter(l => l.isError) : logs;
-  const errorCount = logs.filter(l => l.isError).length;
+  const displayedLogs = errorsOnly ? logs.filter((l) => l.isError) : logs;
+  const errorCount = logs.filter((l) => l.isError).length;
 
   const handleCopy = async () => {
     const text = logs
-      .map(l => `[${l.timestamp}] [${l.step}] ${l.message}`)
-      .join('\n');
+      .map((l) => `[${l.timestamp}] [${l.step}] ${l.message}`)
+      .join("\n");
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -45,7 +50,7 @@ const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose,
 
   return (
     <div
-      className={`fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in ${visible ? '' : 'hidden'}`}
+      className={`fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in ${visible ? "" : "hidden"}`}
       role="dialog"
       aria-label="Processing Logs"
       aria-modal="true"
@@ -53,22 +58,26 @@ const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose,
       <div className="relative bg-white rounded-lg shadow-xl w-full max-w-3xl h-[70vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b gap-2 flex-wrap">
-          <h3 className="text-base font-semibold text-gray-800">Processing Logs</h3>
+          <h3 className="text-base font-semibold text-gray-800">
+            Processing Logs
+          </h3>
           <div className="flex items-center gap-2 ml-auto">
             <button
-              onClick={() => setErrorsOnly(v => !v)}
+              onClick={() => setErrorsOnly((v) => !v)}
               className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
                 errorsOnly
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
-              title={errorsOnly ? 'Show all logs' : 'Show errors only'}
+              title={errorsOnly ? "Show all logs" : "Show errors only"}
               aria-pressed={errorsOnly}
             >
               <AlertCircle className="w-3.5 h-3.5" />
               Errors only
               {errorCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs leading-none">{errorCount}</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-xs leading-none">
+                  {errorCount}
+                </span>
               )}
             </button>
             <button
@@ -77,8 +86,12 @@ const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose,
               title="Copy all logs to clipboard"
               aria-label="Copy logs to clipboard"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-green-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+              {copied ? "Copied!" : "Copy"}
             </button>
             <button
               onClick={onClear}
@@ -104,16 +117,20 @@ const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose,
         <div className="flex-1 overflow-y-auto p-3 font-mono text-xs bg-gray-50">
           {displayedLogs.length === 0 ? (
             <div className="text-gray-400 text-center py-8">
-              {errorsOnly ? 'No errors logged' : 'No logs to display yet'}
+              {errorsOnly ? "No errors logged" : "No logs to display yet"}
             </div>
           ) : (
-            displayedLogs.map(log => (
+            displayedLogs.map((log) => (
               <div
                 key={log.id}
-                className={`mb-0.5 leading-relaxed ${log.isError ? 'text-red-600' : 'text-gray-700'}`}
+                className={`mb-0.5 leading-relaxed ${log.isError ? "text-red-600" : "text-gray-700"}`}
               >
-                <span className="text-gray-400">[{log.timestamp}]</span>{' '}
-                <span className={`font-bold ${log.isError ? 'text-red-600' : 'text-blue-600'}`}>[{log.step}]</span>{' '}
+                <span className="text-gray-400">[{log.timestamp}]</span>{" "}
+                <span
+                  className={`font-bold ${log.isError ? "text-red-600" : "text-blue-600"}`}
+                >
+                  [{log.step}]
+                </span>{" "}
                 <span>{log.message}</span>
               </div>
             ))
@@ -124,8 +141,11 @@ const ProcessingLogs: React.FC<ProcessingLogsProps> = ({ logs, visible, onClose,
         {/* Footer */}
         <div className="p-3 border-t bg-gray-50 flex justify-between items-center rounded-b-lg">
           <span className="text-xs text-gray-500">
-            {displayedLogs.length} {errorsOnly ? 'error' : 'log'} entr{displayedLogs.length === 1 ? 'y' : 'ies'}
-            {errorsOnly && logs.length !== displayedLogs.length && ` of ${logs.length} total`}
+            {displayedLogs.length} {errorsOnly ? "error" : "log"} entr
+            {displayedLogs.length === 1 ? "y" : "ies"}
+            {errorsOnly &&
+              logs.length !== displayedLogs.length &&
+              ` of ${logs.length} total`}
           </span>
           <button
             onClick={onClose}
