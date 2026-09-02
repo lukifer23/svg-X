@@ -16,6 +16,25 @@ test("eight-image production worker batch improves throughput without runaway me
     });
   });
   await page.goto("/", { waitUntil: "networkidle" });
+  // Vite can perform a one-time full reload while discovering dependencies for
+  // this test-only dynamic import. Finish that optimization before timing the
+  // worker pool so a dev-server navigation cannot invalidate the benchmark.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await page.evaluate(async () => {
+        await import("/src/utils/imageProcessor.ts");
+      });
+      break;
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("Execution context was destroyed") ||
+        attempt === 4
+      )
+        throw error;
+      await page.waitForLoadState("networkidle");
+    }
+  }
   const runBenchmark = () =>
     page.evaluate(async () => {
       const module = await import("/src/utils/imageProcessor.ts");
@@ -79,15 +98,7 @@ test("eight-image production worker batch improves throughput without runaway me
         heapGrowth: Math.max(0, afterHeap - beforeHeap),
       };
     });
-  const result = await runBenchmark().catch(async (error: unknown) => {
-    if (
-      !(error instanceof Error) ||
-      !error.message.includes("Execution context was destroyed")
-    )
-      throw error;
-    await page.waitForLoadState("networkidle");
-    return runBenchmark();
-  });
+  const result = await runBenchmark();
 
   console.log(
     `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput, ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB heap growth on ${result.hardwareConcurrency} logical CPUs`,
