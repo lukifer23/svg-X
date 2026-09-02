@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Image as ImageIcon, Code, X } from "lucide-react";
+import type { ConversionDiagnostics } from "../core/vectorDocument";
 
 interface ImagePreviewProps {
   image: string;
   svg: string | null;
   status: string;
   progressSteps: Record<string, string>;
+  diagnostics?: ConversionDiagnostics | null;
   isMobile?: boolean;
 }
 
@@ -64,6 +66,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   svg,
   status,
   progressSteps,
+  diagnostics,
   isMobile = false,
 }) => {
   const [imgDimensions, setImgDimensions] = useState<{
@@ -248,14 +251,27 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
 
         {status === "done" && svg && (
           <div
-            className="mt-3 sm:mt-4 bg-green-50 border border-green-100 rounded-lg p-2 sm:p-3 text-green-700 text-xs sm:text-sm animate-fade-in"
+            className={`mt-3 sm:mt-4 rounded-lg border p-2 text-xs sm:p-3 sm:text-sm animate-fade-in ${
+              diagnostics?.warnings.length
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-green-100 bg-green-50 text-green-700"
+            }`}
             role="status"
             aria-live="polite"
           >
-            <p className="font-medium">Conversion complete!</p>
-            <p className="text-xs mt-1 text-green-800">
+            <p className="font-medium">
+              {diagnostics?.warnings.length
+                ? "Conversion completed with fidelity warnings"
+                : "Conversion complete!"}
+            </p>
+            <p className="mt-1 text-xs">
               Your SVG is ready to download{svgSize ? ` (${svgSize})` : ""}.
             </p>
+            {diagnostics?.warnings.map((warning) => (
+              <p className="mt-1 text-xs" key={warning}>
+                {warning}
+              </p>
+            ))}
           </div>
         )}
       </div>

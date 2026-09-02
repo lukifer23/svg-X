@@ -283,6 +283,7 @@ const executeConversion = async (
       inputPixels: decoded.width * decoded.height,
       outputPaths: result.outputPaths,
     },
+    diagnostics: result.diagnostics,
   };
 };
 

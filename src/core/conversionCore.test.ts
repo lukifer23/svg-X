@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { traceBlackAndWhite } from "./bwTrace";
 import {
   deduplicateShapes,
+  mergeComponentsToBudget,
   paletteSeeds,
   traceColorDocument,
   wuVarianceSeeds,
@@ -44,6 +45,40 @@ const rgba = (
 };
 
 describe("color region topology", () => {
+  test("merges adjacent color islands to a path budget without dropping pixels", () => {
+    const labels = Uint8Array.from([0, 1, 0, 1, 0, 1]);
+    const result = mergeComponentsToBudget(
+      labels,
+      6,
+      1,
+      [
+        { l: 0.5, a: 0, b: 0 },
+        { l: 0.51, a: 0, b: 0 },
+      ],
+      2,
+    );
+    expect(result).toMatchObject({ initial: 6, remaining: 2, merged: 4 });
+    expect([...result.labels].every((label) => label !== 255)).toBe(true);
+  });
+
+  test("reports a soft path-budget warning instead of deleting disconnected art", () => {
+    const pixels = rgba(5, 1, (x) =>
+      x % 2 === 0 ? [220, 30, 30, 255] : [0, 0, 0, 0],
+    );
+    const document = traceColorDocument(
+      pixels,
+      5,
+      1,
+      options({ mode: "color", colorSteps: 2, maxPaths: 1, optCurve: false }),
+    );
+    expect(document.diagnostics).toMatchObject({
+      requestedMaxPaths: 1,
+      outputPaths: 3,
+      pathBudgetExceeded: true,
+    });
+    expect(document.diagnostics?.warnings).toHaveLength(1);
+  });
+
   test("assigns every pixel to one disjoint painted region and preserves a hole", () => {
     const width = 9;
     const height = 9;

@@ -63,6 +63,11 @@ workerScope.onmessage = (
     const vectorizeMs = performance.now() - started;
     const rawSvg = serializeVectorDocument(document);
     const outputPaths = countSubpaths(document);
+    const diagnostics = document.diagnostics ?? {
+      outputPaths,
+      pathBudgetExceeded: false,
+      warnings: [],
+    };
     if (cancelled.delete(request.jobId)) return;
     post({
       type: "complete",
@@ -72,6 +77,7 @@ workerScope.onmessage = (
       rawSvg,
       outputPaths,
       vectorizeMs,
+      diagnostics,
     });
   } catch (error) {
     if (cancelled.delete(request.jobId)) return;

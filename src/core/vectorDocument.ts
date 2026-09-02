@@ -28,12 +28,23 @@ export interface VectorShape {
   subpaths: VectorSubpath[];
 }
 
+export interface ConversionDiagnostics {
+  requestedMaxPaths?: number;
+  outputPaths: number;
+  pathBudgetExceeded: boolean;
+  initialColorComponents?: number;
+  mergedColorComponents?: number;
+  mergedComponents?: number;
+  warnings: string[];
+}
+
 export interface VectorDocument {
   version: 1;
   width: number;
   height: number;
   mode: ConversionMode;
   shapes: VectorShape[];
+  diagnostics?: ConversionDiagnostics;
 }
 
 export interface ConversionMetrics {
@@ -56,6 +67,7 @@ export interface ConversionResult {
   document: VectorDocument;
   svg: string;
   metrics: ConversionMetrics;
+  diagnostics: ConversionDiagnostics;
 }
 
 export interface WorkerConversionOptions {
@@ -108,5 +120,6 @@ export type VectorWorkerResponse =
       rawSvg: string;
       outputPaths: number;
       vectorizeMs: number;
+      diagnostics: ConversionDiagnostics;
     }
   | { type: "error"; version: 1; jobId: string; error: string };

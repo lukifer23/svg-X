@@ -35,6 +35,14 @@ interface Edge {
   used: boolean;
 }
 
+interface LabelComponent {
+  id: number;
+  label: number;
+  pixels: number[];
+  area: number;
+  neighbors: Map<number, number>;
+}
+
 const srgbToLinear = (channel: number): number => {
   const value = channel / 255;
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -116,84 +124,140 @@ const histogram = (pixels: Uint8ClampedArray): HistogramColor[] => {
   });
 };
 
-const boxVariance = (colors: HistogramColor[]): number => {
-  const count = colors.reduce((sum, color) => sum + color.count, 0) || 1;
-  const mean = colors.reduce(
-    (sum, color) => ({
-      l: sum.l + color.l * color.count,
-      a: sum.a + color.a * color.count,
-      b: sum.b + color.b * color.count,
-    }),
-    { l: 0, a: 0, b: 0 },
-  );
-  mean.l /= count;
-  mean.a /= count;
-  mean.b /= count;
-  return colors.reduce(
-    (sum, color) => sum + distance(color, mean) * color.count,
-    0,
+interface WuBox {
+  r0: number;
+  r1: number;
+  g0: number;
+  g1: number;
+  b0: number;
+  b1: number;
+}
+
+interface WuMoments {
+  weight: Float64Array;
+  red: Float64Array;
+  green: Float64Array;
+  blue: Float64Array;
+  squared: Float64Array;
+}
+
+const WU_SIDE = 33;
+const wuIndex = (r: number, g: number, b: number): number =>
+  (r * WU_SIDE + g) * WU_SIDE + b;
+
+const cumulativeWuMoments = (pixels: Uint8ClampedArray): WuMoments => {
+  const size = WU_SIDE ** 3;
+  const moments: WuMoments = {
+    weight: new Float64Array(size),
+    red: new Float64Array(size),
+    green: new Float64Array(size),
+    blue: new Float64Array(size),
+    squared: new Float64Array(size),
+  };
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    if (pixels[offset + 3] < 8) continue;
+    const r = pixels[offset];
+    const g = pixels[offset + 1];
+    const b = pixels[offset + 2];
+    const index = wuIndex((r >> 3) + 1, (g >> 3) + 1, (b >> 3) + 1);
+    moments.weight[index] += 1;
+    moments.red[index] += r;
+    moments.green[index] += g;
+    moments.blue[index] += b;
+    moments.squared[index] += r * r + g * g + b * b;
+  }
+  for (const moment of Object.values(moments)) {
+    const area = new Float64Array(WU_SIDE * WU_SIDE);
+    for (let r = 1; r < WU_SIDE; r += 1) {
+      area.fill(0);
+      for (let g = 1; g < WU_SIDE; g += 1) {
+        let line = 0;
+        for (let b = 1; b < WU_SIDE; b += 1) {
+          line += moment[wuIndex(r, g, b)];
+          const areaIndex = g * WU_SIDE + b;
+          area[areaIndex] = area[(g - 1) * WU_SIDE + b] + line;
+          moment[wuIndex(r, g, b)] =
+            moment[wuIndex(r - 1, g, b)] + area[areaIndex];
+        }
+      }
+    }
+  }
+  return moments;
+};
+
+const wuVolume = (box: WuBox, moment: Float64Array): number =>
+  moment[wuIndex(box.r1, box.g1, box.b1)] -
+  moment[wuIndex(box.r1, box.g1, box.b0)] -
+  moment[wuIndex(box.r1, box.g0, box.b1)] +
+  moment[wuIndex(box.r1, box.g0, box.b0)] -
+  moment[wuIndex(box.r0, box.g1, box.b1)] +
+  moment[wuIndex(box.r0, box.g1, box.b0)] +
+  moment[wuIndex(box.r0, box.g0, box.b1)] -
+  moment[wuIndex(box.r0, box.g0, box.b0)];
+
+const wuVariance = (box: WuBox, moments: WuMoments): number => {
+  const weight = wuVolume(box, moments.weight);
+  if (weight <= 0) return 0;
+  const red = wuVolume(box, moments.red);
+  const green = wuVolume(box, moments.green);
+  const blue = wuVolume(box, moments.blue);
+  return (
+    wuVolume(box, moments.squared) -
+    (red * red + green * green + blue * blue) / weight
   );
 };
 
-const splitBox = (
-  colors: HistogramColor[],
-): [HistogramColor[], HistogramColor[]] => {
-  const ranges = (["l", "a", "b"] as const).map((axis) => ({
-    axis,
-    range:
-      Math.max(...colors.map((color) => color[axis])) -
-      Math.min(...colors.map((color) => color[axis])),
-  }));
-  const axis = ranges.sort((left, right) => right.range - left.range)[0].axis;
-  const sorted = colors.slice().sort((left, right) => left[axis] - right[axis]);
-  const total = sorted.reduce((sum, color) => sum + color.count, 0);
-  let cumulative = 0;
-  let split = 1;
-  let bestDifference = Number.POSITIVE_INFINITY;
-  for (let index = 1; index < sorted.length; index += 1) {
-    cumulative += sorted[index - 1].count;
-    const difference = Math.abs(total - cumulative * 2);
-    if (difference < bestDifference) {
-      bestDifference = difference;
-      split = index;
+const splitWuBox = (box: WuBox, moments: WuMoments): [WuBox, WuBox] | null => {
+  let best: { axis: "r" | "g" | "b"; cut: number; score: number } | null = null;
+  for (const axis of ["r", "g", "b"] as const) {
+    const low = box[`${axis}0`];
+    const high = box[`${axis}1`];
+    for (let cut = low + 1; cut < high; cut += 1) {
+      const left = { ...box, [`${axis}1`]: cut } as WuBox;
+      const right = { ...box, [`${axis}0`]: cut } as WuBox;
+      if (
+        wuVolume(left, moments.weight) <= 0 ||
+        wuVolume(right, moments.weight) <= 0
+      )
+        continue;
+      const score = wuVariance(left, moments) + wuVariance(right, moments);
+      if (!best || score > best.score) best = { axis, cut, score };
     }
   }
-  return [sorted.slice(0, split), sorted.slice(split)];
+  if (!best) return null;
+  return [
+    { ...box, [`${best.axis}1`]: best.cut } as WuBox,
+    { ...box, [`${best.axis}0`]: best.cut } as WuBox,
+  ];
 };
 
 export const wuVarianceSeeds = (
   pixels: Uint8ClampedArray,
   requested: number,
 ): PaletteColor[] => {
-  const colors = histogram(pixels);
-  if (colors.length === 0)
+  const moments = cumulativeWuMoments(pixels);
+  const full: WuBox = { r0: 0, r1: 32, g0: 0, g1: 32, b0: 0, b1: 32 };
+  if (wuVolume(full, moments.weight) <= 0)
     return [
       { ...rgbToOklab(255, 255, 255), r: 255, g: 255, blue: 255, count: 1 },
     ];
-  const boxes: HistogramColor[][] = [colors];
+  const boxes: WuBox[] = [full];
   while (boxes.length < requested) {
-    let boxIndex = -1;
-    let variance = -1;
-    boxes.forEach((box, index) => {
-      const candidate = box.length > 1 ? boxVariance(box) : -1;
-      if (candidate > variance) {
-        variance = candidate;
-        boxIndex = index;
-      }
-    });
-    if (boxIndex < 0) break;
-    const [left, right] = splitBox(boxes[boxIndex]);
-    if (left.length === 0 || right.length === 0) break;
+    const candidates = boxes
+      .map((box, index) => ({ index, variance: wuVariance(box, moments) }))
+      .sort((left, right) => right.variance - left.variance);
+    const boxIndex = candidates[0]?.index ?? -1;
+    if (boxIndex < 0 || candidates[0].variance <= 0) break;
+    const split = splitWuBox(boxes[boxIndex], moments);
+    if (!split) break;
+    const [left, right] = split;
     boxes.splice(boxIndex, 1, left, right);
   }
   return boxes.map((box) => {
-    const count = box.reduce((sum, color) => sum + color.count, 0) || 1;
-    const r =
-      box.reduce((sum, color) => sum + color.r * color.count, 0) / count;
-    const g =
-      box.reduce((sum, color) => sum + color.g * color.count, 0) / count;
-    const b =
-      box.reduce((sum, color) => sum + color.blue * color.count, 0) / count;
+    const count = wuVolume(box, moments.weight) || 1;
+    const r = wuVolume(box, moments.red) / count;
+    const g = wuVolume(box, moments.green) / count;
+    const b = wuVolume(box, moments.blue) / count;
     return { ...rgbToOklab(r, g, b), r, g, blue: b, count };
   });
 };
@@ -326,6 +390,161 @@ const labelPixels = (
   return labels;
 };
 
+const findLabelComponents = (
+  labels: Uint8Array,
+  width: number,
+  height: number,
+): { components: LabelComponent[]; componentAt: Int32Array } => {
+  const componentAt = new Int32Array(labels.length).fill(-1);
+  const components: LabelComponent[] = [];
+  const stack: number[] = [];
+  for (let start = 0; start < labels.length; start += 1) {
+    if (labels[start] === 255 || componentAt[start] >= 0) continue;
+    const id = components.length;
+    const label = labels[start];
+    const pixels: number[] = [];
+    componentAt[start] = id;
+    stack.push(start);
+    while (stack.length > 0) {
+      const pixel = stack.pop()!;
+      pixels.push(pixel);
+      const x = pixel % width;
+      const y = Math.floor(pixel / width);
+      const visit = (neighbor: number) => {
+        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
+          componentAt[neighbor] = id;
+          stack.push(neighbor);
+        }
+      };
+      if (x > 0) visit(pixel - 1);
+      if (x + 1 < width) visit(pixel + 1);
+      if (y > 0) visit(pixel - width);
+      if (y + 1 < height) visit(pixel + width);
+    }
+    components.push({
+      id,
+      label,
+      pixels,
+      area: pixels.length,
+      neighbors: new Map(),
+    });
+  }
+  const connect = (left: number, right: number) => {
+    if (left < 0 || right < 0 || left === right) return;
+    const leftNeighbors = components[left].neighbors;
+    const rightNeighbors = components[right].neighbors;
+    leftNeighbors.set(right, (leftNeighbors.get(right) ?? 0) + 1);
+    rightNeighbors.set(left, (rightNeighbors.get(left) ?? 0) + 1);
+  };
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const pixel = y * width + x;
+      if (x + 1 < width) connect(componentAt[pixel], componentAt[pixel + 1]);
+      if (y + 1 < height)
+        connect(componentAt[pixel], componentAt[pixel + width]);
+    }
+  }
+  return { components, componentAt };
+};
+
+export const mergeComponentsToBudget = (
+  labels: Uint8Array,
+  width: number,
+  height: number,
+  palette: LabColor[],
+  budget: number,
+): {
+  labels: Uint8Array;
+  initial: number;
+  remaining: number;
+  merged: number;
+} => {
+  const { components, componentAt } = findLabelComponents(
+    labels,
+    width,
+    height,
+  );
+  const initial = components.length;
+  if (initial <= budget)
+    return { labels, initial, remaining: initial, merged: 0 };
+
+  const parent = Int32Array.from(components, (component) => component.id);
+  const find = (id: number): number => {
+    let root = id;
+    while (parent[root] !== root) root = parent[root];
+    while (parent[id] !== id) {
+      const next = parent[id];
+      parent[id] = root;
+      id = next;
+    }
+    return root;
+  };
+  let remaining = initial;
+  const ordered = components
+    .map((component) => component.id)
+    .sort((left, right) => components[left].area - components[right].area);
+
+  let changed = true;
+  while (remaining > budget && changed) {
+    changed = false;
+    for (const candidate of ordered) {
+      if (remaining <= budget) break;
+      const source = find(candidate);
+      if (source !== candidate) continue;
+      const sourceComponent = components[source];
+      const choices = [...sourceComponent.neighbors.entries()]
+        .map(([neighbor, boundary]) => ({ root: find(neighbor), boundary }))
+        .filter((choice) => choice.root !== source);
+      if (choices.length === 0) continue;
+      choices.sort((left, right) => {
+        const colorDifference =
+          distance(
+            palette[sourceComponent.label],
+            palette[components[left.root].label],
+          ) -
+          distance(
+            palette[sourceComponent.label],
+            palette[components[right.root].label],
+          );
+        return (
+          colorDifference ||
+          right.boundary - left.boundary ||
+          components[right.root].area - components[left.root].area
+        );
+      });
+      const target = choices[0].root;
+      parent[source] = target;
+      components[target].area += sourceComponent.area;
+      for (const [neighbor, boundary] of sourceComponent.neighbors) {
+        const neighborRoot = find(neighbor);
+        if (neighborRoot === target) continue;
+        components[target].neighbors.set(
+          neighborRoot,
+          (components[target].neighbors.get(neighborRoot) ?? 0) + boundary,
+        );
+        components[neighborRoot].neighbors.set(
+          target,
+          (components[neighborRoot].neighbors.get(target) ?? 0) + boundary,
+        );
+      }
+      remaining -= 1;
+      changed = true;
+    }
+  }
+
+  const mergedLabels = labels.slice();
+  for (let pixel = 0; pixel < componentAt.length; pixel += 1) {
+    if (componentAt[pixel] >= 0)
+      mergedLabels[pixel] = components[find(componentAt[pixel])].label;
+  }
+  return {
+    labels: mergedLabels,
+    initial,
+    remaining,
+    merged: initial - remaining,
+  };
+};
+
 const pointKey = (point: Point): string => `${point.x},${point.y}`;
 
 const traceBoundaries = (
@@ -419,11 +638,18 @@ export const traceColorDocument = (
       options.fillStrategy,
     ),
   );
-  const labels = labelPixels(pixels, labs, palette);
+  const initialLabels = labelPixels(pixels, labs, palette);
+  const componentMerge = mergeComponentsToBudget(
+    initialLabels,
+    width,
+    height,
+    palette,
+    Math.max(1, options.maxPaths),
+  );
+  const labels = componentMerge.labels;
   const indexed = palette
     .map((color, index) => ({ color, index }))
     .sort((left, right) => right.color.count - left.color.count);
-  let remaining = Math.max(1, options.maxPaths);
   const shapes: VectorShape[] = [];
   indexed.forEach(({ color, index }) => {
     const rings = traceBoundaries(labels, width, height, index)
@@ -435,9 +661,7 @@ export const traceColorDocument = (
         (ring) =>
           ring.points.length >= 3 && ring.area >= Math.max(1, options.turdSize),
       )
-      .sort((left, right) => right.area - left.area)
-      .slice(0, remaining);
-    remaining -= rings.length;
+      .sort((left, right) => right.area - left.area);
     if (rings.length === 0) return;
     shapes.push({
       id: `color-${index}`,
@@ -457,11 +681,30 @@ export const traceColorDocument = (
       ),
     });
   });
+  const deduplicated = deduplicateShapes(shapes);
+  const outputPaths = deduplicated.reduce(
+    (sum, shape) => sum + shape.subpaths.length,
+    0,
+  );
+  const pathBudgetExceeded = outputPaths > options.maxPaths;
   return {
     version: 1,
     width,
     height,
     mode: "color",
-    shapes: deduplicateShapes(shapes),
+    shapes: deduplicated,
+    diagnostics: {
+      requestedMaxPaths: options.maxPaths,
+      outputPaths,
+      pathBudgetExceeded,
+      initialColorComponents: componentMerge.initial,
+      mergedColorComponents: componentMerge.remaining,
+      mergedComponents: componentMerge.merged,
+      warnings: pathBudgetExceeded
+        ? [
+            `Path budget could not be reached without dropping disconnected artwork (${outputPaths} paths for a ${options.maxPaths} path target).`,
+          ]
+        : [],
+    },
   };
 };

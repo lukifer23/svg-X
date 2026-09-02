@@ -1,5 +1,6 @@
 import type {
   ConversionProgress,
+  ConversionDiagnostics,
   VectorDocument,
   VectorWorkerRequest,
   VectorWorkerResponse,
@@ -21,6 +22,7 @@ interface WorkItem {
     rawSvg: string;
     outputPaths: number;
     vectorizeMs: number;
+    diagnostics: ConversionDiagnostics;
   }) => void;
   reject: (error: Error) => void;
 }
@@ -75,6 +77,7 @@ export class VectorWorkerPool {
         rawSvg: message.rawSvg,
         outputPaths: message.outputPaths,
         vectorizeMs: message.vectorizeMs,
+        diagnostics: message.diagnostics,
       });
     else item.reject(new Error(message.error));
     this.dispatch();
@@ -128,6 +131,7 @@ export class VectorWorkerPool {
     rawSvg: string;
     outputPaths: number;
     vectorizeMs: number;
+    diagnostics: ConversionDiagnostics;
   }> {
     return new Promise((resolve, reject) => {
       const item: WorkItem = { ...args, resolve, reject };

@@ -17,7 +17,10 @@ import {
   type RawImageInput,
   simplifyForComplexImages,
 } from "./utils/imageProcessor";
-import type { VectorDocument } from "./core/vectorDocument";
+import type {
+  ConversionDiagnostics,
+  VectorDocument,
+} from "./core/vectorDocument";
 import { loadSettings, SETTINGS_STORAGE_KEY } from "./utils/settings";
 
 type ConversionStatus =
@@ -49,6 +52,9 @@ function App() {
   const [image, setImage] = useState<string | null>(null);
   const [svg, setSvg] = useState<string | null>(null);
   const [vectorDocument, setVectorDocument] = useState<VectorDocument | null>(
+    null,
+  );
+  const [diagnostics, setDiagnostics] = useState<ConversionDiagnostics | null>(
     null,
   );
   const [status, setStatus] = useState<ConversionStatus>("idle");
@@ -147,6 +153,7 @@ function App() {
         if (requestId !== activeRequestId.current) return;
         setSvg(result.svg);
         setVectorDocument(result.document);
+        setDiagnostics(result.diagnostics);
         setStatus("done");
       } catch (err) {
         if (requestId !== activeRequestId.current) return;
@@ -184,6 +191,7 @@ function App() {
       setFileName(getOptimizedFilename(file.name));
       setSvg(null);
       setVectorDocument(null);
+      setDiagnostics(null);
       setError("");
       setProcessingLogs([]);
       try {
@@ -198,6 +206,7 @@ function App() {
         if (requestId !== activeRequestId.current) return;
         setSvg(result.svg);
         setVectorDocument(result.document);
+        setDiagnostics(result.diagnostics);
         setStatus("done");
       } catch (err) {
         if (requestId !== activeRequestId.current) return;
@@ -316,6 +325,7 @@ function App() {
             svg={svg}
             status={status}
             progressSteps={PROGRESS_STEPS}
+            diagnostics={diagnostics}
             isMobile={isMobileView}
           />
         )}
@@ -377,6 +387,8 @@ function App() {
                 activeAbortController.current?.abort();
                 setImage(null);
                 setSvg(null);
+                setVectorDocument(null);
+                setDiagnostics(null);
                 setStatus("idle");
                 setError("");
               }}
