@@ -63,4 +63,29 @@ describe("error-bounded cubic fitting", () => {
     expect(subpath.commands.some((command) => command.type === "C")).toBe(true);
     expect(subpath.commands[subpath.commands.length - 1].type).toBe("Z");
   });
+
+  test("never lets a fitted closed boundary escape its source envelope", () => {
+    const points: Point[] = [
+      { x: 0, y: 0 },
+      { x: 80, y: 0 },
+      { x: 81, y: 1 },
+      { x: 81, y: 2 },
+      { x: 80, y: 3 },
+      { x: 0, y: 3 },
+      { x: -1, y: 2 },
+      { x: -1, y: 1 },
+    ];
+    const tolerance = 0.2;
+    const segments = cubicSegments(fitPointsToSubpath(points, true, tolerance));
+    expect(segments.length).toBeGreaterThan(0);
+    for (const segment of segments) {
+      for (let sample = 0; sample <= 100; sample += 1) {
+        const point = evaluateCubic(segment, sample / 100);
+        expect(point.x).toBeGreaterThanOrEqual(-1 - tolerance);
+        expect(point.x).toBeLessThanOrEqual(81 + tolerance);
+        expect(point.y).toBeGreaterThanOrEqual(-tolerance);
+        expect(point.y).toBeLessThanOrEqual(3 + tolerance);
+      }
+    }
+  });
 });

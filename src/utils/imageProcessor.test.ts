@@ -1,9 +1,21 @@
 import { describe, expect, test } from "vitest";
 import {
+  compositeRgbaOverWhite,
   simplifyForNetworkClients,
   DEFAULT_PARAMS,
   getOptimizedFilename,
 } from "./imageProcessor";
+
+describe("RGBA normalization", () => {
+  test("composites transparent and partial-alpha pixels over white", () => {
+    expect([
+      ...compositeRgbaOverWhite(new Uint8ClampedArray([20, 40, 60, 0])),
+    ]).toEqual([255, 255, 255, 255]);
+    expect([
+      ...compositeRgbaOverWhite(new Uint8ClampedArray([0, 100, 200, 128])),
+    ]).toEqual([127, 177, 227, 255]);
+  });
+});
 
 describe("simplifyForNetworkClients", () => {
   test("preserves every conversion parameter across transports", () => {

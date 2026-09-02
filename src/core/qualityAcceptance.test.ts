@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import sharp from "sharp";
 import { describe, expect, test } from "vitest";
 import { traceBlackAndWhite } from "./bwTrace";
@@ -89,6 +90,52 @@ describe("quality acceptance", () => {
     }
     expect(ssim(sourceRgb, rendered)).toBeGreaterThanOrEqual(0.95);
     expect(meanDeltaE00(sourceRgb, rendered)).toBeLessThanOrEqual(2);
+  });
+
+  test("curve fitting cannot degrade representative color artwork", async () => {
+    const source = await readFile(
+      new URL("../../tests/fixtures/review/color-bicycle.png", import.meta.url),
+    );
+    const { data, info } = await sharp(source)
+      .resize(192, 192, { fit: "fill" })
+      .flatten({ background: "#ffffff" })
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const pixels = new Uint8ClampedArray(
+      data.buffer,
+      data.byteOffset,
+      data.byteLength,
+    );
+    const sourceRgb = new Uint8Array(info.width * info.height * 3);
+    for (let pixel = 0; pixel < info.width * info.height; pixel += 1)
+      sourceRgb.set(pixels.subarray(pixel * 4, pixel * 4 + 3), pixel * 3);
+
+    const render = async (optCurve: boolean): Promise<Uint8Array> => {
+      const document = traceColorDocument(
+        pixels,
+        info.width,
+        info.height,
+        options({
+          optCurve,
+          optTolerance: 0.2,
+          colorSteps: 8,
+          maxPaths: 10_000,
+        }),
+      );
+      return new Uint8Array(
+        await sharp(Buffer.from(serializeVectorDocument(document)))
+          .flatten({ background: "#ffffff" })
+          .removeAlpha()
+          .raw()
+          .toBuffer(),
+      );
+    };
+
+    const polygonScore = ssim(sourceRgb, await render(false));
+    const curveScore = ssim(sourceRgb, await render(true));
+    expect(curveScore).toBeGreaterThanOrEqual(polygonScore - 0.005);
+    expect(curveScore).toBeGreaterThanOrEqual(0.93);
   });
 
   test("centerline stays within 1.5 pixels of a thick vertical line center", () => {

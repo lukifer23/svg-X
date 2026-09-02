@@ -77,6 +77,28 @@ export interface RawImageInput {
   height: number;
 }
 
+export const compositeRgbaOverWhite = (
+  source: ArrayBuffer | Uint8ClampedArray,
+): Uint8ClampedArray => {
+  const input =
+    source instanceof Uint8ClampedArray
+      ? source
+      : new Uint8ClampedArray(source);
+  const output = new Uint8ClampedArray(input.length);
+  for (let index = 0; index < input.length; index += 4) {
+    const alpha = input[index + 3] / 255;
+    output[index] = Math.round(input[index] * alpha + 255 * (1 - alpha));
+    output[index + 1] = Math.round(
+      input[index + 1] * alpha + 255 * (1 - alpha),
+    );
+    output[index + 2] = Math.round(
+      input[index + 2] * alpha + 255 * (1 - alpha),
+    );
+    output[index + 3] = 255;
+  }
+  return output;
+};
+
 export const formatTimestamp = (): string =>
   new Date().toISOString().split("T")[1].split(".")[0];
 
@@ -116,7 +138,7 @@ const decodeImage = async (
       throw new Error("Desktop decoder returned invalid RGBA dimensions");
     }
     return {
-      pixels: new Uint8ClampedArray(input.pixels),
+      pixels: compositeRgbaOverWhite(input.pixels),
       width,
       height,
     };

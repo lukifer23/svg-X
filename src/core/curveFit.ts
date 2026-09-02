@@ -8,6 +8,11 @@ interface Cubic {
   p3: Point;
 }
 
+interface FittedCubic {
+  curve: Cubic;
+  source: Point[];
+}
+
 const add = (left: Point, right: Point): Point => ({
   x: left.x + right.x,
   y: left.y + right.y,
@@ -72,6 +77,16 @@ const lineCubic = (start: Point, end: Point): Cubic => {
   };
 };
 
+const polylineLength = (points: Point[]): number => {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1)
+    length += Math.hypot(
+      points[index].x - points[index - 1].x,
+      points[index].y - points[index - 1].y,
+    );
+  return length;
+};
+
 const generateCubic = (
   points: Point[],
   parameters: number[],
@@ -118,12 +133,65 @@ const generateCubic = (
     alpha1 < minimum
   )
     return lineCubic(start, end);
+  const maximumHandle = Math.max(segmentLength, polylineLength(points)) * 2;
+  if (alpha0 > maximumHandle || alpha1 > maximumHandle)
+    return lineCubic(start, end);
   return {
     p0: start,
     p1: add(start, scale(leftTangent, alpha0)),
     p2: add(end, scale(rightTangent, alpha1)),
     p3: end,
   };
+};
+
+const curveStaysNearPolyline = (
+  curve: Cubic,
+  points: Point[],
+  maximumError: number,
+): boolean => {
+  const margin = Math.max(0.05, maximumError);
+  const minimumX = Math.min(...points.map((point) => point.x)) - margin;
+  const maximumX = Math.max(...points.map((point) => point.x)) + margin;
+  const minimumY = Math.min(...points.map((point) => point.y)) - margin;
+  const maximumY = Math.max(...points.map((point) => point.y)) + margin;
+  for (let sample = 0; sample <= 16; sample += 1) {
+    const point = evaluateCubic(curve, sample / 16);
+    if (
+      point.x < minimumX ||
+      point.x > maximumX ||
+      point.y < minimumY ||
+      point.y > maximumY
+    )
+      return false;
+    let closest = Number.POSITIVE_INFINITY;
+    for (let index = 1; index < points.length; index += 1) {
+      const start = points[index - 1];
+      const end = points[index];
+      const deltaX = end.x - start.x;
+      const deltaY = end.y - start.y;
+      const denominator = deltaX * deltaX + deltaY * deltaY;
+      const parameter =
+        denominator <= Number.EPSILON
+          ? 0
+          : Math.max(
+              0,
+              Math.min(
+                1,
+                ((point.x - start.x) * deltaX + (point.y - start.y) * deltaY) /
+                  denominator,
+              ),
+            );
+      closest = Math.min(
+        closest,
+        Math.hypot(
+          point.x - (start.x + parameter * deltaX),
+          point.y - (start.y + parameter * deltaY),
+        ),
+      );
+    }
+    if (closest > margin) return false;
+  }
+  return true;
 };
 
 const maximumError = (
@@ -150,13 +218,23 @@ const fitRecursive = (
   leftTangent: Point,
   rightTangent: Point,
   maximumSquaredError: number,
-): Cubic[] => {
-  if (points.length === 2) return [lineCubic(points[0], points[1])];
+): FittedCubic[] => {
+  if (points.length === 2)
+    return [{ curve: lineCubic(points[0], points[1]), source: points }];
   const parameters = parameterize(points);
   const curve = generateCubic(points, parameters, leftTangent, rightTangent);
   const error = maximumError(points, curve, parameters);
-  if (error.squared <= maximumSquaredError) return [curve];
-  const split = Math.max(1, Math.min(points.length - 2, error.split));
+  const permittedError = Math.sqrt(maximumSquaredError);
+  if (
+    error.squared <= maximumSquaredError &&
+    curveStaysNearPolyline(curve, points, permittedError)
+  )
+    return [{ curve, source: points }];
+  const requestedSplit =
+    error.squared <= maximumSquaredError
+      ? Math.floor(points.length / 2)
+      : error.split;
+  const split = Math.max(1, Math.min(points.length - 2, requestedSplit));
   const leftEndTangent = normalize(subtract(points[split - 1], points[split]));
   const rightStartTangent = normalize(
     subtract(points[split + 1], points[split]),
@@ -204,7 +282,7 @@ export const fitPointsToSubpath = (
   );
   const commands: VectorCommand[] = [
     { type: "M", x: fitInput[0].x, y: fitInput[0].y },
-    ...cubics.map((curve): VectorCommand => ({
+    ...cubics.map(({ curve }): VectorCommand => ({
       type: "C",
       x1: curve.p1.x,
       y1: curve.p1.y,
