@@ -12,11 +12,12 @@ interface WorkItem {
   height: number;
   pixels: ArrayBuffer;
   options: WorkerConversionOptions;
+  includeDocument: boolean;
   priority: "interactive" | "batch";
   signal?: AbortSignal;
   onProgress?: (progress: ConversionProgress) => void;
   resolve: (result: {
-    document: VectorDocument;
+    document?: VectorDocument;
     rawSvg: string;
     outputPaths: number;
     vectorizeMs: number;
@@ -123,7 +124,7 @@ export class VectorWorkerPool {
   }
 
   run(args: Omit<WorkItem, "resolve" | "reject">): Promise<{
-    document: VectorDocument;
+    document?: VectorDocument;
     rawSvg: string;
     outputPaths: number;
     vectorizeMs: number;
@@ -159,6 +160,7 @@ export class VectorWorkerPool {
         height: item.height,
         pixels: item.pixels,
         options: item.options,
+        includeDocument: item.includeDocument,
       };
       slot.worker.postMessage(request, [item.pixels]);
     }

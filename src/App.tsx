@@ -9,6 +9,7 @@ import ProcessingLogs from "./components/ProcessingLogs";
 import BatchConversion from "./components/BatchConversion";
 import {
   processImageDetailed,
+  processImageBatch,
   DEFAULT_PARAMS,
   PROGRESS_STEPS,
   getOptimizedFilename,
@@ -213,16 +214,7 @@ function App() {
       params: TracingParams,
       signal?: AbortSignal,
     ) => {
-      return (
-        await processImageDetailed(
-          imageData,
-          params,
-          () => {},
-          undefined,
-          signal,
-          "batch",
-        )
-      ).svg;
+      return processImageBatch(imageData, params, signal);
     },
     [],
   );

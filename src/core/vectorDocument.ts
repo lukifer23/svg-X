@@ -84,6 +84,7 @@ export type VectorWorkerRequest = {
   height: number;
   pixels: ArrayBuffer;
   options: WorkerConversionOptions;
+  includeDocument: boolean;
 };
 
 export type VectorWorkerCancelRequest = {
@@ -103,7 +104,7 @@ export type VectorWorkerResponse =
       type: "complete";
       version: 1;
       jobId: string;
-      document: VectorDocument;
+      document?: VectorDocument;
       rawSvg: string;
       outputPaths: number;
       vectorizeMs: number;

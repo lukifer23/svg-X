@@ -45,14 +45,7 @@ test("eight-image production worker batch improves throughput without runaway me
         svgoOptimize: false,
       };
       const convert = () =>
-        module.processImageDetailed(
-          createInput(),
-          params,
-          () => undefined,
-          undefined,
-          undefined,
-          "batch",
-        );
+        module.processImageBatch(createInput(), params, undefined);
       await convert();
       const beforeHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })

@@ -68,7 +68,7 @@ workerScope.onmessage = (
       type: "complete",
       version: 1,
       jobId: request.jobId,
-      document,
+      document: request.includeDocument ? document : undefined,
       rawSvg,
       outputPaths,
       vectorizeMs,

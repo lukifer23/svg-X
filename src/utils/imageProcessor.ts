@@ -190,14 +190,19 @@ const optimizeSvg = (svg: string): string => {
 let sequence = 0;
 const nextJobId = (): string => `conversion-${Date.now()}-${++sequence}`;
 
-export const processImageDetailed = async (
+type InternalConversionResult = Omit<ConversionResult, "document"> & {
+  document?: ConversionResult["document"];
+};
+
+const executeConversion = async (
   imageData: string | RawImageInput,
   params: TracingParams,
   progressCallback: ProgressCallback,
   detailedLogCallback?: LogCallback,
   signal?: AbortSignal,
   priority: "interactive" | "batch" = "interactive",
-): Promise<ConversionResult> => {
+  includeDocument = true,
+): Promise<InternalConversionResult> => {
   const totalStart = now();
   progressCallback("loading");
   log("START", "Decoding source image", detailedLogCallback);
@@ -222,6 +227,7 @@ export const processImageDetailed = async (
     height: decoded.height,
     pixels: pixelBuffer,
     options,
+    includeDocument,
     priority,
     signal,
     onProgress: (progress) =>
@@ -257,6 +263,45 @@ export const processImageDetailed = async (
     },
   };
 };
+
+export const processImageDetailed = async (
+  imageData: string | RawImageInput,
+  params: TracingParams,
+  progressCallback: ProgressCallback,
+  detailedLogCallback?: LogCallback,
+  signal?: AbortSignal,
+  priority: "interactive" | "batch" = "interactive",
+): Promise<ConversionResult> => {
+  const result = await executeConversion(
+    imageData,
+    params,
+    progressCallback,
+    detailedLogCallback,
+    signal,
+    priority,
+    true,
+  );
+  if (!result.document)
+    throw new Error("Vector worker did not return authoritative geometry");
+  return { ...result, document: result.document };
+};
+
+export const processImageBatch = async (
+  imageData: RawImageInput,
+  params: TracingParams,
+  signal?: AbortSignal,
+): Promise<string> =>
+  (
+    await executeConversion(
+      imageData,
+      params,
+      () => undefined,
+      undefined,
+      signal,
+      "batch",
+      false,
+    )
+  ).svg;
 
 export const processImage = async (
   imageData: string,
