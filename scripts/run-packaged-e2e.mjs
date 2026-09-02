@@ -29,6 +29,7 @@ const port = String(3900 + Math.floor(Math.random() * 500));
 const application = await electron.launch({
   executablePath,
   env: { ...process.env, SVGX_PORT: port, SVGX_LAN: "0" },
+  args: process.platform === "linux" ? ["--no-sandbox"] : [],
 });
 try {
   const window = await application.firstWindow();
