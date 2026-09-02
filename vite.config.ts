@@ -9,7 +9,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ["slugify", "svgo"],
+    // Potrace is first loaded inside the module worker. Pre-bundling it keeps
+    // Vite from forcing a full-page reload when the first conversion starts.
+    include: ["@cadit-app/potrace-ts", "slugify", "svgo"],
   },
   build: {
     // Electron app — no CDN, so large bundles are acceptable
