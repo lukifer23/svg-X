@@ -40,6 +40,10 @@ const MAX_OUTPUT_BYTES = 25 * 1024 * 1024;
 const PORT = Number(process.env.SVGX_PORT || process.env.PORT || 3001);
 const LAN_ENABLED = process.env.SVGX_LAN === "1";
 const HOST = LAN_ENABLED ? "::" : "127.0.0.1";
+// Keep the renderer URL on an explicit address family. On hosts where
+// `localhost` resolves to ::1 first, loading it would fail while the local-only
+// server is intentionally bound to 127.0.0.1.
+const APP_ORIGIN = `http://127.0.0.1:${PORT}`;
 const isDev = !app.isPackaged;
 let mainWindow = null;
 let serverProcess = null;
@@ -252,21 +256,20 @@ const createWindow = async () => {
       preload: path.join(__dirname, "preload.cjs"),
     },
   });
-  const allowedOrigin = `http://localhost:${PORT}`;
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (!isAllowedNavigation(url, new Set([allowedOrigin])))
+    if (!isAllowedNavigation(url, new Set([APP_ORIGIN])))
       event.preventDefault();
   });
   if (isDev) {
-    await mainWindow.loadURL(allowedOrigin);
+    await mainWindow.loadURL(APP_ORIGIN);
   } else {
     const distPath = path.join(app.getAppPath(), "dist");
     serverProcess = await startServer(distPath);
-    await mainWindow.loadURL(allowedOrigin);
+    await mainWindow.loadURL(APP_ORIGIN);
   }
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -291,6 +294,7 @@ app.whenReady().then(async () => {
   try {
     await createWindow();
   } catch (error) {
+    console.error("SVG-X failed to start", error);
     dialog.showErrorBox("SVG-X failed to start", error.message);
     app.quit();
   }
