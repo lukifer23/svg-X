@@ -2,6 +2,7 @@ import slugify from "slugify";
 import { optimize as svgoOptimize } from "svgo";
 import { getVectorWorkerPool } from "../core/workerPool";
 import type {
+  ConversionMode,
   ConversionResult,
   WorkerConversionOptions,
 } from "../core/vectorDocument";
@@ -11,6 +12,7 @@ export type TurnPolicy =
 export type FillStrategy = "dominant" | "mean" | "median" | "spread";
 
 export interface TracingParams {
+  mode: ConversionMode;
   turdSize: number;
   turnPolicy: TurnPolicy;
   alphaMax: number;
@@ -22,16 +24,17 @@ export interface TracingParams {
   background: string;
   invert: boolean;
   highestQuality: boolean;
-  colorMode: boolean;
   colorSteps: number;
+  colorCurveFit: boolean;
   fillStrategy: FillStrategy;
-  strokeMode: boolean;
   strokeWidth: number;
+  centerlineCurveFit: boolean;
   maxPaths: number;
   svgoOptimize: boolean;
 }
 
 export const DEFAULT_PARAMS: TracingParams = {
+  mode: "bw",
   turdSize: 2,
   turnPolicy: "minority",
   alphaMax: 1,
@@ -43,11 +46,11 @@ export const DEFAULT_PARAMS: TracingParams = {
   background: "transparent",
   invert: false,
   highestQuality: false,
-  colorMode: false,
-  colorSteps: 4,
+  colorSteps: 8,
+  colorCurveFit: false,
   fillStrategy: "dominant",
-  strokeMode: false,
   strokeWidth: 2,
+  centerlineCurveFit: false,
   maxPaths: 2000,
   svgoOptimize: true,
 };
@@ -177,12 +180,17 @@ const decodeImage = async (
 };
 
 const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
-  mode: params.strokeMode ? "centerline" : params.colorMode ? "color" : "bw",
+  mode: params.mode,
   threshold: Math.max(0, Math.min(255, params.threshold)),
   turdSize: Math.max(0, params.turdSize),
   turnPolicy: params.turnPolicy,
   alphaMax: params.alphaMax,
-  optCurve: params.optCurve,
+  optCurve:
+    params.mode === "color"
+      ? params.colorCurveFit
+      : params.mode === "centerline"
+        ? params.centerlineCurveFit
+        : params.optCurve,
   optTolerance: Math.max(0, params.optTolerance),
   blackOnWhite: params.blackOnWhite,
   invert: params.invert,

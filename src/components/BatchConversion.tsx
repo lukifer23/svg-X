@@ -465,9 +465,9 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
   );
 
   const settingsSummary = [
-    potraceParams.colorMode
+    potraceParams.mode === "color"
       ? `Color (${potraceParams.colorSteps} steps, ${potraceParams.fillStrategy})`
-      : potraceParams.strokeMode
+      : potraceParams.mode === "centerline"
         ? "Stroke"
         : "B&W",
     `threshold ${potraceParams.threshold}`,

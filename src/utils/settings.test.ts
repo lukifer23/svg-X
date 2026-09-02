@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import { DEFAULT_PARAMS } from "./imageProcessor";
 import {
   LEGACY_SETTINGS_STORAGE_KEY,
+  PREVIOUS_SETTINGS_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
   loadSettings,
   normalizeSettings,
@@ -32,7 +33,7 @@ describe("settings migration", () => {
     });
     const result = loadSettings(storage);
     expect(result).toMatchObject({
-      colorMode: true,
+      mode: "color",
       colorSteps: 7,
       threshold: 170,
     });
@@ -54,5 +55,16 @@ describe("settings migration", () => {
       optCurve: DEFAULT_PARAMS.optCurve,
       color: DEFAULT_PARAMS.color,
     });
+  });
+
+  test("migrates v2 boolean mode flags to one authoritative mode", () => {
+    const storage = memoryStorage({
+      [PREVIOUS_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        colorMode: true,
+        strokeMode: true,
+      }),
+    });
+    expect(loadSettings(storage).mode).toBe("centerline");
+    expect(storage.values.has(PREVIOUS_SETTINGS_STORAGE_KEY)).toBe(false);
   });
 });

@@ -64,7 +64,7 @@ test("eight-image production worker batch improves throughput without runaway me
       };
       const params = {
         ...module.DEFAULT_PARAMS,
-        colorMode: true,
+        mode: "color" as const,
         colorSteps: 4,
         maxPaths: 2_000,
         svgoOptimize: false,
@@ -75,6 +75,13 @@ test("eight-image production worker batch improves throughput without runaway me
       const beforeHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })
           .memory?.usedJSHeapSize ?? 0;
+      let peakHeap = beforeHeap;
+      const heapSampler = window.setInterval(() => {
+        const current = (
+          performance as Performance & { memory?: { usedJSHeapSize: number } }
+        ).memory?.usedJSHeapSize;
+        if (current) peakHeap = Math.max(peakHeap, current);
+      }, 25);
       const sequentialSamples: number[] = [];
       const concurrentSamples: number[] = [];
       for (let sample = 0; sample < 3; sample += 1) {
@@ -95,6 +102,7 @@ test("eight-image production worker batch improves throughput without runaway me
       const afterHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })
           .memory?.usedJSHeapSize ?? 0;
+      window.clearInterval(heapSampler);
       return {
         hardwareConcurrency: navigator.hardwareConcurrency,
         sequentialMs,
@@ -102,13 +110,15 @@ test("eight-image production worker batch improves throughput without runaway me
         sequentialSamples,
         concurrentSamples,
         heapGrowth: Math.max(0, afterHeap - beforeHeap),
+        peakHeapGrowth: Math.max(0, peakHeap - beforeHeap),
       };
     });
   const result = await runBenchmark();
 
   console.log(
-    `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput against ${minimumSpeedup.toFixed(2)}x floor, ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB heap growth on ${result.hardwareConcurrency} logical CPUs`,
+    `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput against ${minimumSpeedup.toFixed(2)}x floor, ${(result.peakHeapGrowth / 1024 / 1024).toFixed(1)} MiB peak / ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB settled heap growth on ${result.hardwareConcurrency} logical CPUs`,
   );
+  expect(result.peakHeapGrowth).toBeLessThan(256 * 1024 * 1024);
   expect(result.heapGrowth).toBeLessThan(256 * 1024 * 1024);
   if (result.hardwareConcurrency >= 3)
     expect(result.sequentialMs / result.concurrentMs).toBeGreaterThanOrEqual(

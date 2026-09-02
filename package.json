@@ -35,14 +35,7 @@
     "electron:direct": "electron .",
     "electron:build": "vite build && electron-builder build --publish never",
     "package:dir": "vite build && electron-builder --dir --publish never",
-    "electron:build:windows-no-sign": "vite build && electron-builder build --win --config.win.signAndEditExecutable=false --config.win.verifyUpdateCodeSignature=false --config.mac.identity=null --config.afterSign=null",
-    "electron:build:portable": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64",
-    "electron:build:dir": "vite build && electron-builder --win dir",
-    "electron:build:win-portable": "vite build && electron-builder --win portable",
-    "electron:preview-win": "vite build && electron-builder --dir",
-    "build:win-simple": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never",
-    "build:win-no-sign": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_IDENTITY_AUTO_DISCOVERY=false CSC_IDENTITY_NAME=null WIN_CSC_IDENTITY_NAME=null WIN_CSC_LINK=null CSC_LINK=null electron-builder --win dir --publish never",
-    "build:portable-exe": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --config.win.sign=false --config.win.signDlls=false --config.win.signAndEditExecutable=false --config.win.verifyUpdateCodeSignature=false --publish never"
+    "package:portable": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never"
   },
   "dependencies": {
     "@cadit-app/potrace-ts": "1.3.0",

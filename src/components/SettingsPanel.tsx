@@ -54,11 +54,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   background,
   invert,
   highestQuality,
-  colorMode,
+  mode,
   colorSteps,
+  colorCurveFit,
   fillStrategy,
-  strokeMode,
   strokeWidth,
+  centerlineCurveFit,
   maxPaths,
   svgoOptimize,
   onParamChange,
@@ -87,6 +88,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const firstFocusableRef = useRef<HTMLButtonElement>(null);
 
   const currentParams: TracingParams = {
+    mode,
     turdSize,
     turnPolicy,
     alphaMax,
@@ -98,11 +100,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     background,
     invert,
     highestQuality,
-    colorMode,
     colorSteps,
+    colorCurveFit,
     fillStrategy,
-    strokeMode,
     strokeWidth,
+    centerlineCurveFit,
     maxPaths,
     svgoOptimize,
   };
@@ -301,22 +303,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 ["centerline", "Centerline", "Open stroked paths"],
               ] as const
             ).map(([mode, label, description]) => {
-              const selected =
-                mode === "color"
-                  ? colorMode
-                  : mode === "centerline"
-                    ? strokeMode
-                    : !colorMode && !strokeMode;
+              const selected = mode === currentParams.mode;
               return (
                 <button
                   key={mode}
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => {
-                    onParamChange("colorMode", mode === "color");
-                    onParamChange("strokeMode", mode === "centerline");
-                  }}
+                  onClick={() => onParamChange("mode", mode)}
                   className={`rounded-lg border px-3 py-3 text-left transition-colors ${selected ? "border-blue-500 bg-blue-50 text-blue-800" : "border-gray-200 hover:border-gray-300 text-gray-700"}`}
                 >
                   <span className="block text-sm font-semibold">{label}</span>
@@ -330,7 +324,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </fieldset>
 
         {/* === B&W POTRACE SETTINGS === */}
-        {!colorMode && !strokeMode && (
+        {mode === "bw" && (
           <div className="mb-6">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               B&amp;W / Potrace Settings
@@ -458,7 +452,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         )}
 
         {/* === COLOR MODE === */}
-        {colorMode && (
+        {mode === "color" && (
           <div className="mb-6">
             <div className="flex items-center gap-1.5 mb-3">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -466,7 +460,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </h4>
               <Tooltip content="Builds a perceptual palette, assigns every pixel to one color label, and extracts shared grid boundaries as compound even-odd regions." />
             </div>
-            {colorMode && (
+            {mode === "color" && (
               <div
                 className={`grid ${isMobile ? "grid-cols-1 gap-4" : "sm:grid-cols-2 gap-6"}`}
               >
@@ -517,13 +511,21 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     ))}
                   </div>
                 </div>
+                <div className={colSpan}>
+                  {renderCheckbox(
+                    "colorCurveFit",
+                    "Fit bounded Bezier curves",
+                    "Smooth color boundaries with error-bounded Bezier fitting. Polygon boundaries are the sharper, faster default and usually produce smaller files.",
+                    colorCurveFit,
+                  )}
+                </div>
               </div>
             )}
           </div>
         )}
 
         {/* === STROKE MODE === */}
-        {strokeMode && (
+        {mode === "centerline" && (
           <div className="mb-6">
             <div className="flex items-center gap-1.5 mb-3">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -560,6 +562,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               )}
               <div className={colSpan}>
                 {renderCheckbox(
+                  "centerlineCurveFit",
+                  "Fit bounded Bezier curves",
+                  "Smooth centerline chains with error-bounded Bezier fitting. Straight segments preserve exact skeleton geometry by default.",
+                  centerlineCurveFit,
+                )}
+                {renderCheckbox(
                   "blackOnWhite",
                   "Dark lines on light background",
                   "Disable when tracing light linework on a dark background.",
@@ -583,7 +591,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         )}
 
         {/* === SVG COLORS === */}
-        {!colorMode && (
+        {mode !== "color" && (
           <div className="mb-6">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
               SVG Colors
@@ -680,8 +688,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           >
             {renderSlider(
               "maxPaths",
-              "Max Paths per Layer",
-              "Maximum number of contour paths to keep per color layer. Higher = more detail, more complex SVG. Lower = faster processing, simpler output. Range: 100–10000.",
+              "Path Complexity Target",
+              "Target for total contour complexity. Tiny adjacent color islands are merged without dropping opaque pixels. Disconnected artwork is preserved and reported if the target cannot be reached. Range: 100–10000.",
               maxPaths,
               100,
               10000,

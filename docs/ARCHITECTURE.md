@@ -15,9 +15,9 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 ## Mode ownership
 
 - `bwTrace.ts`: Potrace adapter and compatibility preprocessing.
-- `colorTrace.ts`: palette seeds/refinement, disjoint labels, shared-grid topology, compound even-odd regions, canonical deduplication.
+- `colorTrace.ts`: Wu cumulative-moment palette seeds, OKLab refinement, disjoint labels, lossless component-budget merging, shared-grid topology, compound even-odd regions, canonical deduplication.
 - `centerline.ts`: thresholding, thinning, endpoint/junction classification, degree-two walks, and cycle preservation.
-- `curveFit.ts`: common recursive cubic fitting with a bounded point residual.
+- `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
 
 Serialization and conversion types live in `vectorDocument.ts`, `serialize.ts`, and `vectorExport.ts`. UI code must not parse generated SVG to recover geometry.
 

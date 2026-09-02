@@ -56,6 +56,8 @@ Geometry is deduplicated only when canonical commands, paint, stroke, and opacit
 
 Centerline mode thresholds and Zhang-Suen-thins the raster, classifies endpoints and junctions, follows degree-two chains, and preserves isolated cycles. It emits open stroked paths instead of filled outlines around the skeleton, with optional error-bounded cubic fitting.
 
+Color mode uses true Wu cumulative-moment seeds followed by bounded OKLab refinement. Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
+
 ## Authoritative vector model
 
 All converters produce a typed `VectorDocument` containing dimensions, mode, ordered shapes, paint, opacity, fill rule, and path commands. SVG, EPS, DXF, and JSON serialize directly from this document. EPS/DXF/JSON do not parse generated SVG text.
@@ -155,10 +157,10 @@ Generated `dist`, `release`, builder diagnostics, TypeScript build metadata, ins
 npm run electron:build
 
 # Windows unpacked directory
-npm run electron:build:dir
+npm run package:dir
 
 # Windows portable executable
-npm run build:portable-exe
+npm run package:portable
 ```
 
 No recovery release has been published. Local and hosted unsigned package smoke tests are not claims that code signing, notarization, clean-machine installation, or a downloadable release has passed.
@@ -166,7 +168,7 @@ No recovery release has been published. Local and hosted unsigned package smoke 
 ## Known limitations
 
 - DXF uses sampled polylines rather than native splines.
-- Color boundaries currently follow the shared pixel grid; antialiased edges are simplified and curve-fit but are not reconstructed as continuous subpixel coverage isolines.
+- Color boundaries currently follow the shared pixel grid; antialiased edges are simplified and can be curve-fit, but are not reconstructed as continuous subpixel coverage isolines.
 - Color count is bounded to protect output complexity; photographic input is an approximation, not lossless vectorization.
 - White alpha compositing is currently fixed for compatibility.
 - HEIC availability depends on the Sharp build for the target platform.

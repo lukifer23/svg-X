@@ -1,6 +1,7 @@
 import { DEFAULT_PARAMS, type TracingParams } from "./imageProcessor";
 
-export const SETTINGS_STORAGE_KEY = "svgx-settings-v2";
+export const SETTINGS_STORAGE_KEY = "svgx-settings-v3";
+export const PREVIOUS_SETTINGS_STORAGE_KEY = "svgx-settings-v2";
 export const LEGACY_SETTINGS_STORAGE_KEY = "svgx-potrace-params";
 
 const turnPolicies = new Set([
@@ -12,6 +13,7 @@ const turnPolicies = new Set([
   "majority",
 ]);
 const fillStrategies = new Set(["dominant", "mean", "median", "spread"]);
+const conversionModes = new Set(["bw", "color", "centerline"]);
 
 const finite = (
   value: unknown,
@@ -35,6 +37,13 @@ export const normalizeSettings = (input: unknown): TracingParams => {
       ? (input as Record<string, unknown>)
       : {};
   return {
+    mode: conversionModes.has(String(value.mode))
+      ? (value.mode as TracingParams["mode"])
+      : value.strokeMode === true
+        ? "centerline"
+        : value.colorMode === true
+          ? "color"
+          : DEFAULT_PARAMS.mode,
     turdSize: finite(value.turdSize, DEFAULT_PARAMS.turdSize, 0, 10_000),
     turnPolicy: turnPolicies.has(String(value.turnPolicy))
       ? (value.turnPolicy as TracingParams["turnPolicy"])
@@ -53,17 +62,20 @@ export const normalizeSettings = (input: unknown): TracingParams => {
     background: paint(value.background, DEFAULT_PARAMS.background),
     invert: bool(value.invert, DEFAULT_PARAMS.invert),
     highestQuality: bool(value.highestQuality, DEFAULT_PARAMS.highestQuality),
-    colorMode: bool(value.colorMode, DEFAULT_PARAMS.colorMode),
     colorSteps: finite(value.colorSteps, DEFAULT_PARAMS.colorSteps, 2, 64),
+    colorCurveFit: bool(value.colorCurveFit, DEFAULT_PARAMS.colorCurveFit),
     fillStrategy: fillStrategies.has(String(value.fillStrategy))
       ? (value.fillStrategy as TracingParams["fillStrategy"])
       : DEFAULT_PARAMS.fillStrategy,
-    strokeMode: bool(value.strokeMode, DEFAULT_PARAMS.strokeMode),
     strokeWidth: finite(
       value.strokeWidth,
       DEFAULT_PARAMS.strokeWidth,
       0.1,
       100,
+    ),
+    centerlineCurveFit: bool(
+      value.centerlineCurveFit,
+      DEFAULT_PARAMS.centerlineCurveFit,
     ),
     maxPaths: finite(value.maxPaths, DEFAULT_PARAMS.maxPaths, 1, 100_000),
     svgoOptimize: bool(value.svgoOptimize, DEFAULT_PARAMS.svgoOptimize),
@@ -76,10 +88,13 @@ export const loadSettings = (
   try {
     const current = storage.getItem(SETTINGS_STORAGE_KEY);
     if (current) return normalizeSettings(JSON.parse(current));
-    const legacy = storage.getItem(LEGACY_SETTINGS_STORAGE_KEY);
-    if (legacy) {
-      const migrated = normalizeSettings(JSON.parse(legacy));
+    const previous =
+      storage.getItem(PREVIOUS_SETTINGS_STORAGE_KEY) ??
+      storage.getItem(LEGACY_SETTINGS_STORAGE_KEY);
+    if (previous) {
+      const migrated = normalizeSettings(JSON.parse(previous));
       storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(migrated));
+      storage.removeItem(PREVIOUS_SETTINGS_STORAGE_KEY);
       storage.removeItem(LEGACY_SETTINGS_STORAGE_KEY);
       return migrated;
     }
