@@ -121,6 +121,21 @@ describe("color region topology", () => {
       expect(seeds.length).toBeLessThanOrEqual(3);
     }
   });
+
+  test("does not paint fully transparent pixels as color regions", () => {
+    const document = traceColorDocument(
+      rgba(2, 1, (x) => (x === 0 ? [230, 40, 50, 255] : [20, 90, 220, 0])),
+      2,
+      1,
+      options({ mode: "color", colorSteps: 2, optCurve: false }),
+    );
+    expect(document.shapes).toHaveLength(1);
+    const xCoordinates = document.shapes[0].subpaths[0].commands.flatMap(
+      (command) =>
+        command.type === "M" || command.type === "L" ? [command.x] : [],
+    );
+    expect(xCoordinates.every((x) => x <= 1)).toBe(true);
+  });
 });
 
 describe("centerline graph walking", () => {

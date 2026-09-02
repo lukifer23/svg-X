@@ -19,7 +19,7 @@ test("eight-image production worker batch improves throughput without runaway me
   const runBenchmark = () =>
     page.evaluate(async () => {
       const module = await import("/src/utils/imageProcessor.ts");
-      const size = 320;
+      const size = 640;
       const createInput = () => {
         const pixels = new Uint8ClampedArray(size * size * 4);
         const colors = [

@@ -22,6 +22,11 @@ interface PaletteColor extends LabColor {
   blue: number;
   count: number;
 }
+interface PixelLabs {
+  l: Float32Array;
+  a: Float32Array;
+  b: Float32Array;
+}
 type HistogramColor = PaletteColor;
 interface Edge {
   start: Point;
@@ -54,6 +59,36 @@ export const rgbToOklab = (r: number, g: number, b: number): LabColor => {
 
 const distance = (left: LabColor, right: LabColor): number =>
   (left.l - right.l) ** 2 + (left.a - right.a) ** 2 + (left.b - right.b) ** 2;
+
+const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
+  const length = pixels.length / 4;
+  const labs: PixelLabs = {
+    l: new Float32Array(length),
+    a: new Float32Array(length),
+    b: new Float32Array(length),
+  };
+  for (let pixel = 0; pixel < length; pixel += 1) {
+    const offset = pixel * 4;
+    const lab = rgbToOklab(
+      pixels[offset],
+      pixels[offset + 1],
+      pixels[offset + 2],
+    );
+    labs.l[pixel] = lab.l;
+    labs.a[pixel] = lab.a;
+    labs.b[pixel] = lab.b;
+  }
+  return labs;
+};
+
+const pixelDistance = (
+  labs: PixelLabs,
+  pixel: number,
+  color: LabColor,
+): number =>
+  (labs.l[pixel] - color.l) ** 2 +
+  (labs.a[pixel] - color.a) ** 2 +
+  (labs.b[pixel] - color.b) ** 2;
 
 const histogram = (pixels: Uint8ClampedArray): HistogramColor[] => {
   const bins = new Map<
@@ -230,6 +265,7 @@ export const paletteSeeds = (
 
 const refinePalette = (
   pixels: Uint8ClampedArray,
+  labs: PixelLabs,
   seeds: PaletteColor[],
 ): PaletteColor[] => {
   let palette = seeds;
@@ -237,15 +273,11 @@ const refinePalette = (
     const sums = palette.map(() => ({ r: 0, g: 0, b: 0, count: 0 }));
     for (let index = 0; index < pixels.length; index += 4) {
       if (pixels[index + 3] < 8) continue;
-      const lab = rgbToOklab(
-        pixels[index],
-        pixels[index + 1],
-        pixels[index + 2],
-      );
+      const pixel = index / 4;
       let closest = 0;
       let closestDistance = Number.POSITIVE_INFINITY;
       palette.forEach((color, candidate) => {
-        const candidateDistance = distance(lab, color);
+        const candidateDistance = pixelDistance(labs, pixel, color);
         if (candidateDistance < closestDistance) {
           closestDistance = candidateDistance;
           closest = candidate;
@@ -270,16 +302,20 @@ const refinePalette = (
 
 const labelPixels = (
   pixels: Uint8ClampedArray,
+  labs: PixelLabs,
   palette: PaletteColor[],
 ): Uint8Array => {
   const labels = new Uint8Array(pixels.length / 4);
   for (let pixel = 0; pixel < labels.length; pixel += 1) {
     const index = pixel * 4;
-    const lab = rgbToOklab(pixels[index], pixels[index + 1], pixels[index + 2]);
+    if (pixels[index + 3] < 8) {
+      labels[pixel] = 255;
+      continue;
+    }
     let closest = 0;
     let closestDistance = Number.POSITIVE_INFINITY;
     palette.forEach((color, candidate) => {
-      const candidateDistance = distance(lab, color);
+      const candidateDistance = pixelDistance(labs, pixel, color);
       if (candidateDistance < closestDistance) {
         closestDistance = candidateDistance;
         closest = candidate;
@@ -373,15 +409,17 @@ export const traceColorDocument = (
   height: number,
   options: WorkerConversionOptions,
 ): VectorDocument => {
+  const labs = precomputePixelLabs(pixels);
   const palette = refinePalette(
     pixels,
+    labs,
     paletteSeeds(
       pixels,
       Math.max(2, Math.min(8, options.colorSteps)),
       options.fillStrategy,
     ),
   );
-  const labels = labelPixels(pixels, palette);
+  const labels = labelPixels(pixels, labs, palette);
   const indexed = palette
     .map((color, index) => ({ color, index }))
     .sort((left, right) => right.color.count - left.color.count);
