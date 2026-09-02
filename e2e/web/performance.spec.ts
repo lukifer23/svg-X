@@ -9,7 +9,7 @@ test("eight-image production worker batch improves throughput without runaway me
     "Chromium provides stable heap telemetry",
   );
   test.setTimeout(120_000);
-  await page.goto("/");
+  await page.goto("/", { waitUntil: "networkidle" });
   const result = await page.evaluate(async () => {
     const module = await import("/src/utils/imageProcessor.ts");
     const size = 320;
@@ -50,12 +50,23 @@ test("eight-image production worker batch improves throughput without runaway me
     const beforeHeap =
       (performance as Performance & { memory?: { usedJSHeapSize: number } })
         .memory?.usedJSHeapSize ?? 0;
-    const sequentialStart = performance.now();
-    for (let index = 0; index < 8; index += 1) await convert();
-    const sequentialMs = performance.now() - sequentialStart;
-    const concurrentStart = performance.now();
-    await Promise.all(Array.from({ length: 8 }, () => convert()));
-    const concurrentMs = performance.now() - concurrentStart;
+    const sequentialSamples: number[] = [];
+    const concurrentSamples: number[] = [];
+    for (let sample = 0; sample < 3; sample += 1) {
+      const sequentialStart = performance.now();
+      for (let index = 0; index < 8; index += 1) await convert();
+      sequentialSamples.push(performance.now() - sequentialStart);
+
+      const concurrentStart = performance.now();
+      await Promise.all(Array.from({ length: 8 }, () => convert()));
+      concurrentSamples.push(performance.now() - concurrentStart);
+    }
+    const median = (samples: number[]) =>
+      [...samples].sort((left, right) => left - right)[
+        Math.floor(samples.length / 2)
+      ];
+    const sequentialMs = median(sequentialSamples);
+    const concurrentMs = median(concurrentSamples);
     const afterHeap =
       (performance as Performance & { memory?: { usedJSHeapSize: number } })
         .memory?.usedJSHeapSize ?? 0;
@@ -63,6 +74,8 @@ test("eight-image production worker batch improves throughput without runaway me
       hardwareConcurrency: navigator.hardwareConcurrency,
       sequentialMs,
       concurrentMs,
+      sequentialSamples,
+      concurrentSamples,
       heapGrowth: Math.max(0, afterHeap - beforeHeap),
     };
   });
