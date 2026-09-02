@@ -8,6 +8,10 @@
     "node": ">=24.15.0 <25",
     "npm": ">=12.0.0 <13"
   },
+  "volta": {
+    "node": "24.19.0",
+    "npm": "12.0.2"
+  },
   "main": "main.cjs",
   "description": "Local-first B&W, color-region, and centerline vectorizer with SVG, EPS, DXF, and JSON export",
   "author": "Luke S",
@@ -20,6 +24,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run --config vitest.config.ts",
     "test:bench": "vitest run --config vitest.config.ts src/utils/imageProcessor.bench.test.ts",
+    "test:e2e:web": "playwright test",
+    "test:e2e:package": "node scripts/run-packaged-e2e.mjs",
     "verify:assets": "node scripts/verify-assets.mjs",
     "ci:check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run verify:assets && npm run build && npm audit --audit-level=moderate",
     "preview": "vite preview",
@@ -47,7 +53,9 @@
     "svgo": "4.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
@@ -77,6 +85,7 @@
       "dist/**/*",
       "main.cjs",
       "preload.cjs",
+      "desktop/**/*",
       "icon.svg",
       "package.json"
     ],

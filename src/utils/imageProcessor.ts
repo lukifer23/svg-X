@@ -72,6 +72,12 @@ type LogCallback = (
 ) => void;
 type ProgressCallback = (status: string) => void;
 
+export interface RawImageInput {
+  pixels: ArrayBuffer;
+  width: number;
+  height: number;
+}
+
 export const formatTimestamp = (): string =>
   new Date().toISOString().split("T")[1].split(".")[0];
 
@@ -92,13 +98,31 @@ const log = (
 };
 
 const decodeImage = async (
-  dataUrl: string,
+  input: string | RawImageInput,
   maxDimension: number,
   signal?: AbortSignal,
 ): Promise<{ pixels: Uint8ClampedArray; width: number; height: number }> => {
   if (signal?.aborted)
     throw new DOMException("Conversion cancelled", "AbortError");
-  const response = await fetch(dataUrl, { signal });
+  if (typeof input !== "string") {
+    const width = Math.floor(input.width);
+    const height = Math.floor(input.height);
+    if (
+      width < 1 ||
+      height < 1 ||
+      width > 8192 ||
+      height > 8192 ||
+      input.pixels.byteLength !== width * height * 4
+    ) {
+      throw new Error("Desktop decoder returned invalid RGBA dimensions");
+    }
+    return {
+      pixels: new Uint8ClampedArray(input.pixels),
+      width,
+      height,
+    };
+  }
+  const response = await fetch(input, { signal });
   if (!response.ok)
     throw new Error(`Unable to read image (${response.status})`);
   const bitmap = await createImageBitmap(await response.blob());
@@ -155,7 +179,7 @@ const optimizeSvg = (svg: string): string => {
       plugins: [
         {
           name: "preset-default",
-          params: { overrides: { removeViewBox: false, cleanupIds: false } },
+          params: { overrides: { cleanupIds: false } },
         },
       ],
     }).data;
@@ -168,7 +192,7 @@ let sequence = 0;
 const nextJobId = (): string => `conversion-${Date.now()}-${++sequence}`;
 
 export const processImageDetailed = async (
-  imageData: string,
+  imageData: string | RawImageInput,
   params: TracingParams,
   progressCallback: ProgressCallback,
   detailedLogCallback?: LogCallback,
@@ -188,7 +212,11 @@ export const processImageDetailed = async (
   log("METRIC", `decode=${Math.round(decodeMs)}ms`, detailedLogCallback);
   const options = toWorkerOptions(params);
   progressCallback(options.mode === "color" ? "colorProcessing" : "tracing");
-  const pixelBuffer = new Uint8ClampedArray(decoded.pixels).buffer;
+  const pixelBuffer =
+    decoded.pixels.byteOffset === 0 &&
+    decoded.pixels.byteLength === decoded.pixels.buffer.byteLength
+      ? (decoded.pixels.buffer as ArrayBuffer)
+      : new Uint8ClampedArray(decoded.pixels).buffer;
   const result = await getVectorWorkerPool().run({
     jobId: nextJobId(),
     width: decoded.width,

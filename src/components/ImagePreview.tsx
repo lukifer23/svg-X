@@ -253,7 +253,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
             aria-live="polite"
           >
             <p className="font-medium">Conversion complete!</p>
-            <p className="text-xs mt-1 text-green-600">
+            <p className="text-xs mt-1 text-green-800">
               Your SVG is ready to download{svgSize ? ` (${svgSize})` : ""}.
             </p>
           </div>

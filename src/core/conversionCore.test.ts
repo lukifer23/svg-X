@@ -70,6 +70,13 @@ describe("color region topology", () => {
     expect(document.shapes.some((shape) => shape.subpaths.length >= 2)).toBe(
       true,
     );
+    expect(
+      document.shapes.some((shape) =>
+        shape.subpaths.some((path) =>
+          path.commands.some((command) => command.type === "C"),
+        ),
+      ),
+    ).toBe(true);
   });
 
   test("deduplicates exact same-paint geometry but never geometry with different paint", () => {

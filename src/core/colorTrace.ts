@@ -1,3 +1,4 @@
+import { fitPointsToSubpath } from "./curveFit";
 import {
   pointsToSubpath,
   ringArea,
@@ -407,7 +408,15 @@ export const traceColorDocument = (
       strokeWidth: 0,
       opacity: 1,
       fillRule: "evenodd",
-      subpaths: rings.map((ring) => pointsToSubpath(ring.points, true)),
+      subpaths: rings.map((ring) =>
+        options.optCurve
+          ? fitPointsToSubpath(
+              ring.points,
+              true,
+              Math.max(0.05, options.optTolerance),
+            )
+          : pointsToSubpath(ring.points, true),
+      ),
     });
   });
   return {

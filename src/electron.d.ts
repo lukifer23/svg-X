@@ -24,7 +24,7 @@ declare global {
         grantId: string;
         fileId: string;
         resize: ResizeRequest;
-      }) => Promise<string>;
+      }) => Promise<{ pixels: ArrayBuffer; width: number; height: number }>;
       writeBatchOutput: (request: {
         grantId: string;
         baseName: string;

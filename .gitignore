@@ -15,9 +15,11 @@ node_modules
 # Build outputs
 dist
 dist-ssr
-release
+release*/
 *.tsbuildinfo
 *.local
+playwright-report
+test-results
 
 # Specifically exclude large files
 *.exe

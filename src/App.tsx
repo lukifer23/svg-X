@@ -13,6 +13,7 @@ import {
   PROGRESS_STEPS,
   getOptimizedFilename,
   TracingParams,
+  type RawImageInput,
   simplifyForComplexImages,
 } from "./utils/imageProcessor";
 import type { VectorDocument } from "./core/vectorDocument";
@@ -72,6 +73,7 @@ function App() {
   );
   const activeRequestId = useRef(0);
   const activeAbortController = useRef<AbortController | null>(null);
+  const processingLogsTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (window.electronAPI?.getAppVersion) {
@@ -159,6 +161,10 @@ function App() {
     [applyParams, potraceParams],
   );
   const closeSettings = useCallback(() => setShowSettings(false), []);
+  const closeProcessingLogs = useCallback(() => {
+    setShowLogs(false);
+    requestAnimationFrame(() => processingLogsTriggerRef.current?.focus());
+  }, []);
 
   const applyComplexSettings = useCallback(async () => {
     const complexParams = simplifyForComplexImages({ ...potraceParams });
@@ -202,7 +208,11 @@ function App() {
   );
 
   const processImageForBatch = useCallback(
-    async (imageData: string, params: TracingParams, signal?: AbortSignal) => {
+    async (
+      imageData: RawImageInput,
+      params: TracingParams,
+      signal?: AbortSignal,
+    ) => {
       return (
         await processImageDetailed(
           imageData,
@@ -324,6 +334,7 @@ function App() {
             <p className="text-sm sm:text-base whitespace-pre-line">{error}</p>
             <div className="mt-3 flex justify-between items-center flex-wrap gap-2">
               <button
+                ref={processingLogsTriggerRef}
                 onClick={() => setShowLogs(true)}
                 className="flex items-center text-blue-600 hover:text-blue-800 gap-1 text-xs"
               >
@@ -345,6 +356,7 @@ function App() {
         {status !== "idle" && !error && (
           <div className="mt-4 flex justify-center">
             <button
+              ref={processingLogsTriggerRef}
               onClick={() => setShowLogs(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors"
             >
@@ -403,7 +415,14 @@ function App() {
           onParamChange={handleParamChange}
           onReset={resetParams}
           onClose={closeSettings}
-          onApply={image ? applyCurrentParams : undefined}
+          onApply={
+            image
+              ? () => {
+                  closeSettings();
+                  void applyCurrentParams();
+                }
+              : undefined
+          }
           onApplyComplex={applyComplexSettings}
           isMobile={isMobileView}
           isComplexMode={isComplexMode}
@@ -424,7 +443,7 @@ function App() {
       <ProcessingLogs
         logs={processingLogs}
         visible={showLogs}
-        onClose={() => setShowLogs(false)}
+        onClose={closeProcessingLogs}
         onClear={() => setProcessingLogs([])}
       />
 

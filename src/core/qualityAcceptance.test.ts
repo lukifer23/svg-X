@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { traceBlackAndWhite } from "./bwTrace";
 import { traceCenterlines } from "./centerline";
 import { traceColorDocument } from "./colorTrace";
+import { meanDeltaE00 } from "./colorMetrics";
 import { serializeVectorDocument } from "./serialize";
 import type { WorkerConversionOptions } from "./vectorDocument";
 
@@ -87,6 +88,7 @@ describe("quality acceptance", () => {
       sourceRgb.set(pixels.subarray(pixel * 4, pixel * 4 + 3), pixel * 3);
     }
     expect(ssim(sourceRgb, rendered)).toBeGreaterThanOrEqual(0.95);
+    expect(meanDeltaE00(sourceRgb, rendered)).toBeLessThanOrEqual(2);
   });
 
   test("centerline stays within 1.5 pixels of a thick vertical line center", () => {

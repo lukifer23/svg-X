@@ -5,6 +5,14 @@ const os = require("node:os");
 const crypto = require("node:crypto");
 const express = require("express");
 const sharp = require("sharp");
+const {
+  isAllowedNavigation,
+  safeChild,
+  validateText,
+} = require("./desktop/security.cjs");
+const { collectNetworkUrls } = require("./desktop/network.cjs");
+const { writeUniqueOutput } = require("./desktop/files.cjs");
+const { decodeBmp } = require("./desktop/bmp.cjs");
 
 const expressApp = express();
 const grants = new Map();
@@ -21,14 +29,6 @@ const IMAGE_EXTENSIONS = new Set([
   ".tif",
   ".tiff",
 ]);
-const NATIVE_MIME = new Map([
-  [".png", "image/png"],
-  [".jpg", "image/jpeg"],
-  [".jpeg", "image/jpeg"],
-  [".gif", "image/gif"],
-  [".bmp", "image/bmp"],
-  [".webp", "image/webp"],
-]);
 const EXPORT_FORMATS = new Map([
   ["svg", { extension: "svg", name: "SVG Files" }],
   ["eps", { extension: "eps", name: "EPS Files" }],
@@ -39,19 +39,11 @@ const MAX_INPUT_BYTES = 50 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 25 * 1024 * 1024;
 const PORT = Number(process.env.SVGX_PORT || process.env.PORT || 3001);
 const LAN_ENABLED = process.env.SVGX_LAN === "1";
-const HOST = LAN_ENABLED ? "0.0.0.0" : "127.0.0.1";
+const HOST = LAN_ENABLED ? "::" : "127.0.0.1";
 const isDev = !app.isPackaged;
 let mainWindow = null;
 let serverProcess = null;
-
-const networkAddresses = () =>
-  Object.values(os.networkInterfaces())
-    .flatMap((entries) => entries || [])
-    .filter(
-      (entry) =>
-        !entry.internal && (entry.family === "IPv4" || entry.family === 4),
-    )
-    .map((entry) => entry.address);
+let activeHost = HOST;
 
 expressApp.disable("x-powered-by");
 expressApp.get("/api/health", (_request, response) =>
@@ -61,7 +53,11 @@ expressApp.get("/api/network-info", (_request, response) =>
   response.json({
     localUrl: `http://localhost:${PORT}`,
     networkUrls: LAN_ENABLED
-      ? networkAddresses().map((address) => `http://${address}:${PORT}`)
+      ? collectNetworkUrls(
+          os.networkInterfaces(),
+          PORT,
+          activeHost === "::" ? new Set([4, 6]) : new Set([4]),
+        )
       : [],
     lanEnabled: LAN_ENABLED,
   }),
@@ -80,27 +76,12 @@ const resolveGrant = (grantId, kind) => {
   return grant;
 };
 
-const safeChild = (root, fileName) => {
-  if (
-    typeof fileName !== "string" ||
-    fileName !== path.basename(fileName) ||
-    fileName.includes("\0")
-  ) {
-    throw new Error("Invalid file identifier");
-  }
-  const target = path.resolve(root, fileName);
-  const relative = path.relative(root, target);
-  if (relative.startsWith("..") || path.isAbsolute(relative))
-    throw new Error("Path escapes the selected directory");
-  return target;
-};
-
 const requireRenderer = (event) => {
   if (!mainWindow || event.sender.id !== mainWindow.webContents.id)
     throw new Error("Untrusted IPC sender");
 };
 
-const encodeInput = async (inputPath, resize) => {
+const decodeInput = async (inputPath, resize) => {
   const stats = await fs.promises.stat(inputPath);
   if (!stats.isFile() || stats.size > MAX_INPUT_BYTES)
     throw new Error("Input exceeds the 50 MB limit");
@@ -114,26 +95,28 @@ const encodeInput = async (inputPath, resize) => {
         fit: resize.maintainAspectRatio === false ? "fill" : "inside",
       }
     : null;
-  if (NATIVE_MIME.has(extension) && !resizeOptions) {
-    const data = await fs.promises.readFile(inputPath);
-    return `data:${NATIVE_MIME.get(extension)};base64,${data.toString("base64")}`;
-  }
-  let pipeline = sharp(inputPath, {
-    limitInputPixels: 100_000_000,
-    failOn: "error",
-  });
+  const bmp =
+    extension === ".bmp"
+      ? decodeBmp(await fs.promises.readFile(inputPath))
+      : null;
+  let pipeline = bmp
+    ? sharp(bmp.pixels, {
+        raw: { width: bmp.width, height: bmp.height, channels: 4 },
+      })
+    : sharp(inputPath, {
+        limitInputPixels: 100_000_000,
+        failOn: "error",
+      });
   if (resizeOptions) pipeline = pipeline.resize(resizeOptions);
-  const png = await pipeline.png().toBuffer();
-  return `data:image/png;base64,${png.toString("base64")}`;
-};
-
-const validateText = (content) => {
-  if (
-    typeof content !== "string" ||
-    Buffer.byteLength(content, "utf8") > MAX_OUTPUT_BYTES
-  ) {
-    throw new Error("Export exceeds the 25 MB limit");
-  }
+  const { data, info } = await pipeline
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const pixels = data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength,
+  );
+  return { pixels, width: info.width, height: info.height };
 };
 
 const setupIpc = () => {
@@ -169,7 +152,7 @@ const setupIpc = () => {
     async (event, { grantId, fileId, resize }) => {
       requireRenderer(event);
       const { root } = resolveGrant(grantId, "input");
-      return encodeInput(safeChild(root, fileId), resize);
+      return decodeInput(safeChild(root, fileId), resize);
     },
   );
 
@@ -177,27 +160,9 @@ const setupIpc = () => {
     "write-batch-output",
     async (event, { grantId, baseName, content }) => {
       requireRenderer(event);
-      validateText(content);
+      validateText(content, MAX_OUTPUT_BYTES);
       const { root } = resolveGrant(grantId, "output");
-      const safeBase =
-        String(baseName || "image")
-          .toLowerCase()
-          .replace(/[^a-z0-9_-]+/g, "-")
-          .replace(/^-+|-+$/g, "") || "image";
-      for (let suffix = 0; suffix < 100_000; suffix += 1) {
-        const name = `${safeBase}${suffix === 0 ? "" : `-${suffix}`}.svg`;
-        const target = safeChild(root, name);
-        try {
-          await fs.promises.writeFile(target, content, {
-            encoding: "utf8",
-            flag: "wx",
-          });
-          return { success: true, name };
-        } catch (error) {
-          if (error.code !== "EEXIST") throw error;
-        }
-      }
-      throw new Error("Unable to reserve a unique output name");
+      return writeUniqueOutput(root, baseName, "svg", content);
     },
   );
 
@@ -205,7 +170,7 @@ const setupIpc = () => {
     "save-export",
     async (event, { defaultName, format, content }) => {
       requireRenderer(event);
-      validateText(content);
+      validateText(content, MAX_OUTPUT_BYTES);
       const info = EXPORT_FORMATS.get(format) || EXPORT_FORMATS.get("svg");
       const base =
         path
@@ -244,17 +209,29 @@ const setupIpc = () => {
   });
 };
 
-const startServer = (distPath, listenPort = PORT) =>
+const listen = (listenPort, host) =>
   new Promise((resolve, reject) => {
-    if (distPath) {
-      expressApp.use(express.static(distPath));
-      expressApp.get("/{*splat}", (_request, response) =>
-        response.sendFile(path.join(distPath, "index.html")),
-      );
-    }
-    const server = expressApp.listen(listenPort, HOST, () => resolve(server));
+    const server = expressApp.listen(listenPort, host, () => resolve(server));
     server.once("error", reject);
   });
+
+const startServer = async (distPath, listenPort = PORT) => {
+  if (distPath) {
+    expressApp.use(express.static(distPath));
+    expressApp.get("/{*splat}", (_request, response) =>
+      response.sendFile(path.join(distPath, "index.html")),
+    );
+  }
+  try {
+    activeHost = HOST;
+    return await listen(listenPort, HOST);
+  } catch (error) {
+    if (!LAN_ENABLED || !["EAFNOSUPPORT", "EADDRNOTAVAIL"].includes(error.code))
+      throw error;
+    activeHost = "0.0.0.0";
+    return listen(listenPort, activeHost);
+  }
+};
 
 const createWindow = async () => {
   const iconPath = [
@@ -281,7 +258,8 @@ const createWindow = async () => {
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (!url.startsWith(allowedOrigin)) event.preventDefault();
+    if (!isAllowedNavigation(url, new Set([allowedOrigin])))
+      event.preventDefault();
   });
   if (isDev) {
     await mainWindow.loadURL(allowedOrigin);

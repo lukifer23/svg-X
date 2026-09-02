@@ -142,9 +142,8 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
     }
   };
 
-  const positionClasses = isMobile
-    ? "fixed bottom-16 left-0 right-0 p-2 flex flex-col items-center gap-2 z-20 animate-slide-in-bottom"
-    : "fixed bottom-0 left-0 right-0 p-4 flex justify-center items-end gap-2 z-20 animate-slide-in-bottom";
+  const positionClasses =
+    "relative max-w-5xl mx-auto mt-4 pb-4 flex flex-wrap justify-center items-center gap-2 animate-slide-in-bottom";
 
   return (
     <div className={positionClasses}>
@@ -171,11 +170,11 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
       )}
 
       {/* Primary download button + format dropdown */}
-      <div className="flex items-stretch" ref={menuRef}>
+      <div className="relative flex items-stretch" ref={menuRef}>
         <button
           onClick={() => handleDownload("svg")}
           disabled={!svg}
-          className={`flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 rounded-l-full shadow-soft transition-all duration-300 ${
+          className={`min-h-11 flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 rounded-l-full shadow-soft transition-all duration-300 ${
             svg
               ? "bg-gradient-blue text-white hover:shadow-lg hover:scale-105 active:scale-95"
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -191,7 +190,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         <button
           onClick={() => setFormatMenuOpen((v) => !v)}
           disabled={!svg}
-          className={`flex items-center justify-center px-2 sm:px-3 py-2 sm:py-3 rounded-r-full shadow-soft border-l border-white/30 transition-all duration-300 ${
+          className={`min-h-11 min-w-11 flex items-center justify-center px-2 sm:px-3 py-2 sm:py-3 rounded-r-full shadow-soft border-l border-white/30 transition-all duration-300 ${
             svg
               ? "bg-gradient-blue text-white hover:brightness-110 active:scale-95"
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -228,7 +227,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
       <button
         onClick={handleCopy}
         disabled={!svg}
-        className={`flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 rounded-full shadow-soft transition-all duration-300 ${
+        className={`min-h-11 flex items-center justify-center px-4 sm:px-5 py-2 sm:py-3 rounded-full shadow-soft transition-all duration-300 ${
           svg
             ? "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:shadow-md active:scale-95"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"

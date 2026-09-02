@@ -144,17 +144,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
             Or click to browse files
           </p>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick();
-            }}
-            className="btn btn-primary text-xs sm:text-sm"
-          >
+          <span className="btn btn-primary text-xs sm:text-sm">
             <Upload className="w-4 h-4 mr-2" />
             Upload Image
-          </button>
+          </span>
           <p className="mt-3 sm:mt-4 text-xs text-gray-400">
             Supports PNG, JPG, GIF, BMP, WEBP, AVIF, HEIC, TIFF — up to{" "}
             {MAX_SIZE_MB} MB

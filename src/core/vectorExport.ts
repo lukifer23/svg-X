@@ -45,13 +45,16 @@ export const serializeEps = (document: VectorDocument): string => {
       const [red, green, blue] = paintRgb(
         shape.fill === "none" ? shape.stroke : shape.fill,
       );
+      const composite = ([red, green, blue] as const).map(
+        (channel) => channel * shape.opacity + (1 - shape.opacity),
+      );
       const operation =
         shape.fill === "none"
           ? `${fixed(shape.strokeWidth)} setlinewidth\nstroke`
           : shape.fillRule === "evenodd"
             ? "eofill"
             : "fill";
-      return `newpath\n${epsCommands(shape)}\n${fixed(red)} ${fixed(green)} ${fixed(blue)} setrgbcolor\n${operation}`;
+      return `newpath\n${epsCommands(shape)}\n${fixed(composite[0])} ${fixed(composite[1])} ${fixed(composite[2])} setrgbcolor\n${operation}`;
     })
     .join("\n");
   return `%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 ${Math.ceil(document.width)} ${Math.ceil(document.height)}\n1 -1 scale\n0 -${fixed(document.height)} translate\n${body}\nshowpage\n%%EOF\n`;
@@ -61,24 +64,62 @@ interface XY {
   x: number;
   y: number;
 }
-const cubicPoint = (
+const pointToLineDistance = (point: XY, start: XY, end: XY): number => {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (dx === 0 && dy === 0)
+    return Math.hypot(point.x - start.x, point.y - start.y);
+  return (
+    Math.abs(dy * point.x - dx * point.y + end.x * start.y - end.y * start.x) /
+    Math.hypot(dx, dy)
+  );
+};
+
+const splitCubic = (
   start: XY,
   command: Extract<VectorCommand, { type: "C" }>,
-  t: number,
-): XY => {
-  const u = 1 - t;
-  return {
-    x:
-      u ** 3 * start.x +
-      3 * u ** 2 * t * command.x1 +
-      3 * u * t ** 2 * command.x2 +
-      t ** 3 * command.x,
-    y:
-      u ** 3 * start.y +
-      3 * u ** 2 * t * command.y1 +
-      3 * u * t ** 2 * command.y2 +
-      t ** 3 * command.y,
-  };
+): [
+  XY,
+  Extract<VectorCommand, { type: "C" }>,
+  Extract<VectorCommand, { type: "C" }>,
+] => {
+  const midpoint = (left: XY, right: XY): XY => ({
+    x: (left.x + right.x) / 2,
+    y: (left.y + right.y) / 2,
+  });
+  const p1 = { x: command.x1, y: command.y1 };
+  const p2 = { x: command.x2, y: command.y2 };
+  const end = { x: command.x, y: command.y };
+  const a = midpoint(start, p1);
+  const b = midpoint(p1, p2);
+  const c = midpoint(p2, end);
+  const d = midpoint(a, b);
+  const e = midpoint(b, c);
+  const split = midpoint(d, e);
+  return [
+    split,
+    { type: "C", x1: a.x, y1: a.y, x2: d.x, y2: d.y, x: split.x, y: split.y },
+    { type: "C", x1: e.x, y1: e.y, x2: c.x, y2: c.y, x: end.x, y: end.y },
+  ];
+};
+
+export const flattenCubicAdaptive = (
+  start: XY,
+  command: Extract<VectorCommand, { type: "C" }>,
+  tolerance = 0.25,
+  depth = 0,
+): XY[] => {
+  const end = { x: command.x, y: command.y };
+  const flatness = Math.max(
+    pointToLineDistance({ x: command.x1, y: command.y1 }, start, end),
+    pointToLineDistance({ x: command.x2, y: command.y2 }, start, end),
+  );
+  if (flatness <= tolerance || depth >= 16) return [end];
+  const [split, left, right] = splitCubic(start, command);
+  return [
+    ...flattenCubicAdaptive(start, left, tolerance, depth + 1),
+    ...flattenCubicAdaptive(split, right, tolerance, depth + 1),
+  ];
 };
 
 const flatten = (
@@ -92,8 +133,7 @@ const flatten = (
       current = { x: command.x, y: command.y };
       points.push(current);
     } else if (command.type === "C") {
-      for (let step = 1; step <= 12; step += 1)
-        points.push(cubicPoint(current, command, step / 12));
+      points.push(...flattenCubicAdaptive(current, command));
       current = { x: command.x, y: command.y };
     } else closed = true;
   }

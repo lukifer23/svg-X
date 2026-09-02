@@ -16,6 +16,11 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Removed the compromised `axios@1.14.1` dependency chain captured by the previous lockfile and replaced the vulnerable legacy Potrace/Jimp stack. `npm audit` currently reports zero known vulnerabilities.
 - Removed tracked build output, installer logs, and machine-specific builder diagnostics.
 - Added deterministic topology, graph, export, migration, and deduplication tests plus generated realistic review fixtures.
+- Added recursive error-bounded cubic fitting for color regions and centerlines, adaptive DXF curve flattening, and deterministic EPS alpha compositing.
+- Replaced Electron batch base64 transport with bounded transferable RGBA buffers and added a validated BMP decoder for packaged builds where Sharp lacks BMP support.
+- Added exact-origin navigation tests, concurrent atomic filename reservation tests, IPv4/IPv6 discovery with fallback behavior, published-reference CIEDE2000 checks, and real AVIF/BMP/GIF/JPEG/TIFF/WebP fixtures.
+- Added Chromium, Firefox, and WebKit upload/conversion/export/cancellation/accessibility flows plus packaged-app launch and conversion smoke tests.
+- Removed the overlapping fixed mobile export bar, increased touch targets, and made network, processing-log, batch, and confirmation dialogs keyboard-safe with focus restoration.
 - Added the MIT license.
 
 ## Historical releases

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { serializeDxf, serializeEps, serializePathJson } from "./vectorExport";
+import {
+  flattenCubicAdaptive,
+  serializeDxf,
+  serializeEps,
+  serializePathJson,
+} from "./vectorExport";
 import type { VectorDocument } from "./vectorDocument";
 
 const document: VectorDocument = {
@@ -41,5 +46,29 @@ describe("VectorDocument exports", () => {
   test("serializes DXF entities and authoritative JSON commands", () => {
     expect(serializeDxf(document)).toContain("POLYLINE");
     expect(JSON.parse(serializePathJson(document))).toEqual(document);
+  });
+
+  test("flattens DXF curves according to geometric tolerance", () => {
+    const curve = {
+      type: "C" as const,
+      x1: 0,
+      y1: 10,
+      x2: 10,
+      y2: 10,
+      x: 10,
+      y: 0,
+    };
+    const coarse = flattenCubicAdaptive({ x: 0, y: 0 }, curve, 2);
+    const fine = flattenCubicAdaptive({ x: 0, y: 0 }, curve, 0.05);
+    expect(fine.length).toBeGreaterThan(coarse.length);
+    expect(fine[fine.length - 1]).toEqual({ x: 10, y: 0 });
+  });
+
+  test("composites EPS opacity deterministically over white", () => {
+    const eps = serializeEps({
+      ...document,
+      shapes: [{ ...document.shapes[0], opacity: 0.5 }],
+    });
+    expect(eps).toContain("1 0.5 0.5 setrgbcolor");
   });
 });

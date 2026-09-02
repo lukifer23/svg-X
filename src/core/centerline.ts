@@ -1,3 +1,4 @@
+import { fitPointsToSubpath } from "./curveFit";
 import { pointsToSubpath, simplifyOpen, type Point } from "./geometry";
 import type {
   VectorDocument,
@@ -146,6 +147,8 @@ export const walkSkeleton = (
   width: number,
   height: number,
   tolerance = 0.6,
+  fitCurves = false,
+  curveError = tolerance,
 ): { subpaths: VectorSubpath[]; stats: CenterlineGraphStats } => {
   const pixels: number[] = [];
   const neighbors = new Map<number, number[]>();
@@ -206,7 +209,9 @@ export const walkSkeleton = (
         y: Math.floor(index / width) + 0.5,
       }));
       const simplified = simplifyOpen(points, tolerance);
-      return pointsToSubpath(simplified, closed);
+      return fitCurves
+        ? fitPointsToSubpath(simplified, closed, Math.max(0.05, curveError))
+        : pointsToSubpath(simplified, closed);
     });
 
   return {
@@ -234,7 +239,14 @@ export const traceCenterlines = (
     width,
     height,
   );
-  const { subpaths } = walkSkeleton(thinned, width, height);
+  const { subpaths } = walkSkeleton(
+    thinned,
+    width,
+    height,
+    Math.max(0.15, options.optTolerance),
+    options.optCurve,
+    Math.max(0.05, options.optTolerance),
+  );
   const background =
     options.backgroundColor === "transparent"
       ? []

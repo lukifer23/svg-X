@@ -26,8 +26,8 @@ export default defineConfig({
     port: Number(process.env.SVGX_PORT || 3001),
     host:
       process.env.SVGX_HOST ||
-      (process.env.SVGX_LAN === "1" ? "0.0.0.0" : "127.0.0.1"),
-    open: true,
+      (process.env.SVGX_LAN === "1" ? "::" : "127.0.0.1"),
+    open: process.env.CI !== "1",
     proxy: {
       // In dev, proxy /api requests to the Electron Express sidecar on port 3002
       "/api": {

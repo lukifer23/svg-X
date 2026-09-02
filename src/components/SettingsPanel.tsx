@@ -205,7 +205,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     tooltip: string,
     checked: boolean,
   ) => (
-    <div className="flex items-center gap-2">
+    <div className="flex min-h-11 items-center gap-2">
       <input
         type="checkbox"
         id={String(id)}
@@ -213,11 +213,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         onChange={(e) =>
           onParamChange(id, e.target.checked as TracingParams[typeof id])
         }
-        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
+        className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 flex-shrink-0"
       />
       <label
         htmlFor={String(id)}
-        className="text-xs sm:text-sm text-gray-600 cursor-pointer flex items-center gap-1"
+        className="min-h-11 flex-1 py-2 text-xs sm:text-sm text-gray-600 cursor-pointer flex items-center gap-1"
       >
         {label}
         <Tooltip content={tooltip} />
@@ -238,7 +238,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ref={panelRef}
         className="bg-white border border-gray-200 rounded-lg p-3 sm:p-6 shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
       >
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h3 className="font-semibold text-base sm:text-lg flex items-center text-gray-800 gap-2">
             <Settings
               className={`${isMobile ? "w-4 h-4" : "w-5 h-5"} text-blue-600`}
@@ -257,11 +257,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               />
             )}
           </h3>
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:w-auto w-full">
             {onApplyComplex && (
               <button
                 onClick={onApplyComplex}
-                className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors duration-200"
+                className="min-h-11 sm:min-h-0 text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors duration-200"
                 aria-label="Apply complex image settings"
               >
                 Complex Image
@@ -270,14 +270,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <button
               ref={firstFocusableRef}
               onClick={onReset}
-              className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
+              className="min-h-11 sm:min-h-0 text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
               aria-label="Reset all settings to defaults"
             >
               Reset
             </button>
             <button
               onClick={onClose}
-              className="text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
+              className="min-h-11 sm:min-h-0 text-xs px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
               aria-label="Close settings panel"
             >
               Close
