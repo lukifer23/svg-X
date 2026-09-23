@@ -1,0 +1,5 @@
+case            MP   seeds   labs  refine   label   merge  bounds   total   paths  comps
+synthetic-1MP   1.00      4    56      52     10     34      46    199   1764   1764   quant=59.7%
+bicycle-1000    1.00      3    32      30      6     69      83    321   1342  30532   quant=21.4%
+stilllife-1254  1.57      7   119     116     25    153     227    624   2219  52189   quant=41.6%
+mechanism-1254  1.57      6   124     104     24    100      70    449   1675  28831   quant=55.9%

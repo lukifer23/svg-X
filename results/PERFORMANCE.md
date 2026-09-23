@@ -1,0 +1,138 @@
+# SVG-X performance record
+
+Machine-readable data: `results/pipeline-phaseA.json`, `results/pipeline-phaseB.json`.
+Harness: `benchmarks/pipeline.test.ts` (`npm run bench:pipeline`, label via
+`BENCH_LABEL`). Environment: Windows 11, Intel Core Ultra 9 285K, Node v24.18.0.
+
+## What was measured
+
+`traceColorDocument` (color mode, `colorSteps: 8`, `fillStrategy: dominant`,
+`maxPaths: 2000`, `optCurve: false`) and its stages: seed generation, OKLab
+precompute, palette refinement, pixel labeling, component merging, boundary
+tracing. Also `traceBlackAndWhite` and `traceCenterlines` total time.
+
+## Phase B — exact single-thread kernel optimizations
+
+Implemented:
+
+1. `findLabelComponents` no longer retains a per-component `pixels: number[]`;
+   only the area count is kept. Removes an O(N) array build and large retention.
+2. sRGB→linear is a 256-entry lookup table (channels are bytes), removing three
+   `pow` calls per pixel in `precomputePixelLabs`.
+3. `x ** 2` → `x * x` in the nearest-color distance loops.
+
+Result vs the baseline captured immediately before Phase B (Phase A):
+
+| case | total color | labs | refine | label | merge | bounds |
+|---|---|---|---|---|---|---|
+| synthetic-1000 | 198 → 162 ms (1.22×) | 59 → 16 (3.7×) | 51 → 51 | 10 → 10 | 37 → 29 | 28 → 39 |
+| color-bicycle | 515 → 432 ms (1.19×) | 72 → 26 (2.8×) | 61 → 63 | 14 → 14 | 95 → 93 | 122 → 116 |
+| realistic-still-life | 656 → 573 ms (1.14×) | 119 → 37 (3.2×) | 122 → 111 | 28 → 26 | 134 → 121 | 121 → 117 |
+| centerline-mechanism | 484 → 350 ms (1.38×) | 123 → 36 (3.4×) | 104 → 102 | 24 → 22 | 114 → 90 | 52 → 57 |
+
+`merge` and `bounds` are within run-to-run noise; `labs` is the clear, large win.
+
+### Correctness
+
+Every case's **serialized-SVG SHA-256 is identical** before and after Phase B,
+and path counts are unchanged (`1945 / 1435 / 2219 / 1675`). All 56 unit and
+algorithm tests pass; `format:check`, `lint`, and `typecheck` are clean.
+
+## Considered and rejected
+
+- **Single-pass boundary topology across all labels** (one grid scan instead of
+  one per palette color): implemented, measured **neutral-to-worse** (the cost is
+  the ring walk, not the scans), and reverted rather than left in without a gain.
+- **Early palette-stabilization break** in `refinePalette`: kept as an exact
+  short-circuit (later iterations are provably identical once the palette stops
+  changing); it did not trigger on these fixtures but can only reduce work.
+- **Fusing histogram and Wu moments scans**: not applicable — `paletteSeeds`
+  runs one or the other, never both.
+
+## Prior round (context)
+
+An earlier pass replaced per-pixel `palette.forEach` closures with indexed loops
+over flat typed arrays and replaced boundary string keys with integer keys,
+measuring 1.5×–1.9× on color tracing. Phase B compounds with that.
+
+## Phase C — algorithmic work on the remaining hotspots
+
+Two allocation-driven wins in the component merge (`colorTrace.ts`), both exact:
+
+1. The connected-component flood fill allocated a `visit` closure **once per
+   popped pixel**; it is now four inlined neighbor checks.
+2. `mergeComponentsToBudget` built an entries → map → filter → sort → `[0]`
+   chain per merged component; it is now a single pass that selects the same
+   winner under the identical comparator (smallest distance, then widest shared
+   boundary, then largest area, stable on ties).
+
+Effect: component merging **1.5×–1.7× faster** (e.g. still-life 128 → 72 ms,
+bicycle 84 → 59 ms). The untouched `bounds` stage swings ±70% run to run because
+it is GC-heavy, so the harness now reports the **minimum of five warm runs**.
+
+### Robust pristine → final (total color trace, min of 5, hash-verified)
+
+| case | pristine | final | speedup | output |
+|---|---|---|---|---|
+| synthetic-1000 | 369 ms | 133 ms | **2.78×** | identical |
+| color-bicycle | 610 ms | 283 ms | **2.16×** | identical |
+| realistic-still-life | 873 ms | 378 ms | **2.31×** | identical |
+| centerline-mechanism | 768 ms | 221 ms | **3.47×** | identical |
+
+## Intra-image parallelism prototype (measured, not predicted)
+
+`benchmarks/parallel.test.ts` splits the image into row bands, runs the real
+`precomputePixelLabs` + refinement rounds + `labelPixels` in Node workers, and
+combines per-cluster partial sums in band order. Channel sums and counts are
+exact integers, so the banded float64 reduction is **bit-identical** to
+sequential — confirmed by zero label mismatches on every case.
+
+Refine + label, minimum of three warm runs (Node worker_threads, 24 vCPU):
+
+| case | sequential | 4 threads | 8 | 16 | 24 |
+|---|---|---|---|---|---|
+| synthetic-1000 | 60 ms | 3.3× | 5.5× | **10.0×** | 7.5× |
+| color-bicycle | 55 ms | 3.1× | 5.0× | **6.9×** | 6.9× |
+| realistic-still-life | 100 ms | 2.1× | 3.8× | **7.1×** | 7.7× |
+| centerline-mechanism | 130 ms | 4.4× | 7.7× | **14.5×** | 11.9× |
+
+Projected end-to-end (Amdahl on the measured totals): refining/labeling is 26–55%
+of color trace, so parallelizing it lifts total color trace by roughly
+**1.3×–2.0×** beyond the current numbers, still bit-identical. `labs` is also a
+pure map and parallelizes too, adding more.
+
+## Productionized intra-image parallelism (shipped path)
+
+The prototype was productionized using the renderer's own worker pool — no
+nested workers:
+
+- `src/core/bandQuantize.ts` — one row band's labs + round/finish logic, shared
+  by the in-process quantizer and the worker.
+- `src/core/parallelQuantize.ts` — orchestration, band planning, and the
+  `MIN_PARALLEL_PIXELS` / `chooseBandCount` crossover policy.
+- `src/core/quantizePool.ts` + `src/workers/quantize.worker.ts` — a persistent
+  band-worker pool with failure recycling.
+- `src/core/colorParallel.ts` — decides eligibility and runs the bands.
+- `src/core/colorTrace.ts` — `refinePalette` and the bands now share one
+  reduction (`accumulatePaletteSums` / `paletteFromSums`); `traceColorDocument`
+  was split so `assembleColorDocument` runs from labels + palette.
+- `src/core/workerPool.ts` / `src/workers/vectorize.worker.ts` — new
+  `assemble-color` job runs the post-quantization stages in the existing pool.
+- `src/utils/imageProcessor.ts` — color conversions above the threshold use the
+  parallel path and fall back to single-threaded on any failure.
+
+`src/core/parallelQuantize.test.ts` proves bit-identical labels, palette, and
+serialized-SVG hash versus single-threaded across 2/3/5/8 bands, including odd
+dimensions and transparent pixels. Vite bundles both workers.
+
+## Not yet done / next gates
+
+- **Browser-side end-to-end validation** of the Web Worker path: the in-process
+  orchestration and the build are verified, but a large-image run in Electron and
+  the Playwright conversion suite were not executed in this environment. Recommended
+  before release.
+- Tuning `MIN_PARALLEL_PIXELS` and the band-size constant against real large
+  images once the browser path is measurable.
+- Rust: still not pursued. The bar is now the **parallel** JS baseline
+  (2.2×–3.5× single-thread wins plus 7×–14× on the quantizable portion), which a
+  WASM/N-API migration would have to beat end-to-end.

@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-09-23",
+  "platform": "WSL2 BendExp, Linux Node v24.18.0",
+  "kind": "worker_threads baseline (D) of the same fixed-palette nearest-label kernel, using the real bundled src/core/colorTrace.ts",
+  "notes": "Warm pool; times compute only; exact 0 mismatches vs the float64 oracle on all cases.",
+  "cases": [
+    {
+      "case": "synthetic-1000",
+      "megapixels": 1.0,
+      "bestThreads": 16,
+      "threads": { "1": 86.5, "2": 44.6, "4": 25.5, "8": 15.8, "16": 11.3, "24": 13.5 },
+      "bendSeqMs": 68,
+      "bend24Ms": 38
+    },
+    {
+      "case": "bicycle-1000",
+      "megapixels": 1.0,
+      "bestThreads": 24,
+      "threads": { "1": 52.0, "2": 29.1, "4": 17.2, "8": 10.6, "16": 8.7, "24": 8.0 },
+      "bendSeqMs": 59,
+      "bend24Ms": 38
+    },
+    {
+      "case": "stilllife-1254",
+      "megapixels": 1.57,
+      "bestThreads": 16,
+      "threads": { "1": 140.2, "2": 71.6, "4": 37.5, "8": 22.5, "16": 14.9, "24": 17.5 },
+      "bendSeqMs": 107,
+      "bend24Ms": 55
+    }
+  ]
+}

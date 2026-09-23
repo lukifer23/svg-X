@@ -24,6 +24,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --config vitest.config.ts",
     "test:bench": "vitest run --config vitest.config.ts src/utils/imageProcessor.bench.test.ts",
+    "bench:pipeline": "vitest run --config benchmarks/vitest.config.ts",
     "test:e2e:web": "playwright test",
     "test:e2e:web:functional": "playwright test --grep-invert \"production worker batch\"",
     "test:e2e:performance": "playwright test e2e/web/performance.spec.ts --project=chromium --workers=1 --retries=0",

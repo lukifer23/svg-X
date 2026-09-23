@@ -1,0 +1,35 @@
+{
+  "label": "final",
+  "generatedAt": "2026-09-23T15:53:05.225Z",
+  "node": "v24.18.0",
+  "reports": [
+    {
+      "name": "synthetic-1000",
+      "megapixels": 1,
+      "totalColorMs": 132.61869999999988,
+      "outputPaths": 1945,
+      "outputHash": "e08a6d9a66bd783caa4e866a6ad48afcd3abffc977026e606f462625196fc21b"
+    },
+    {
+      "name": "color-bicycle",
+      "megapixels": 1.572516,
+      "totalColorMs": 282.7610000000004,
+      "outputPaths": 1435,
+      "outputHash": "77fc5707293bd78fb9a96b36e8e90b7b25c01fc6887ef05dbb6afa540b831829"
+    },
+    {
+      "name": "realistic-still-life",
+      "megapixels": 1.572516,
+      "totalColorMs": 377.5707999999995,
+      "outputPaths": 2219,
+      "outputHash": "8065403081aa531c39be56123ed2d4bfd0dcd3432edb1769fd5a6a51354687aa"
+    },
+    {
+      "name": "centerline-mechanism",
+      "megapixels": 1.572516,
+      "totalColorMs": 221.16229999999996,
+      "outputPaths": 1675,
+      "outputHash": "53d47b0f2b8076a2b6377aa7161c3e072a1b03c806d83361376a7b854b96becc"
+    }
+  ]
+}

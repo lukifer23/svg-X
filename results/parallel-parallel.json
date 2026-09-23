@@ -1,0 +1,140 @@
+{
+  "label": "parallel",
+  "generatedAt": "2026-09-23T15:55:35.229Z",
+  "node": "v24.18.0",
+  "cpus": 24,
+  "reports": [
+    {
+      "name": "synthetic-1000",
+      "megapixels": 1,
+      "sequentialMs": 60.197900000000004,
+      "seeds": 8,
+      "results": [
+        {
+          "threads": 1,
+          "ms": 59.2192,
+          "mismatch": 0
+        },
+        {
+          "threads": 4,
+          "ms": 18.10889999999995,
+          "mismatch": 0
+        },
+        {
+          "threads": 8,
+          "ms": 11.03300000000013,
+          "mismatch": 0
+        },
+        {
+          "threads": 16,
+          "ms": 6.181600000000117,
+          "mismatch": 0
+        },
+        {
+          "threads": 24,
+          "ms": 7.612299999999777,
+          "mismatch": 0
+        }
+      ]
+    },
+    {
+      "name": "color-bicycle",
+      "megapixels": 1.572516,
+      "sequentialMs": 55.3732,
+      "seeds": 8,
+      "results": [
+        {
+          "threads": 1,
+          "ms": 55.2054999999998,
+          "mismatch": 0
+        },
+        {
+          "threads": 4,
+          "ms": 18.460599999999886,
+          "mismatch": 0
+        },
+        {
+          "threads": 8,
+          "ms": 11.03670000000011,
+          "mismatch": 0
+        },
+        {
+          "threads": 16,
+          "ms": 7.695300000000316,
+          "mismatch": 0
+        },
+        {
+          "threads": 24,
+          "ms": 8.135200000000168,
+          "mismatch": 0
+        }
+      ]
+    },
+    {
+      "name": "realistic-still-life",
+      "megapixels": 1.572516,
+      "sequentialMs": 99.68019999999979,
+      "seeds": 8,
+      "results": [
+        {
+          "threads": 1,
+          "ms": 173.27379999999994,
+          "mismatch": 0
+        },
+        {
+          "threads": 4,
+          "ms": 47.45179999999982,
+          "mismatch": 0
+        },
+        {
+          "threads": 8,
+          "ms": 25.797499999999673,
+          "mismatch": 0
+        },
+        {
+          "threads": 16,
+          "ms": 14.29529999999977,
+          "mismatch": 0
+        },
+        {
+          "threads": 24,
+          "ms": 12.986399999999776,
+          "mismatch": 0
+        }
+      ]
+    },
+    {
+      "name": "centerline-mechanism",
+      "megapixels": 1.572516,
+      "sequentialMs": 130.39239999999972,
+      "seeds": 8,
+      "results": [
+        {
+          "threads": 1,
+          "ms": 109.97599999999966,
+          "mismatch": 0
+        },
+        {
+          "threads": 4,
+          "ms": 30.090500000000247,
+          "mismatch": 0
+        },
+        {
+          "threads": 8,
+          "ms": 16.674799999999777,
+          "mismatch": 0
+        },
+        {
+          "threads": 16,
+          "ms": 9.119499999999789,
+          "mismatch": 0
+        },
+        {
+          "threads": 24,
+          "ms": 10.978500000000167,
+          "mismatch": 0
+        }
+      ]
+    }
+  ]
+}

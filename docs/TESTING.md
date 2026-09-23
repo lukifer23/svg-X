@@ -2,7 +2,9 @@
 
 `npm run ci:check` runs formatting, lint, strict typechecking, all Vitest suites, asset verification, production build, and `npm audit`. `npm run test:e2e:web` exercises real production conversion workers in Chromium, Firefox, and WebKit. `npm run package:dir && npm run test:e2e:package` launches the unpacked Electron application, checks its local health endpoint, performs a real conversion, and shuts it down cleanly.
 
-The deterministic corpus covers topology, holes, saddle cases, transparency, color labels, centerline endpoints/junctions/cycles, cubic error bounds, export commands, settings migration, exact origin validation, IPv4/IPv6 discovery, atomic filename collisions, and guaranteed packaged input formats.
+The deterministic corpus covers topology, holes, saddle cases, transparency, color labels, centerline endpoints/junctions/cycles, cubic error bounds, export commands, settings migration, exact origin validation, IPv4/IPv6 discovery, atomic filename collisions, and guaranteed packaged input formats. It also covers EXIF orientation on the desktop decoder, degenerate inputs (1×1, all-transparent, single-color, two-color), and exact equivalence between the single-threaded and band-parallel quantizers.
+
+`npm run bench:pipeline` profiles every color stage on representative fixtures, verifies that each fixture's serialized-SVG SHA-256 is unchanged, and writes `results/pipeline-<label>.json`. The human summary and its methodology live in `results/PERFORMANCE.md`. `src/core/parallelQuantize.test.ts` proves the band-parallel quantizer produces bit-identical labels, palette, and SVG across two to eight bands.
 
 Current absolute acceptance gates include:
 

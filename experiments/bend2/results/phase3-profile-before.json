@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-09-23T14:54:43.802Z",
+  "node": "v24.18.0",
+  "platform": "win32-x64",
+  "options": {
+    "mode": "color",
+    "threshold": 128,
+    "turdSize": 2,
+    "turnPolicy": "minority",
+    "alphaMax": 1,
+    "optCurve": false,
+    "optTolerance": 0.2,
+    "blackOnWhite": true,
+    "invert": false,
+    "foregroundColor": "#000000",
+    "backgroundColor": "transparent",
+    "colorSteps": 8,
+    "fillStrategy": "dominant",
+    "strokeWidth": 2,
+    "maxPaths": 2000
+  },
+  "reports": [
+    {
+      "name": "synthetic-1MP",
+      "mp": 1,
+      "seeds": 4.1159999999999854,
+      "labs": 54.095899999999915,
+      "refine": 161.7659000000001,
+      "label": 34.91789999999992,
+      "merge": 30.655300000000125,
+      "boundaries": 66.83300000000008,
+      "total": 366.67650000000003,
+      "paths": 1764,
+      "components": 1764
+    },
+    {
+      "name": "bicycle-1000",
+      "mp": 1,
+      "seeds": 3.2743000000000393,
+      "labs": 43.61559999999963,
+      "refine": 107.67419999999993,
+      "label": 26.29340000000002,
+      "merge": 70.42980000000034,
+      "boundaries": 243.76140000000032,
+      "total": 482.7467000000006,
+      "paths": 1342,
+      "components": 30532
+    },
+    {
+      "name": "stilllife-1254",
+      "mp": 1.572516,
+      "seeds": 7.310900000000402,
+      "labs": 119.53349999999955,
+      "refine": 290.70719999999983,
+      "label": 72.10769999999957,
+      "merge": 143.40470000000096,
+      "boundaries": 664.125,
+      "total": 1027.5662000000011,
+      "paths": 2219,
+      "components": 52189
+    },
+    {
+      "name": "mechanism-1254",
+      "mp": 1.572516,
+      "seeds": 5.789099999999962,
+      "labs": 92.58330000000024,
+      "refine": 295.2544999999991,
+      "label": 73.5002000000004,
+      "merge": 114.8798999999999,
+      "boundaries": 115.18449999999757,
+      "total": 694.370600000002,
+      "paths": 1675,
+      "components": 28831
+    }
+  ]
+}

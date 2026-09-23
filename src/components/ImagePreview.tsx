@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Image as ImageIcon, Code, X } from "lucide-react";
 import type { ConversionDiagnostics } from "../core/vectorDocument";
 
@@ -88,15 +88,24 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
     status !== "idle" && status !== "done" && status !== "error";
   const statusLabel = progressSteps[status] ?? status;
 
-  const svgForDisplay = svg
-    ? sanitizeSvg(svg).replace(
+  // Deriving these scans the whole SVG string; keep them off the render path
+  // for every unrelated state change (progress ticks, toasts, resizes).
+  const { svgForDisplay, svgSize, svgDimensions } = useMemo(() => {
+    if (!svg)
+      return {
+        svgForDisplay: null,
+        svgSize: null,
+        svgDimensions: null,
+      };
+    return {
+      svgForDisplay: sanitizeSvg(svg).replace(
         /^(<svg\b)/,
         '$1 preserveAspectRatio="xMidYMid meet"',
-      )
-    : null;
-
-  const svgSize = svg ? formatBytes(new Blob([svg]).size) : null;
-  const svgDimensions = svg ? parseSvgDimensions(svg) : null;
+      ),
+      svgSize: formatBytes(new Blob([svg]).size),
+      svgDimensions: parseSvgDimensions(svg),
+    };
+  }, [svg]);
 
   return (
     <>

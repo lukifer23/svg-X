@@ -72,7 +72,17 @@ Key modules:
 - `src/core/curveFit.ts` — recursive error-bounded cubic fitting
 - `src/core/colorMetrics.ts` — D65 Lab and CIEDE2000 acceptance metrics
 - `src/core/workerPool.ts` — prioritized reusable module-worker pool
+- `src/core/parallelQuantize.ts`, `src/core/quantizePool.ts`, `src/workers/quantize.worker.ts` — band-parallel color quantization
 - `src/utils/imageProcessor.ts` — decode, orchestration, metrics, and compatibility API
+- `desktop/decode.cjs` — EXIF-aware desktop decode pipeline
+
+## Performance
+
+Color tracing was optimized without changing output: a 256-entry sRGB→linear lookup table, indexed loops over flat typed arrays, no per-component pixel arrays, and integer lattice keys in boundary tracing. Representative fixtures measure roughly 2.2×–3.5× faster end-to-end in color mode, verified by hashing the serialized SVG.
+
+Above a size threshold, color quantization runs in parallel across the renderer's worker pool. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any worker failure falls back to the single-threaded path.
+
+`npm run bench:pipeline` profiles every stage and records output hashes. Methodology and current numbers are in `results/PERFORMANCE.md`.
 
 ## Batch and desktop security
 
@@ -104,6 +114,7 @@ Without `SVGX_LAN=1`, network URLs are not advertised. Opt-in LAN mode binds dua
 
 - Browser: PNG, JPEG, GIF, BMP, WebP, and formats supported by the current browser decoder
 - Electron: PNG, JPEG, GIF, BMP, WebP, AVIF, TIFF, and HEIC/HEIF when the packaged Sharp build exposes HEIC
+- EXIF orientation is applied on both decode paths, so camera and phone photos vectorize upright
 - Maximum desktop batch input: 50 MB
 - Maximum native text export: 25 MB
 
@@ -141,6 +152,7 @@ Deterministic in-memory fixtures test exact color topology, canonical deduplicat
 | `npm run typecheck`        | Strict TypeScript project check                 |
 | `npm test`                 | Unit and algorithm tests                        |
 | `npm run test:bench`       | Bounded performance checks                      |
+| `npm run bench:pipeline`   | Per-stage pipeline profile and exactness hashes |
 | `npm run test:e2e:web`     | Chromium, Firefox, and WebKit user flows        |
 | `npm run package:dir`      | Unsigned unpacked package for the current OS    |
 | `npm run test:e2e:package` | Launch and convert in the packaged app          |

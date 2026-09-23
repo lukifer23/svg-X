@@ -80,6 +80,7 @@ function App() {
   );
   const activeRequestId = useRef(0);
   const activeAbortController = useRef<AbortController | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const processingLogsTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -99,12 +100,26 @@ function App() {
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    },
+    [],
+  );
+
   useEffect(() => {
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(potraceParams));
-    } catch {
-      // Storage quota exceeded — silently skip
-    }
+    // Persist after the user stops dragging, not on every slider tick.
+    const handle = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          SETTINGS_STORAGE_KEY,
+          JSON.stringify(potraceParams),
+        );
+      } catch {
+        // Storage quota exceeded — silently skip
+      }
+    }, 250);
+    return () => clearTimeout(handle);
   }, [potraceParams]);
 
   const handleLogEntry = useCallback(
@@ -187,6 +202,10 @@ function App() {
       activeAbortController.current?.abort();
       const abortController = new AbortController();
       activeAbortController.current = abortController;
+      const previousUrl = objectUrlRef.current;
+      objectUrlRef.current = imageData.startsWith("blob:") ? imageData : null;
+      if (previousUrl && previousUrl !== imageData)
+        URL.revokeObjectURL(previousUrl);
       setImage(imageData);
       setFileName(getOptimizedFilename(file.name));
       setSvg(null);
@@ -385,6 +404,10 @@ function App() {
             <button
               onClick={() => {
                 activeAbortController.current?.abort();
+                if (objectUrlRef.current) {
+                  URL.revokeObjectURL(objectUrlRef.current);
+                  objectUrlRef.current = null;
+                }
                 setImage(null);
                 setSvg(null);
                 setVectorDocument(null);

@@ -4,7 +4,6 @@ const fs = require("node:fs");
 const os = require("node:os");
 const crypto = require("node:crypto");
 const express = require("express");
-const sharp = require("sharp");
 const {
   isAllowedNavigation,
   safeChild,
@@ -13,6 +12,7 @@ const {
 const { collectNetworkUrls } = require("./desktop/network.cjs");
 const { writeUniqueOutput } = require("./desktop/files.cjs");
 const { decodeBmp } = require("./desktop/bmp.cjs");
+const { decodeToRgba } = require("./desktop/decode.cjs");
 
 const expressApp = express();
 const grants = new Map();
@@ -99,28 +99,14 @@ const decodeInput = async (inputPath, resize) => {
         fit: resize.maintainAspectRatio === false ? "fill" : "inside",
       }
     : null;
-  const bmp =
-    extension === ".bmp"
-      ? decodeBmp(await fs.promises.readFile(inputPath))
-      : null;
-  let pipeline = bmp
-    ? sharp(bmp.pixels, {
-        raw: { width: bmp.width, height: bmp.height, channels: 4 },
-      })
-    : sharp(inputPath, {
-        limitInputPixels: 100_000_000,
-        failOn: "error",
-      });
-  if (resizeOptions) pipeline = pipeline.resize(resizeOptions);
-  const { data, info } = await pipeline
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const pixels = data.buffer.slice(
-    data.byteOffset,
-    data.byteOffset + data.byteLength,
-  );
-  return { pixels, width: info.width, height: info.height };
+  if (extension === ".bmp") {
+    const bmp = decodeBmp(await fs.promises.readFile(inputPath));
+    return decodeToRgba(
+      { raw: { pixels: bmp.pixels, width: bmp.width, height: bmp.height } },
+      resizeOptions,
+    );
+  }
+  return decodeToRgba({ path: inputPath }, resizeOptions);
 };
 
 const setupIpc = () => {

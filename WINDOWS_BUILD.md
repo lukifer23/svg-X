@@ -28,10 +28,10 @@ Vite serves the renderer on port 3001. Electron exposes the development API side
 
 ```powershell
 # Unpacked application directory
-npm run electron:build:dir
+npm run package:dir
 
 # Portable x64 executable
-npm run build:portable-exe
+npm run package:portable
 ```
 
 Outputs are written under `release/` and are ignored by Git. They must be rebuilt from source.

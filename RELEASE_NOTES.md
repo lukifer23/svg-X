@@ -22,6 +22,11 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Added Chromium, Firefox, and WebKit upload/conversion/export/cancellation/accessibility flows plus packaged-app launch and conversion smoke tests.
 - Removed the overlapping fixed mobile export bar, increased touch targets, and made network, processing-log, batch, and confirmation dialogs keyboard-safe with focus restoration.
 - Added the MIT license.
+- Optimized the color pipeline with behavior-preserving changes: a 256-entry sRGB→linear lookup table, indexed typed-array loops instead of per-pixel closures, no per-component pixel arrays in connected-component labeling, an allocation-free component-merge selection, and integer lattice keys in boundary tracing. Color tracing measures roughly 2.2×–3.5× faster on representative fixtures with byte-identical output.
+- Parallelized color quantization above a size threshold across the existing renderer worker pool, combining per-band channel sums in order so the reduction stays bit-identical; failures fall back to the single-threaded path.
+- Applied EXIF orientation on both decode paths so camera and phone photos vectorize upright in the browser and the desktop app.
+- Switched interactive uploads from a base64 data URL to an object URL, memoized the SVG preview derivations, and debounced settings persistence.
+- Added a stage benchmark harness (`npm run bench:pipeline`) with serialized-output hashes, plus tests for EXIF orientation, degenerate inputs, and band-parallel exactness.
 
 ## Historical releases
 

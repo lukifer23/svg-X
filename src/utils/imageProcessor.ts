@@ -1,8 +1,10 @@
 import slugify from "slugify";
 import { optimize as svgoOptimize } from "svgo";
-import { getVectorWorkerPool } from "../core/workerPool";
+import { canParallelize, quantizeColorInParallel } from "../core/colorParallel";
+import { getVectorWorkerPool, type WorkResult } from "../core/workerPool";
 import type {
   ConversionMode,
+  ConversionProgress,
   ConversionResult,
   WorkerConversionOptions,
 } from "../core/vectorDocument";
@@ -149,7 +151,11 @@ const decodeImage = async (
   const response = await fetch(input, { signal });
   if (!response.ok)
     throw new Error(`Unable to read image (${response.status})`);
-  const bitmap = await createImageBitmap(await response.blob());
+  // Apply EXIF orientation explicitly so the browser path and the desktop
+  // decoder agree on portrait images from cameras and phones.
+  const bitmap = await createImageBitmap(await response.blob(), {
+    imageOrientation: "from-image",
+  });
   try {
     const scale = Math.min(
       1,
@@ -246,27 +252,68 @@ const executeConversion = async (
   log("METRIC", `decode=${Math.round(decodeMs)}ms`, detailedLogCallback);
   const options = toWorkerOptions(params);
   progressCallback(options.mode === "color" ? "colorProcessing" : "tracing");
-  const pixelBuffer =
-    decoded.pixels.byteOffset === 0 &&
-    decoded.pixels.byteLength === decoded.pixels.buffer.byteLength
-      ? (decoded.pixels.buffer as ArrayBuffer)
-      : new Uint8ClampedArray(decoded.pixels).buffer;
-  const result = await getVectorWorkerPool().run({
-    jobId: nextJobId(),
-    width: decoded.width,
-    height: decoded.height,
-    pixels: pixelBuffer,
-    options,
-    includeDocument,
-    priority,
-    signal,
-    onProgress: (progress) =>
+  const onProgress = (progress: ConversionProgress): void =>
+    log(
+      "PROGRESS",
+      `${progress.percent}% ${progress.message}`,
+      detailedLogCallback,
+    );
+  const runSequential = (): Promise<WorkResult> => {
+    const pixelBuffer =
+      decoded.pixels.byteOffset === 0 &&
+      decoded.pixels.byteLength === decoded.pixels.buffer.byteLength
+        ? (decoded.pixels.buffer as ArrayBuffer)
+        : new Uint8ClampedArray(decoded.pixels).buffer;
+    return getVectorWorkerPool().run(
+      {
+        kind: "convert",
+        width: decoded.width,
+        height: decoded.height,
+        pixels: pixelBuffer,
+        options,
+        includeDocument,
+      },
+      { jobId: nextJobId(), priority, signal, onProgress },
+    );
+  };
+  let result: WorkResult;
+  if (
+    options.mode === "color" &&
+    canParallelize(decoded.width * decoded.height)
+  ) {
+    try {
+      const quantization = await quantizeColorInParallel(
+        decoded.pixels,
+        decoded.width,
+        decoded.height,
+        options,
+        signal,
+      );
+      result = await getVectorWorkerPool().run(
+        {
+          kind: "assemble-color",
+          width: decoded.width,
+          height: decoded.height,
+          labels: quantization.labels,
+          palette: quantization.palette,
+          options,
+          includeDocument,
+        },
+        { jobId: nextJobId(), priority, signal, onProgress },
+      );
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError")
+        throw error;
       log(
         "PROGRESS",
-        `${progress.percent}% ${progress.message}`,
+        "Parallel quantization unavailable; retrying single-threaded",
         detailedLogCallback,
-      ),
-  });
+      );
+      result = await runSequential();
+    }
+  } else {
+    result = await runSequential();
+  }
   progressCallback("optimizing");
   const optimizeStart = now();
   const svg = params.svgoOptimize ? optimizeSvg(result.rawSvg) : result.rawSvg;

@@ -16,13 +16,13 @@ interface LabColor {
   a: number;
   b: number;
 }
-interface PaletteColor extends LabColor {
+export interface PaletteColor extends LabColor {
   r: number;
   g: number;
   blue: number;
   count: number;
 }
-interface PixelLabs {
+export interface PixelLabs {
   l: Float32Array;
   a: Float32Array;
   b: Float32Array;
@@ -38,7 +38,6 @@ interface Edge {
 interface LabelComponent {
   id: number;
   label: number;
-  pixels: number[];
   area: number;
   neighbors: Map<number, number>;
 }
@@ -47,6 +46,12 @@ const srgbToLinear = (channel: number): number => {
   const value = channel / 255;
   return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 };
+
+// sRGB->linear for the 8-bit channel domain is a pure lookup; the table is
+// bit-identical to srgbToLinear(channel) and removes the per-channel pow.
+const SRGB_LINEAR = Float64Array.from({ length: 256 }, (_value, channel) =>
+  srgbToLinear(channel),
+);
 
 export const rgbToOklab = (r: number, g: number, b: number): LabColor => {
   const lr = srgbToLinear(r);
@@ -68,35 +73,31 @@ export const rgbToOklab = (r: number, g: number, b: number): LabColor => {
 const distance = (left: LabColor, right: LabColor): number =>
   (left.l - right.l) ** 2 + (left.a - right.a) ** 2 + (left.b - right.b) ** 2;
 
-const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
+export const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
   const length = pixels.length / 4;
-  const labs: PixelLabs = {
-    l: new Float32Array(length),
-    a: new Float32Array(length),
-    b: new Float32Array(length),
-  };
+  const l = new Float32Array(length);
+  const a = new Float32Array(length);
+  const b = new Float32Array(length);
   for (let pixel = 0; pixel < length; pixel += 1) {
     const offset = pixel * 4;
-    const lab = rgbToOklab(
-      pixels[offset],
-      pixels[offset + 1],
-      pixels[offset + 2],
-    );
-    labs.l[pixel] = lab.l;
-    labs.a[pixel] = lab.a;
-    labs.b[pixel] = lab.b;
+    const lr = SRGB_LINEAR[pixels[offset]];
+    const lg = SRGB_LINEAR[pixels[offset + 1]];
+    const lb = SRGB_LINEAR[pixels[offset + 2]];
+    const coneL = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+    const coneM = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+    const coneS = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+    const lRoot = Math.cbrt(coneL);
+    const mRoot = Math.cbrt(coneM);
+    const sRoot = Math.cbrt(coneS);
+    l[pixel] =
+      0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot;
+    a[pixel] =
+      1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot;
+    b[pixel] =
+      0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot;
   }
-  return labs;
+  return { l, a, b };
 };
-
-const pixelDistance = (
-  labs: PixelLabs,
-  pixel: number,
-  color: LabColor,
-): number =>
-  (labs.l[pixel] - color.l) ** 2 +
-  (labs.a[pixel] - color.a) ** 2 +
-  (labs.b[pixel] - color.b) ** 2;
 
 const histogram = (pixels: Uint8ClampedArray): HistogramColor[] => {
   const bins = new Map<
@@ -327,70 +328,142 @@ export const paletteSeeds = (
     ? wuVarianceSeeds(pixels, requested)
     : tonalSeeds(pixels, requested, strategy);
 
-const refinePalette = (
+/**
+ * Adds every opaque pixel's contribution to per-candidate sums. `sums` has
+ * length `palette.length * 4` holding [r, g, b, count] per candidate. Channel
+ * sums and counts are exact integers, so the same partial sums can be produced
+ * by splitting the pixels into contiguous bands and adding the band partials in
+ * order — which is what the parallel quantizer relies on.
+ */
+export const accumulatePaletteSums = (
+  pixels: Uint8ClampedArray,
+  labs: PixelLabs,
+  palette: LabColor[],
+  sums: Float64Array,
+): void => {
+  const labL = labs.l;
+  const labA = labs.a;
+  const labB = labs.b;
+  const k = palette.length;
+  const count = pixels.length / 4;
+  const palL = new Float64Array(k);
+  const palA = new Float64Array(k);
+  const palB = new Float64Array(k);
+  for (let candidate = 0; candidate < k; candidate += 1) {
+    const color = palette[candidate];
+    palL[candidate] = color.l;
+    palA[candidate] = color.a;
+    palB[candidate] = color.b;
+  }
+  for (let pixel = 0; pixel < count; pixel += 1) {
+    const index = pixel * 4;
+    if (pixels[index + 3] < 8) continue;
+    const pl = labL[pixel];
+    const pa = labA[pixel];
+    const pb = labB[pixel];
+    let closest = 0;
+    let closestDistance = Number.POSITIVE_INFINITY;
+    for (let candidate = 0; candidate < k; candidate += 1) {
+      const dl = pl - palL[candidate];
+      const da = pa - palA[candidate];
+      const db = pb - palB[candidate];
+      const candidateDistance = dl * dl + da * da + db * db;
+      if (candidateDistance < closestDistance) {
+        closestDistance = candidateDistance;
+        closest = candidate;
+      }
+    }
+    sums[closest * 4] += pixels[index];
+    sums[closest * 4 + 1] += pixels[index + 1];
+    sums[closest * 4 + 2] += pixels[index + 2];
+    sums[closest * 4 + 3] += 1;
+  }
+};
+
+export const paletteFromSums = (
+  palette: PaletteColor[],
+  sums: Float64Array,
+): PaletteColor[] =>
+  palette.map((color, index) => {
+    const n = sums[index * 4 + 3];
+    if (n === 0) return color;
+    const r = sums[index * 4] / n;
+    const g = sums[index * 4 + 1] / n;
+    const b = sums[index * 4 + 2] / n;
+    return { ...rgbToOklab(r, g, b), r, g, blue: b, count: n };
+  });
+
+export const refinePalette = (
   pixels: Uint8ClampedArray,
   labs: PixelLabs,
   seeds: PaletteColor[],
 ): PaletteColor[] => {
   let palette = seeds;
+  const sums = new Float64Array(seeds.length * 4);
   for (let iteration = 0; iteration < 4; iteration += 1) {
-    const sums = palette.map(() => ({ r: 0, g: 0, b: 0, count: 0 }));
-    for (let index = 0; index < pixels.length; index += 4) {
-      if (pixels[index + 3] < 8) continue;
-      const pixel = index / 4;
-      let closest = 0;
-      let closestDistance = Number.POSITIVE_INFINITY;
-      palette.forEach((color, candidate) => {
-        const candidateDistance = pixelDistance(labs, pixel, color);
-        if (candidateDistance < closestDistance) {
-          closestDistance = candidateDistance;
-          closest = candidate;
-        }
-      });
-      sums[closest].r += pixels[index];
-      sums[closest].g += pixels[index + 1];
-      sums[closest].b += pixels[index + 2];
-      sums[closest].count += 1;
-    }
-    palette = palette.map((color, index) => {
-      const sum = sums[index];
-      if (sum.count === 0) return color;
-      const r = sum.r / sum.count;
-      const g = sum.g / sum.count;
-      const b = sum.b / sum.count;
-      return { ...rgbToOklab(r, g, b), r, g, blue: b, count: sum.count };
-    });
+    sums.fill(0);
+    accumulatePaletteSums(pixels, labs, palette, sums);
+    const next = paletteFromSums(palette, sums);
+    // Once the palette is identical, later iterations are provably identical
+    // too, so the loop can stop without changing the result.
+    const stable = palette.every(
+      (color, index) =>
+        color.l === next[index].l &&
+        color.a === next[index].a &&
+        color.b === next[index].b,
+    );
+    palette = next;
+    if (stable) break;
   }
   return palette;
 };
 
-const labelPixels = (
+export const labelPixels = (
   pixels: Uint8ClampedArray,
   labs: PixelLabs,
   palette: PaletteColor[],
 ): Uint8Array => {
+  const labL = labs.l;
+  const labA = labs.a;
+  const labB = labs.b;
+  const k = palette.length;
   const labels = new Uint8Array(pixels.length / 4);
+  const palL = new Float64Array(k);
+  const palA = new Float64Array(k);
+  const palB = new Float64Array(k);
+  for (let candidate = 0; candidate < k; candidate += 1) {
+    const color = palette[candidate];
+    palL[candidate] = color.l;
+    palA[candidate] = color.a;
+    palB[candidate] = color.b;
+  }
   for (let pixel = 0; pixel < labels.length; pixel += 1) {
     const index = pixel * 4;
     if (pixels[index + 3] < 8) {
       labels[pixel] = 255;
       continue;
     }
+    const pl = labL[pixel];
+    const pa = labA[pixel];
+    const pb = labB[pixel];
     let closest = 0;
     let closestDistance = Number.POSITIVE_INFINITY;
-    palette.forEach((color, candidate) => {
-      const candidateDistance = pixelDistance(labs, pixel, color);
+    for (let candidate = 0; candidate < k; candidate += 1) {
+      const dl = pl - palL[candidate];
+      const da = pa - palA[candidate];
+      const db = pb - palB[candidate];
+      const candidateDistance = dl * dl + da * da + db * db;
       if (candidateDistance < closestDistance) {
         closestDistance = candidateDistance;
         closest = candidate;
       }
-    });
+    }
     labels[pixel] = closest;
   }
   return labels;
 };
 
-const findLabelComponents = (
+export const findLabelComponents = (
   labels: Uint8Array,
   width: number,
   height: number,
@@ -402,30 +475,47 @@ const findLabelComponents = (
     if (labels[start] === 255 || componentAt[start] >= 0) continue;
     const id = components.length;
     const label = labels[start];
-    const pixels: number[] = [];
+    let area = 0;
     componentAt[start] = id;
     stack.push(start);
     while (stack.length > 0) {
       const pixel = stack.pop()!;
-      pixels.push(pixel);
+      area += 1;
       const x = pixel % width;
-      const y = Math.floor(pixel / width);
-      const visit = (neighbor: number) => {
+      const y = (pixel - x) / width;
+      if (x > 0) {
+        const neighbor = pixel - 1;
         if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
           componentAt[neighbor] = id;
           stack.push(neighbor);
         }
-      };
-      if (x > 0) visit(pixel - 1);
-      if (x + 1 < width) visit(pixel + 1);
-      if (y > 0) visit(pixel - width);
-      if (y + 1 < height) visit(pixel + width);
+      }
+      if (x + 1 < width) {
+        const neighbor = pixel + 1;
+        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
+          componentAt[neighbor] = id;
+          stack.push(neighbor);
+        }
+      }
+      if (y > 0) {
+        const neighbor = pixel - width;
+        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
+          componentAt[neighbor] = id;
+          stack.push(neighbor);
+        }
+      }
+      if (y + 1 < height) {
+        const neighbor = pixel + width;
+        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
+          componentAt[neighbor] = id;
+          stack.push(neighbor);
+        }
+      }
     }
     components.push({
       id,
       label,
-      pixels,
-      area: pixels.length,
+      area,
       neighbors: new Map(),
     });
   }
@@ -492,27 +582,37 @@ export const mergeComponentsToBudget = (
       const source = find(candidate);
       if (source !== candidate) continue;
       const sourceComponent = components[source];
-      const choices = [...sourceComponent.neighbors.entries()]
-        .map(([neighbor, boundary]) => ({ root: find(neighbor), boundary }))
-        .filter((choice) => choice.root !== source);
-      if (choices.length === 0) continue;
-      choices.sort((left, right) => {
-        const colorDifference =
-          distance(
-            palette[sourceComponent.label],
-            palette[components[left.root].label],
-          ) -
-          distance(
-            palette[sourceComponent.label],
-            palette[components[right.root].label],
-          );
-        return (
-          colorDifference ||
-          right.boundary - left.boundary ||
-          components[right.root].area - components[left.root].area
+      const sourcePalette = palette[sourceComponent.label];
+      // Single pass replaces the former entries[] -> map -> filter -> sort ->
+      // [0] allocation chain. The comparator is identical: smallest perceptual
+      // distance first, then widest shared boundary, then largest area, with
+      // ties keeping the earliest neighbor (stable-sort order).
+      let target = -1;
+      let bestDifference = Number.POSITIVE_INFINITY;
+      let bestBoundary = -1;
+      let bestArea = -1;
+      for (const [neighbor, boundary] of sourceComponent.neighbors) {
+        const root = find(neighbor);
+        if (root === source) continue;
+        const colorDifference = distance(
+          sourcePalette,
+          palette[components[root].label],
         );
-      });
-      const target = choices[0].root;
+        const area = components[root].area;
+        const better =
+          target < 0 ||
+          colorDifference < bestDifference ||
+          (colorDifference === bestDifference &&
+            (boundary > bestBoundary ||
+              (boundary === bestBoundary && area > bestArea)));
+        if (better) {
+          target = root;
+          bestDifference = colorDifference;
+          bestBoundary = boundary;
+          bestArea = area;
+        }
+      }
+      if (target < 0) continue;
       parent[source] = target;
       components[target].area += sourceComponent.area;
       for (const [neighbor, boundary] of sourceComponent.neighbors) {
@@ -545,20 +645,22 @@ export const mergeComponentsToBudget = (
   };
 };
 
-const pointKey = (point: Point): string => `${point.x},${point.y}`;
-
-const traceBoundaries = (
+export const traceBoundaries = (
   labels: Uint8Array,
   width: number,
   height: number,
   label: number,
 ): Point[][] => {
   const edges: Edge[] = [];
-  const outgoing = new Map<string, number[]>();
+  const outgoing = new Map<number, number[]>();
+  const stride = width + 1;
+  const keyOf = (x: number, y: number): number => y * stride + x;
   const add = (start: Point, end: Point, direction: number) => {
     const index = edges.push({ start, end, direction, used: false }) - 1;
-    const key = pointKey(start);
-    outgoing.set(key, [...(outgoing.get(key) ?? []), index]);
+    const key = keyOf(start.x, start.y);
+    const list = outgoing.get(key);
+    if (list) list.push(index);
+    else outgoing.set(key, [index]);
   };
   const at = (x: number, y: number): number =>
     x < 0 || y < 0 || x >= width || y >= height ? -1 : labels[y * width + x];
@@ -578,24 +680,31 @@ const traceBoundaries = (
     if (edge.used) return;
     const ring: Point[] = [];
     let current = edge;
-    const startKey = pointKey(edge.start);
+    const startKey = keyOf(edge.start.x, edge.start.y);
     while (!current.used) {
       current.used = true;
       ring.push(current.start);
-      const candidates = (outgoing.get(pointKey(current.end)) ?? [])
-        .map((index) => edges[index])
-        .filter((candidate) => !candidate.used);
-      if (candidates.length === 0) break;
-      const priority = (candidate: Edge): number => {
-        const turn = (candidate.direction - current.direction + 4) % 4;
-        return turn === 1 ? 0 : turn === 0 ? 1 : turn === 3 ? 2 : 3;
-      };
-      current = candidates.sort(
-        (left, right) => priority(left) - priority(right),
-      )[0];
-      if (pointKey(current.start) === startKey && current.used) break;
+      const candidates = outgoing.get(keyOf(current.end.x, current.end.y));
+      let best = -1;
+      let bestPriority = 4;
+      if (candidates) {
+        for (let index = 0; index < candidates.length; index += 1) {
+          const candidate = edges[candidates[index]];
+          if (candidate.used) continue;
+          const turn = (candidate.direction - current.direction + 4) % 4;
+          const priority = turn === 1 ? 0 : turn === 0 ? 1 : turn === 3 ? 2 : 3;
+          if (priority < bestPriority) {
+            bestPriority = priority;
+            best = candidates[index];
+          }
+        }
+      }
+      if (best < 0) break;
+      current = edges[best];
+      if (keyOf(current.start.x, current.start.y) === startKey && current.used)
+        break;
     }
-    if (ring.length >= 4 && pointKey(current.end) === startKey)
+    if (ring.length >= 4 && keyOf(current.end.x, current.end.y) === startKey)
       rings.push(ring);
   });
   return rings;
@@ -622,23 +731,52 @@ export const deduplicateShapes = (shapes: VectorShape[]): VectorShape[] => {
   });
 };
 
-export const traceColorDocument = (
+export interface ColorQuantization {
+  palette: PaletteColor[];
+  labels: Uint8Array;
+}
+
+/**
+ * Optional dependency-injection seam for an alternate quantizer. When omitted,
+ * quantizeColor runs in-process.
+ */
+export type ColorQuantizer = (
   pixels: Uint8ClampedArray,
+  seeds: PaletteColor[],
+) => ColorQuantization;
+
+export const colorSeeds = (
+  pixels: Uint8ClampedArray,
+  options: WorkerConversionOptions,
+): PaletteColor[] =>
+  paletteSeeds(
+    pixels,
+    Math.max(2, Math.min(8, options.colorSteps)),
+    options.fillStrategy,
+  );
+
+export const quantizeColor = (
+  pixels: Uint8ClampedArray,
+  seeds: PaletteColor[],
+): ColorQuantization => {
+  const labs = precomputePixelLabs(pixels);
+  const palette = refinePalette(pixels, labs, seeds);
+  return { palette, labels: labelPixels(pixels, labs, palette) };
+};
+
+/**
+ * Everything after quantization: component-budget merging, boundary tracing,
+ * ring simplification, curve fitting, deduplication, and diagnostics. Taking
+ * labels and palette as arguments lets the quantizer run elsewhere (for
+ * example, split across parallel workers).
+ */
+export const assembleColorDocument = (
+  initialLabels: Uint8Array,
+  palette: PaletteColor[],
   width: number,
   height: number,
   options: WorkerConversionOptions,
 ): VectorDocument => {
-  const labs = precomputePixelLabs(pixels);
-  const palette = refinePalette(
-    pixels,
-    labs,
-    paletteSeeds(
-      pixels,
-      Math.max(2, Math.min(8, options.colorSteps)),
-      options.fillStrategy,
-    ),
-  );
-  const initialLabels = labelPixels(pixels, labs, palette);
   const componentMerge = mergeComponentsToBudget(
     initialLabels,
     width,
@@ -707,4 +845,24 @@ export const traceColorDocument = (
         : [],
     },
   };
+};
+
+export const traceColorDocument = (
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  options: WorkerConversionOptions,
+  quantize?: ColorQuantizer,
+): VectorDocument => {
+  const seeds = colorSeeds(pixels, options);
+  const quantization = quantize
+    ? quantize(pixels, seeds)
+    : quantizeColor(pixels, seeds);
+  return assembleColorDocument(
+    quantization.labels,
+    quantization.palette,
+    width,
+    height,
+    options,
+  );
 };

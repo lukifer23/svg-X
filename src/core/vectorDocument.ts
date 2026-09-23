@@ -99,6 +99,34 @@ export type VectorWorkerRequest = {
   includeDocument: boolean;
 };
 
+/** Palette entry as it crosses the worker boundary (structurally PaletteColor). */
+export interface WorkerPaletteColor {
+  l: number;
+  a: number;
+  b: number;
+  r: number;
+  g: number;
+  blue: number;
+  count: number;
+}
+
+/**
+ * Runs the post-quantization color stages (merging, boundaries, geometry,
+ * serialization) from labels + palette produced elsewhere, e.g. by the parallel
+ * quantizer.
+ */
+export type AssembleColorWorkerRequest = {
+  type: "assemble-color";
+  version: 1;
+  jobId: string;
+  width: number;
+  height: number;
+  labels: ArrayBuffer;
+  palette: WorkerPaletteColor[];
+  options: WorkerConversionOptions;
+  includeDocument: boolean;
+};
+
 export type VectorWorkerCancelRequest = {
   type: "cancel";
   version: 1;

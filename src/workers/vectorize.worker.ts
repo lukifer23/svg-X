@@ -2,9 +2,15 @@
 
 import { traceBlackAndWhite } from "../core/bwTrace";
 import { traceCenterlines } from "../core/centerline";
-import { traceColorDocument } from "../core/colorTrace";
+import {
+  assembleColorDocument,
+  traceColorDocument,
+  type PaletteColor,
+} from "../core/colorTrace";
 import { countSubpaths, serializeVectorDocument } from "../core/serialize";
 import type {
+  AssembleColorWorkerRequest,
+  VectorDocument,
   VectorWorkerRequest,
   VectorWorkerResponse,
 } from "../core/vectorDocument";
@@ -15,9 +21,37 @@ const cancelled = new Set<string>();
 const post = (message: VectorWorkerResponse): void =>
   workerScope.postMessage(message);
 
+const complete = (
+  request: VectorWorkerRequest | AssembleColorWorkerRequest,
+  document: VectorDocument,
+  started: number,
+): void => {
+  const vectorizeMs = performance.now() - started;
+  const rawSvg = serializeVectorDocument(document);
+  const outputPaths = countSubpaths(document);
+  const diagnostics = document.diagnostics ?? {
+    outputPaths,
+    pathBudgetExceeded: false,
+    warnings: [],
+  };
+  if (cancelled.delete(request.jobId)) return;
+  post({
+    type: "complete",
+    version: 1,
+    jobId: request.jobId,
+    document: request.includeDocument ? document : undefined,
+    rawSvg,
+    outputPaths,
+    vectorizeMs,
+    diagnostics,
+  });
+};
+
 workerScope.onmessage = (
   event: MessageEvent<
-    VectorWorkerRequest | { type: "cancel"; version: 1; jobId: string }
+    | VectorWorkerRequest
+    | AssembleColorWorkerRequest
+    | { type: "cancel"; version: 1; jobId: string }
   >,
 ) => {
   const request = event.data;
@@ -28,6 +62,32 @@ workerScope.onmessage = (
 
   const started = performance.now();
   try {
+    if (request.type === "assemble-color") {
+      post({
+        type: "progress",
+        version: 1,
+        jobId: request.jobId,
+        progress: {
+          phase: "trace",
+          percent: 65,
+          message: "Assembling color regions",
+        },
+      });
+      const labels = new Uint8Array(request.labels);
+      complete(
+        request,
+        assembleColorDocument(
+          labels,
+          request.palette as PaletteColor[],
+          request.width,
+          request.height,
+          request.options,
+        ),
+        started,
+      );
+      return;
+    }
+
     post({
       type: "progress",
       version: 1,
@@ -60,25 +120,7 @@ workerScope.onmessage = (
               request.height,
               request.options,
             );
-    const vectorizeMs = performance.now() - started;
-    const rawSvg = serializeVectorDocument(document);
-    const outputPaths = countSubpaths(document);
-    const diagnostics = document.diagnostics ?? {
-      outputPaths,
-      pathBudgetExceeded: false,
-      warnings: [],
-    };
-    if (cancelled.delete(request.jobId)) return;
-    post({
-      type: "complete",
-      version: 1,
-      jobId: request.jobId,
-      document: request.includeDocument ? document : undefined,
-      rawSvg,
-      outputPaths,
-      vectorizeMs,
-      diagnostics,
-    });
+    complete(request, document, started);
   } catch (error) {
     if (cancelled.delete(request.jobId)) return;
     post({

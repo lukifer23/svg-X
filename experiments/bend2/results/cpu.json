@@ -1,0 +1,106 @@
+{
+    "generatedAt":  "2026-09-23T15:11:54.5342420Z",
+    "platform":  "Windows-\u003eWSL2 BendExp",
+    "bend":  "bend 2.0.26",
+    "chunkBytes":  8192,
+    "forkDepth":  6,
+    "wslTrivialStartupMs":  89,
+    "results":  [
+                    {
+                        "case":  "synthetic-1000",
+                        "seqMs":  68,
+                        "seqMismatch":  0,
+                        "parMismatch":  0,
+                        "par":  [
+                                    {
+                                        "threads":  1,
+                                        "ms":  125
+                                    },
+                                    {
+                                        "threads":  2,
+                                        "ms":  80
+                                    },
+                                    {
+                                        "threads":  4,
+                                        "ms":  54
+                                    },
+                                    {
+                                        "threads":  8,
+                                        "ms":  49
+                                    },
+                                    {
+                                        "threads":  16,
+                                        "ms":  42
+                                    },
+                                    {
+                                        "threads":  24,
+                                        "ms":  38
+                                    }
+                                ]
+                    },
+                    {
+                        "case":  "bicycle-1000",
+                        "seqMs":  59,
+                        "seqMismatch":  523724,
+                        "parMismatch":  523724,
+                        "par":  [
+                                    {
+                                        "threads":  1,
+                                        "ms":  112
+                                    },
+                                    {
+                                        "threads":  2,
+                                        "ms":  73
+                                    },
+                                    {
+                                        "threads":  4,
+                                        "ms":  52
+                                    },
+                                    {
+                                        "threads":  8,
+                                        "ms":  45
+                                    },
+                                    {
+                                        "threads":  16,
+                                        "ms":  39
+                                    },
+                                    {
+                                        "threads":  24,
+                                        "ms":  38
+                                    }
+                                ]
+                    },
+                    {
+                        "case":  "stilllife-1254",
+                        "seqMs":  107,
+                        "seqMismatch":  0,
+                        "parMismatch":  0,
+                        "par":  [
+                                    {
+                                        "threads":  1,
+                                        "ms":  206
+                                    },
+                                    {
+                                        "threads":  2,
+                                        "ms":  128
+                                    },
+                                    {
+                                        "threads":  4,
+                                        "ms":  87
+                                    },
+                                    {
+                                        "threads":  8,
+                                        "ms":  72
+                                    },
+                                    {
+                                        "threads":  16,
+                                        "ms":  63
+                                    },
+                                    {
+                                        "threads":  24,
+                                        "ms":  55
+                                    }
+                                ]
+                    }
+                ]
+}

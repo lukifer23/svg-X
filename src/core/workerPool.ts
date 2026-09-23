@@ -1,29 +1,50 @@
 import type {
-  ConversionProgress,
+  AssembleColorWorkerRequest,
   ConversionDiagnostics,
+  ConversionProgress,
   VectorDocument,
   VectorWorkerRequest,
   VectorWorkerResponse,
   WorkerConversionOptions,
+  WorkerPaletteColor,
 } from "./vectorDocument";
 
-interface WorkItem {
-  jobId: string;
+export interface ConvertPayload {
+  kind: "convert";
   width: number;
   height: number;
   pixels: ArrayBuffer;
   options: WorkerConversionOptions;
   includeDocument: boolean;
+}
+
+export interface AssembleColorPayload {
+  kind: "assemble-color";
+  width: number;
+  height: number;
+  labels: Uint8Array;
+  palette: WorkerPaletteColor[];
+  options: WorkerConversionOptions;
+  includeDocument: boolean;
+}
+
+export type WorkPayload = ConvertPayload | AssembleColorPayload;
+
+export interface WorkResult {
+  document?: VectorDocument;
+  rawSvg: string;
+  outputPaths: number;
+  vectorizeMs: number;
+  diagnostics: ConversionDiagnostics;
+}
+
+interface WorkItem {
+  jobId: string;
+  payload: WorkPayload;
   priority: "interactive" | "batch";
   signal?: AbortSignal;
   onProgress?: (progress: ConversionProgress) => void;
-  resolve: (result: {
-    document?: VectorDocument;
-    rawSvg: string;
-    outputPaths: number;
-    vectorizeMs: number;
-    diagnostics: ConversionDiagnostics;
-  }) => void;
+  resolve: (result: WorkResult) => void;
   reject: (error: Error) => void;
 }
 
@@ -126,15 +147,25 @@ export class VectorWorkerPool {
     this.dispatch();
   }
 
-  run(args: Omit<WorkItem, "resolve" | "reject">): Promise<{
-    document?: VectorDocument;
-    rawSvg: string;
-    outputPaths: number;
-    vectorizeMs: number;
-    diagnostics: ConversionDiagnostics;
-  }> {
+  run(
+    payload: WorkPayload,
+    meta: {
+      jobId: string;
+      priority: "interactive" | "batch";
+      signal?: AbortSignal;
+      onProgress?: (progress: ConversionProgress) => void;
+    },
+  ): Promise<WorkResult> {
     return new Promise((resolve, reject) => {
-      const item: WorkItem = { ...args, resolve, reject };
+      const item: WorkItem = {
+        jobId: meta.jobId,
+        payload,
+        priority: meta.priority,
+        signal: meta.signal,
+        onProgress: meta.onProgress,
+        resolve,
+        reject,
+      };
       if (item.signal?.aborted) {
         reject(abortError());
         return;
@@ -156,17 +187,35 @@ export class VectorWorkerPool {
       const item = this.interactiveQueue.shift() ?? this.batchQueue.shift();
       if (!item) break;
       slot.item = item;
-      const request: VectorWorkerRequest = {
-        type: "convert",
-        version: 1,
-        jobId: item.jobId,
-        width: item.width,
-        height: item.height,
-        pixels: item.pixels,
-        options: item.options,
-        includeDocument: item.includeDocument,
-      };
-      slot.worker.postMessage(request, [item.pixels]);
+      const { payload } = item;
+      if (payload.kind === "convert") {
+        const request: VectorWorkerRequest = {
+          type: "convert",
+          version: 1,
+          jobId: item.jobId,
+          width: payload.width,
+          height: payload.height,
+          pixels: payload.pixels,
+          options: payload.options,
+          includeDocument: payload.includeDocument,
+        };
+        slot.worker.postMessage(request, [payload.pixels]);
+      } else {
+        const request: AssembleColorWorkerRequest = {
+          type: "assemble-color",
+          version: 1,
+          jobId: item.jobId,
+          width: payload.width,
+          height: payload.height,
+          labels: payload.labels.buffer as ArrayBuffer,
+          palette: payload.palette,
+          options: payload.options,
+          includeDocument: payload.includeDocument,
+        };
+        slot.worker.postMessage(request, [
+          payload.labels.buffer as ArrayBuffer,
+        ]);
+      }
     }
   }
 

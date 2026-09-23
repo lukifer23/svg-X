@@ -58,16 +58,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
       );
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target && typeof e.target.result === "string") {
-        onImageSelect(e.target.result, file);
-      }
-    };
-    reader.onerror = () => {
+    // An object URL avoids base64 (~33% larger) and a main-thread file read;
+    // decodeImage and the <img> preview both accept it. The owner revokes it.
+    try {
+      onImageSelect(URL.createObjectURL(file), file);
+    } catch {
       setError("Failed to read the file. It may be locked or inaccessible.");
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

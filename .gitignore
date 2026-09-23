@@ -15,6 +15,10 @@ node_modules
 # Build outputs
 dist
 dist-ssr
+benchmarks/.build
+experiments/bend2/.build
+# Regenerated benchmark fixtures (run the generator tests to rebuild).
+experiments/bend2/fixtures/
 release*/
 *.tsbuildinfo
 *.local
