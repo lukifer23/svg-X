@@ -31,7 +31,7 @@ whenever a component changes, and copy the relevant values into the result JSON.
 |---|---|
 | WSL version | 2.5.10.0 |
 | Kernel | 6.6.87.2-1 |
-| Distribution | `BendExp` — Ubuntu 24.04.5 LTS, imported from linuxcontainers `20260923_07:42` rootfs at `C:\Users\LukeScaggs\WSL\bendexp` |
+| Distribution | `BendExp` — Ubuntu 24.04.5 LTS, imported from linuxcontainers `20260923_07:42` rootfs at `%USERPROFILE%\WSL\bendexp` |
 | Default user | `root` |
 | CPUs visible | 24 (`nproc`) |
 | GPU passthrough | **working** — `/dev/dxg` present; `nvidia-smi -L` sees `NVIDIA RTX 2000 Ada Generation` |
