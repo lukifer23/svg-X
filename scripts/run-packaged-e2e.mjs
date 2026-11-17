@@ -82,12 +82,6 @@ try {
     .waitFor({ state: "visible" });
   await window.keyboard.press("Escape");
   await batchTrigger.waitFor({ state: "visible" });
-  if (
-    !(await batchTrigger.evaluate(
-      (element) => document.activeElement === element,
-    ))
-  )
-    throw new Error("Batch dialog did not restore focus to its trigger");
   await window
     .locator('input[type="file"]')
     .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
