@@ -82,6 +82,7 @@
       "main.cjs",
       "preload.cjs",
       "desktop/**/*",
+      "assets/icon.png",
       "icon.svg",
       "package.json"
     ],
