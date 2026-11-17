@@ -12,6 +12,16 @@ const isAllowedNavigation = (candidate, allowedOrigins) => {
   return allowedOrigins.has(parsed.origin);
 };
 
+const isSafeExternalUrl = (candidate) => {
+  let parsed;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return false;
+  }
+  return parsed.protocol === "https:" && !parsed.username && !parsed.password;
+};
+
 const safeChild = (root, fileName) => {
   if (
     typeof fileName !== "string" ||
@@ -39,4 +49,9 @@ const validateText = (content, maximumBytes) => {
   }
 };
 
-module.exports = { isAllowedNavigation, safeChild, validateText };
+module.exports = {
+  isAllowedNavigation,
+  isSafeExternalUrl,
+  safeChild,
+  validateText,
+};

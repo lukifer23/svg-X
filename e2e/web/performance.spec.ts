@@ -44,7 +44,12 @@ test("eight-image production worker batch improves throughput without runaway me
   const runBenchmark = () =>
     page.evaluate(async () => {
       const module = await import("/src/utils/imageProcessor.ts");
-      const size = 640;
+      // Keep the fixture above MIN_PARALLEL_PIXELS while bounding this gate on
+      // shared CI runners. The benchmark still performs a real eight-image
+      // sequential batch and a real eight-image pooled batch three times, then
+      // compares medians so a single scheduler fluctuation cannot pass or fail
+      // the acceptance gate.
+      const size = 512;
       const createInput = () => {
         const pixels = new Uint8ClampedArray(size * size * 4);
         const colors = [

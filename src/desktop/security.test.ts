@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 const require = createRequire(import.meta.url);
 const security = require("../../desktop/security.cjs") as {
   isAllowedNavigation: (candidate: string, origins: Set<string>) => boolean;
+  isSafeExternalUrl: (candidate: string) => boolean;
   safeChild: (root: string, name: string) => string;
   validateText: (content: unknown, maximumBytes: number) => void;
 };
@@ -25,6 +26,16 @@ describe("desktop trust boundaries", () => {
     ]) {
       expect(security.isAllowedNavigation(hostile, origins)).toBe(false);
     }
+  });
+
+  test("opens only credential-free HTTPS links outside the app", () => {
+    expect(security.isSafeExternalUrl("https://example.com/docs")).toBe(true);
+    expect(security.isSafeExternalUrl("http://example.com/docs")).toBe(false);
+    expect(security.isSafeExternalUrl("https://user:pass@example.com")).toBe(
+      false,
+    );
+    expect(security.isSafeExternalUrl("file:///etc/passwd")).toBe(false);
+    expect(security.isSafeExternalUrl("not a url")).toBe(false);
   });
 
   test("keeps child names inside the granted root", () => {

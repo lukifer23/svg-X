@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 const express = require("express");
 const {
   isAllowedNavigation,
+  isSafeExternalUrl,
   safeChild,
   validateText,
 } = require("./desktop/security.cjs");
@@ -50,6 +51,19 @@ let serverProcess = null;
 let activeHost = HOST;
 
 expressApp.disable("x-powered-by");
+expressApp.use((_request, response, next) => {
+  response.set({
+    "Content-Security-Policy":
+      "default-src 'self'; base-uri 'self'; connect-src 'self' blob:; font-src 'self' data:; form-action 'none'; frame-ancestors 'none'; img-src 'self' blob: data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Permissions-Policy":
+      "camera=(), display-capture=(), geolocation=(), microphone=(), payment=(), usb=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  });
+  next();
+});
 expressApp.get("/api/health", (_request, response) =>
   response.json({ ok: true, lanEnabled: LAN_ENABLED }),
 );
@@ -161,7 +175,8 @@ const setupIpc = () => {
     async (event, { defaultName, format, content }) => {
       requireRenderer(event);
       validateText(content, MAX_OUTPUT_BYTES);
-      const info = EXPORT_FORMATS.get(format) || EXPORT_FORMATS.get("svg");
+      const info = typeof format === "string" && EXPORT_FORMATS.get(format);
+      if (!info) throw new Error("Unsupported export format");
       const base =
         path
           .basename(String(defaultName || "image"))
@@ -242,8 +257,13 @@ const createWindow = async () => {
       preload: path.join(__dirname, "preload.cjs"),
     },
   });
+  const electronSession = mainWindow.webContents.session;
+  electronSession.setPermissionCheckHandler(() => false);
+  electronSession.setPermissionRequestHandler(
+    (_webContents, _permission, callback) => callback(false),
+  );
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/.test(url)) void shell.openExternal(url);
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
   mainWindow.webContents.on("will-navigate", (event, url) => {

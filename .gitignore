@@ -24,6 +24,7 @@ release*/
 *.local
 playwright-report
 test-results
+artifacts/
 
 # Specifically exclude large files
 *.exe

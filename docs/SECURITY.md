@@ -8,7 +8,11 @@ Inputs are extension allowlisted, limited to 50 MB and 100 million decoded pixel
 
 ## Renderer boundary
 
-Electron uses context isolation, renderer sandboxing, no Node integration, sender validation for every IPC handler, exact parsed-origin navigation checks, and denied in-app popup creation. External HTTP(S) links are handed to the operating system.
+Electron uses context isolation, renderer sandboxing, no Node integration, sender validation for every IPC handler, exact parsed-origin navigation checks, and denied in-app popup creation. Browser permission checks and requests are denied by default. Only credential-free HTTPS links may be handed to the operating system; HTTP, file, custom-scheme, and credential-bearing URLs are rejected.
+
+The browser entry point carries a restrictive Content Security Policy. The packaged same-origin server also sends CSP, opener/resource isolation, no-referrer, no-sniff, and permission-policy headers. Module workers and local blob/data image previews are explicitly allowed; objects, forms, framing, and third-party scripts are not.
+
+Native export formats are allowlisted (`svg`, `eps`, `dxf`, and `json`). Unknown values are rejected rather than silently treated as SVG.
 
 ## LAN mode
 

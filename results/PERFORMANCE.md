@@ -103,8 +103,9 @@ pure map and parallelizes too, adding more.
 
 ## Productionized intra-image parallelism (shipped path)
 
-The prototype was productionized using the renderer's own worker pool — no
-nested workers:
+The prototype was productionized using a dedicated renderer-side band-worker
+pool capped at four workers, plus the existing vector-worker pool — no nested
+workers:
 
 - `src/core/bandQuantize.ts` — one row band's labs + round/finish logic, shared
   by the in-process quantizer and the worker.
@@ -125,14 +126,26 @@ nested workers:
 serialized-SVG hash versus single-threaded across 2/3/5/8 bands, including odd
 dimensions and transparent pixels. Vite bundles both workers.
 
-## Not yet done / next gates
+## Browser production-path validation
 
-- **Browser-side end-to-end validation** of the Web Worker path: the in-process
-  orchestration and the build are verified, but a large-image run in Electron and
-  the Playwright conversion suite were not executed in this environment. Recommended
-  before release.
-- Tuning `MIN_PARALLEL_PIXELS` and the band-size constant against real large
-  images once the browser path is measurable.
+The production Web Worker path now runs in Playwright, not only in the
+in-process harness. The Chromium gate performs one warm conversion, then three
+actual eight-image sequential and pooled batches above
+`MIN_PARALLEL_PIXELS`. On the 2026-11-16 local four-logical-CPU test the medians
+were 377.4 ms sequential versus 236.5 ms pooled (**1.60x throughput**) with
+90.8 MiB peak and settled JS heap growth. The test enforces 1.50x on controlled
+local hardware, 1.25x on variable hosted CI, and a 256 MiB heap-growth ceiling.
+
+That validation also exposed and fixed a real scheduler deadlock: concurrent
+conversions could each reserve one quantization slot and then wait forever for
+their second. Band sets are now reserved atomically, queued cancellation aborts
+immediately, in-flight cancellation terminates the affected worker, and the
+pool is capped at four workers to prevent unbounded CPU and memory pressure.
+
+## Remaining performance work
+
+- Tune `MIN_PARALLEL_PIXELS` and the band-size constant against a broader range
+  of physical CPUs before changing the current conservative crossover.
 - Rust: still not pursued. The bar is now the **parallel** JS baseline
   (2.2×–3.5× single-thread wins plus 7×–14× on the quantizable portion), which a
   WASM/N-API migration would have to beat end-to-end.

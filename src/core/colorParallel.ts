@@ -8,7 +8,7 @@ import { getQuantizeWorkerPool, type PooledBand } from "./quantizePool";
 import type { WorkerConversionOptions } from "./vectorDocument";
 
 const maxWorkers = (): number =>
-  Math.max(1, Math.min(16, (navigator.hardwareConcurrency || 4) - 1));
+  Math.max(1, Math.min(4, navigator.hardwareConcurrency || 4));
 
 /** Parallel quantization needs the Worker API (absent in unit-test runs). */
 export const canParallelize = (pixelCount: number): boolean =>
@@ -38,14 +38,14 @@ export const quantizeColorInParallel = async (
   const pool = getQuantizeWorkerPool();
   const bands: PooledBand[] = [];
   try {
+    const slices: Uint8ClampedArray[] = [];
     for (const range of ranges) {
       if (signal?.aborted) throw cancelled();
-      const slice = pixels.subarray(
-        range.start * width * 4,
-        range.end * width * 4,
+      slices.push(
+        pixels.subarray(range.start * width * 4, range.end * width * 4),
       );
-      bands.push(await pool.createBand(slice));
     }
+    bands.push(...(await pool.createBands(slices, signal)));
     if (signal?.aborted) throw cancelled();
     const quantization = await parallelQuantize(
       seeds,

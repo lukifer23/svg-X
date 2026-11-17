@@ -4,6 +4,8 @@ SVG-X is a local-first raster-to-vector converter for the browser and Electron. 
 
 The current `main` branch is an unreleased recovery build. Historical tags and releases remain the source of truth for previously published binaries.
 
+The latest implementation audit, validation evidence, and explicit remaining release limits are recorded in [`docs/AUDIT-2026-11-16.md`](docs/AUDIT-2026-11-16.md).
+
 ## Requirements
 
 - Node.js 24.19.0 (the repository includes `.nvmrc` and `.node-version`)
@@ -44,7 +46,7 @@ The renderer decodes the source once, composites transparency over white, applie
 
 Color mode does not trace nested luminance masks. It:
 
-1. Builds variance-based palette seeds and refines them in OKLab.
+1. Builds Wu cumulative-moment palette seeds and refines them in OKLab.
 2. Assigns each raster pixel to exactly one palette label.
 3. Extracts oriented boundaries from the shared pixel grid.
 4. Groups all rings for a paint into an even-odd compound shape.
@@ -56,7 +58,7 @@ Geometry is deduplicated only when canonical commands, paint, stroke, and opacit
 
 Centerline mode thresholds and Zhang-Suen-thins the raster, classifies endpoints and junctions, follows degree-two chains, and preserves isolated cycles. It emits open stroked paths instead of filled outlines around the skeleton, with optional error-bounded cubic fitting.
 
-Color mode uses true Wu cumulative-moment seeds followed by bounded OKLab refinement. Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
+Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
 
 ## Authoritative vector model
 
@@ -80,7 +82,7 @@ Key modules:
 
 Color tracing was optimized without changing output: a 256-entry sRGB→linear lookup table, indexed loops over flat typed arrays, no per-component pixel arrays, and integer lattice keys in boundary tracing. Representative fixtures measure roughly 2.2×–3.5× faster end-to-end in color mode, verified by hashing the serialized SVG.
 
-Above a size threshold, color quantization runs in parallel across the renderer's worker pool. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any worker failure falls back to the single-threaded path.
+Above a size threshold, color quantization runs in parallel across a renderer-side pool capped at four workers. Each conversion reserves its complete band set atomically, preventing cross-job deadlocks; queued and active work is cancellable. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any non-cancellation worker failure falls back to the single-threaded path.
 
 `npm run bench:pipeline` profiles every stage and records output hashes. Methodology and current numbers are in `results/PERFORMANCE.md`.
 
@@ -90,7 +92,7 @@ The renderer never supplies arbitrary filesystem paths. Electron grants opaque I
 
 Batch decoding returns bounded raw RGBA buffers rather than base64 data. Output uses atomic exclusive creation. Existing files and names already produced by the current or earlier runs are never overwritten; collisions become `name-1.svg`, `name-2.svg`, and so on. Cancellation terminates the active worker before any pending write. Completed files remain intact.
 
-Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, and external links are denied in-app and opened by the operating system.
+Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, browser permissions are denied by default, and only credential-free HTTPS links may open through the operating system. The browser entry point and packaged server enforce a restrictive Content Security Policy; the packaged server also sends isolation, no-referrer, no-sniff, and permission-policy headers.
 
 ## Network mode
 
@@ -129,7 +131,7 @@ Transparency is composited over white before tracing for compatibility. This beh
 
 ## Settings
 
-Settings are stored under the versioned `svgx-settings-v2` key. Supported values from the old `svgx-potrace-params` key are migrated once. Invalid types, unsafe paint strings, stale enum values, and out-of-range numbers fall back or clamp safely.
+Settings are stored under the versioned `svgx-settings-v3` key. Supported values from `svgx-settings-v2` and the older `svgx-potrace-params` key are migrated once. Invalid types, unsafe paint strings, stale enum values, and out-of-range numbers fall back or clamp safely.
 
 ## Test corpus
 
@@ -145,20 +147,21 @@ Deterministic in-memory fixtures test exact color topology, canonical deduplicat
 
 ## Validation commands
 
-| Command                    | Purpose                                         |
-| -------------------------- | ----------------------------------------------- |
-| `npm run format:check`     | Formatting gate                                 |
-| `npm run lint`             | ESLint gate                                     |
-| `npm run typecheck`        | Strict TypeScript project check                 |
-| `npm test`                 | Unit and algorithm tests                        |
-| `npm run test:bench`       | Bounded performance checks                      |
-| `npm run bench:pipeline`   | Per-stage pipeline profile and exactness hashes |
-| `npm run test:e2e:web`     | Chromium, Firefox, and WebKit user flows        |
-| `npm run package:dir`      | Unsigned unpacked package for the current OS    |
-| `npm run test:e2e:package` | Launch and convert in the packaged app          |
-| `npm run build`            | Production web bundle                           |
-| `npm run ci:check`         | Frozen local release gate plus dependency audit |
-| `npm run electron:build`   | Unsigned platform package build                 |
+| Command                    | Purpose                                          |
+| -------------------------- | ------------------------------------------------ |
+| `npm run format:check`     | Formatting gate                                  |
+| `npm run lint`             | ESLint gate                                      |
+| `npm run typecheck`        | Strict TypeScript project check                  |
+| `npm test`                 | Unit and algorithm tests                         |
+| `npm run test:bench`       | Bounded performance checks                       |
+| `npm run bench:pipeline`   | Per-stage pipeline profile and exactness hashes  |
+| `npm run test:e2e:web`     | Chromium, Firefox, and WebKit user flows         |
+| `npm run package:dir`      | Unsigned unpacked package for the current OS     |
+| `npm run test:e2e:package` | Launch and convert in the packaged app           |
+| `npm run build`            | Production web bundle                            |
+| `npm run ci:check`         | Frozen local release gate plus dependency audit  |
+| `npm run audit:deps`       | Moderate-or-higher dependency vulnerability gate |
+| `npm run electron:build`   | Unsigned platform package build                  |
 
 Generated `dist`, `release`, builder diagnostics, TypeScript build metadata, installers, and logs are ignored and must not be committed.
 

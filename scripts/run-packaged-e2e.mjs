@@ -1,5 +1,6 @@
 import { _electron as electron } from "playwright";
-import { access } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
 const packageRoot = process.env.SVGX_PACKAGE_ROOT || "release";
@@ -26,10 +27,13 @@ if (!executablePath)
   throw new Error(`Packaged executable not found in: ${candidates.join(", ")}`);
 
 const port = String(3900 + Math.floor(Math.random() * 500));
+const userDataDir = await mkdtemp(path.join(os.tmpdir(), "svg-x-e2e-"));
+const launchArgs = [`--user-data-dir=${userDataDir}`];
+if (process.platform === "linux") launchArgs.push("--no-sandbox");
 const application = await electron.launch({
   executablePath,
   env: { ...process.env, SVGX_PORT: port, SVGX_LAN: "0" },
-  args: process.platform === "linux" ? ["--no-sandbox"] : [],
+  args: launchArgs,
 });
 try {
   const window = await application.firstWindow();
@@ -43,9 +47,19 @@ try {
     throw new Error(
       `Packaged preload bridge was unavailable: ${String(desktopVersion)}`,
     );
-  const health = await fetch(`http://127.0.0.1:${port}/api/health`).then(
-    (response) => response.json(),
-  );
+  const healthResponse = await fetch(`http://127.0.0.1:${port}/api/health`);
+  const requiredHeaders = [
+    "content-security-policy",
+    "cross-origin-opener-policy",
+    "cross-origin-resource-policy",
+    "permissions-policy",
+    "referrer-policy",
+    "x-content-type-options",
+  ];
+  for (const header of requiredHeaders)
+    if (!healthResponse.headers.get(header))
+      throw new Error(`Packaged server omitted security header: ${header}`);
+  const health = await healthResponse.json();
   if (health.ok !== true || health.lanEnabled !== false)
     throw new Error(
       `Invalid packaged health response: ${JSON.stringify(health)}`,
@@ -77,11 +91,23 @@ try {
   await window
     .locator('input[type="file"]')
     .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
-  await window.getByText("Conversion complete!").waitFor({ timeout: 60_000 });
+  await window
+    .getByText(/Conversion complete!|Conversion failed — see error above/)
+    .waitFor({ timeout: 60_000 });
+  if (
+    await window
+      .getByText("Conversion failed — see error above")
+      .isVisible()
+      .catch(() => false)
+  ) {
+    const errorText = await window.locator("body").innerText();
+    throw new Error(`Packaged conversion failed:\n${errorText}`);
+  }
   if ((await window.locator("svg path").count()) < 1)
     throw new Error("Packaged conversion produced no vector paths");
 } finally {
   await application.close();
+  await rm(userDataDir, { recursive: true, force: true });
 }
 
 console.log(`Packaged SVG-X smoke passed on ${process.platform}`);
