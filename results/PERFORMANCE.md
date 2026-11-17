@@ -131,16 +131,20 @@ dimensions and transparent pixels. Vite bundles both workers.
 The production Web Worker path now runs in Playwright, not only in the
 in-process harness. The Chromium gate performs one warm conversion, then three
 actual eight-image sequential and pooled batches above
-`MIN_PARALLEL_PIXELS`. On the 2026-11-16 local four-logical-CPU test the medians
-were 377.4 ms sequential versus 236.5 ms pooled (**1.60x throughput**) with
-90.8 MiB peak and settled JS heap growth. The test enforces 1.50x on controlled
-local hardware, 1.25x on variable hosted CI, and a 256 MiB heap-growth ceiling.
+`MIN_PARALLEL_PIXELS`. On the 2026-11-16 local four-logical-CPU test after the
+batch scheduling split, the medians were 471.8 ms sequential versus 222.2 ms
+pooled (**2.12x throughput**) with 90.4 MiB peak and settled JS heap growth. The
+test enforces 1.50x on controlled local hardware, 1.25x on variable hosted CI,
+and a 256 MiB heap-growth ceiling.
 
 That validation also exposed and fixed a real scheduler deadlock: concurrent
 conversions could each reserve one quantization slot and then wait forever for
 their second. Band sets are now reserved atomically, queued cancellation aborts
 immediately, in-flight cancellation terminates the affected worker, and the
 pool is capped at four workers to prevent unbounded CPU and memory pressure.
+Interactive conversions may use multiple bands; batch conversions use one band
+worker per image so the bounded pool scales across files on virtual and physical
+CPUs instead of oversubscribing each image.
 
 ## Remaining performance work
 

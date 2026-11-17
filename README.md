@@ -82,7 +82,7 @@ Key modules:
 
 Color tracing was optimized without changing output: a 256-entry sRGB→linear lookup table, indexed loops over flat typed arrays, no per-component pixel arrays, and integer lattice keys in boundary tracing. Representative fixtures measure roughly 2.2×–3.5× faster end-to-end in color mode, verified by hashing the serialized SVG.
 
-Above a size threshold, color quantization runs in parallel across a renderer-side pool capped at four workers. Each conversion reserves its complete band set atomically, preventing cross-job deadlocks; queued and active work is cancellable. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any non-cancellation worker failure falls back to the single-threaded path.
+Above a size threshold, color quantization runs across a renderer-side pool capped at four workers. Interactive images use multiple row bands; batch jobs use one worker per image so concurrency is spent across files rather than oversubscribing every file. Each conversion reserves its complete band set atomically, preventing cross-job deadlocks; queued and active work is cancellable. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any non-cancellation worker failure falls back to the single-threaded path.
 
 `npm run bench:pipeline` profiles every stage and records output hashes. Methodology and current numbers are in `results/PERFORMANCE.md`.
 

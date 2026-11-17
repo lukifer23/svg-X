@@ -11,9 +11,11 @@ const maxWorkers = (): number =>
   Math.max(1, Math.min(4, navigator.hardwareConcurrency || 4));
 
 /** Parallel quantization needs the Worker API (absent in unit-test runs). */
-export const canParallelize = (pixelCount: number): boolean =>
-  typeof Worker !== "undefined" &&
-  chooseBandCount(pixelCount, maxWorkers()) > 0;
+export const canParallelize = (
+  pixelCount: number,
+  workerLimit = maxWorkers(),
+): boolean =>
+  typeof Worker !== "undefined" && chooseBandCount(pixelCount, workerLimit) > 0;
 
 const cancelled = (): DOMException =>
   new DOMException("Conversion cancelled", "AbortError");
@@ -29,11 +31,12 @@ export const quantizeColorInParallel = async (
   height: number,
   options: WorkerConversionOptions,
   signal?: AbortSignal,
+  workerLimit = maxWorkers(),
 ): Promise<ColorQuantization> => {
   const seeds = colorSeeds(pixels, options);
   const ranges = planBands(
     height,
-    chooseBandCount(width * height, maxWorkers()),
+    chooseBandCount(width * height, workerLimit),
   );
   const pool = getQuantizeWorkerPool();
   const bands: PooledBand[] = [];

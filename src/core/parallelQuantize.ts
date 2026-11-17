@@ -75,5 +75,5 @@ export const chooseBandCount = (
 ): number => {
   if (pixelCount < MIN_PARALLEL_PIXELS) return 0;
   const bySize = Math.max(2, Math.round(pixelCount / 300_000));
-  return Math.max(2, Math.min(Math.min(maxWorkers, 16), bySize));
+  return Math.max(1, Math.min(Math.min(maxWorkers, 16), bySize));
 };

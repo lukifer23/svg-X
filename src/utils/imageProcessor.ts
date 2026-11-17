@@ -279,7 +279,10 @@ const executeConversion = async (
   let result: WorkResult;
   if (
     options.mode === "color" &&
-    canParallelize(decoded.width * decoded.height)
+    canParallelize(
+      decoded.width * decoded.height,
+      priority === "batch" ? 1 : undefined,
+    )
   ) {
     try {
       const quantization = await quantizeColorInParallel(
@@ -288,6 +291,7 @@ const executeConversion = async (
         decoded.height,
         options,
         signal,
+        priority === "batch" ? 1 : undefined,
       );
       result = await getVectorWorkerPool().run(
         {

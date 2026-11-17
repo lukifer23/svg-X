@@ -76,7 +76,7 @@ try {
     name: "Open batch conversion",
   });
   await batchTrigger.focus();
-  await batchTrigger.click();
+  await batchTrigger.press("Enter");
   await window
     .getByRole("dialog", { name: "Batch conversion" })
     .waitFor({ state: "visible" });

@@ -100,6 +100,7 @@ describe("parallel quantization", () => {
   test("band planning stays single-threaded for small images", () => {
     expect(chooseBandCount(10_000, 16)).toBe(0);
     expect(chooseBandCount(250_000, 16)).toBeGreaterThanOrEqual(2);
+    expect(chooseBandCount(250_000, 1)).toBe(1);
     expect(chooseBandCount(50_000_000, 16)).toBe(16);
     expect(chooseBandCount(50_000_000, 4)).toBe(4);
 
