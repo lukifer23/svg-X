@@ -72,10 +72,17 @@ smoke reports queue time, cancel-to-drain latency, retry time, and peak
 sampled aggregate Electron working set. The samples can count shared
 pages in more than one process.
 
+On Linux, install Ghostscript and the Python `ezdxf` package, then run
+`npm run test:export-consumers`. Ghostscript renders the EPS from real
+Color and Centerline conversions at 72, 144, and 288 DPI. The tests compare
+those renders to librsvg and verify that ezdxf can read the CAD polylines
+against geometry decoded by Python's JSON parser.
+
 Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
 LAN smoke. It selects a reachable advertised non-loopback interface, checks
 discovery and bundled assets, and converts a real upload in Chromium
-without the native bridge. It probes the host interface from the same
+without the native bridge. The downloaded SVG must match the browser
+download over loopback byte for byte. It probes the host interface from the same
 machine. A second-device connection additionally depends on network routing
 and firewall rules. The smoke closes its Electron and browser processes.
 

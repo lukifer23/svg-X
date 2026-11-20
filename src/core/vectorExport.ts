@@ -50,7 +50,7 @@ export const serializeEps = (document: VectorDocument): string => {
       );
       const operation =
         shape.fill === "none"
-          ? `${fixed(shape.strokeWidth)} setlinewidth\nstroke`
+          ? `${fixed(shape.strokeWidth)} setlinewidth\n1 setlinecap\n1 setlinejoin\nstroke`
           : shape.fillRule === "evenodd"
             ? "eofill"
             : "fill";

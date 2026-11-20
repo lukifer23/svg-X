@@ -277,21 +277,32 @@ try {
       );
     const browser = await chromium.launch();
     try {
-      const page = await browser.newPage();
-      await page.goto(reachable);
-      if (await page.evaluate(() => Boolean(window.electronAPI)))
-        throw new Error("The LAN web client received the desktop IPC bridge");
-      await page
-        .locator('input[type="file"]')
-        .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
-      await expect(page.getByText("Conversion complete!")).toBeVisible({
-        timeout: 60_000,
-      });
+      const exportFrom = async (url) => {
+        const page = await browser.newPage();
+        await page.goto(url);
+        expect(await page.evaluate(() => Boolean(window.electronAPI))).toBe(
+          false,
+        );
+        await page
+          .locator('input[type="file"]')
+          .setInputFiles(
+            path.resolve("tests/fixtures/review/color-bicycle.png"),
+          );
+        await expect(page.getByText("Conversion complete!")).toBeVisible({
+          timeout: 60_000,
+        });
+        const download = page.waitForEvent("download");
+        await page.getByRole("button", { name: "Download SVG" }).click();
+        return readFile(await (await download).path(), "utf8");
+      };
+      const loopback = await exportFrom(`http://127.0.0.1:${port}`);
+      expect(loopback).toMatch(/<svg[\s\S]*<path/);
+      expect(await exportFrom(reachable)).toBe(loopback);
     } finally {
       await browser.close();
     }
     console.log(
-      "LAN interface served discovery and completed a browser conversion without desktop IPC",
+      "LAN and loopback browsers exported byte-identical SVG without desktop IPC",
     );
   }
 

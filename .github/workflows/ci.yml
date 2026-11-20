@@ -28,6 +28,14 @@ jobs:
       - run: npm run ci:check
       - run: npm run test:archival
         if: runner.os == 'Linux'
+      - name: Validate independent export consumers
+        if: runner.os == 'Linux'
+        env:
+          SVGX_EXPORT_PYTHON: /usr/bin/python3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ghostscript python3-ezdxf
+          npm run test:export-consumers
 
   package:
     name: Unsigned package (${{ matrix.os }})
