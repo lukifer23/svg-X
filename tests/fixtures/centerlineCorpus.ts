@@ -192,14 +192,48 @@ export const centerlineCorpus = async (): Promise<CenterlineCase[]> => {
   const image = await raster(
     sharp(source).resize(1000, 1000, { fit: "inside" }),
   );
-  const scan = await readFile(
-    new URL("./review/wright-patent-scan.png", import.meta.url),
+  const scans = await Promise.all(
+    ["wright", "velocipede", "marconi"].map(async (id) => {
+      const name = `${id}-patent-scan`;
+      const jpg = await readFile(
+        new URL(`./review/${name}.png`, import.meta.url),
+      );
+      return { name, image: await raster(sharp(jpg)) };
+    }),
+  );
+  // Equal-size marks with known truth: dark line fragments and a short
+  // junction branch, plus weaker detached and attached grain.
+  const fineDetail = await raster(
+    sharp(
+      Buffer.from(
+        '<svg width="88" height="48" xmlns="http://www.w3.org/2000/svg"><path d="M8 20h70v1H8z M26 18h1v2h-1z M51 8h2v1h-2z" fill="#141414"/><path d="M55 19h1v1h-1z M62 34h2v1h-2z" fill="#414141"/></svg>',
+      ),
+    ),
   );
   return [
     ...cases,
     { name: "mechanism-artwork", image },
     { name: "mechanism-grain", image: scanNoise(image) },
-    { name: "wright-patent-scan", image: await raster(sharp(scan)) },
+    ...scans,
+    {
+      name: "fine-linework",
+      image: fineDetail,
+      reference: [
+        [
+          { x: 8.5, y: 20.5 },
+          { x: 77.5, y: 20.5 },
+        ],
+        [
+          { x: 26.5, y: 18.5 },
+          { x: 26.5, y: 20.5 },
+        ],
+        [
+          { x: 51.5, y: 8.5 },
+          { x: 52.5, y: 8.5 },
+        ],
+      ],
+      topology: { tips: 5, junctions: 1, loops: 0 },
+    },
   ];
 };
 

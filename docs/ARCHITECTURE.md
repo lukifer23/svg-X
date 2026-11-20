@@ -17,7 +17,7 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 - `bwTrace.ts`: Potrace adapter and compatibility preprocessing.
 - `colorTrace.ts`: Wu cumulative-moment palette seeds, OKLab refinement, disjoint labels, lossless component-budget merging, shared-grid topology, compound even-odd regions, canonical deduplication.
 - `sharedColorBoundaries.ts`: splits rings at junctions, canonicalizes each boundary chain, and reuses the same fitted segments in reverse on the other side.
-- `centerline.ts`: thresholding and component-area cleanup, table-driven Zhang–Suen thinning, packed adjacency and edge visitation, short-spur pruning, and degree-two walks with cycle tracking.
+- `centerline.ts`: foreground thresholding with separate ink confidence, contrast-aware component cleanup, table-driven Zhang–Suen thinning, width-aware spur pruning, and graph walks with cycle tracking. Thinning skips the blank area outside each raster row's initial foreground bounds.
 - `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
 
 Serialization and conversion types live in `vectorDocument.ts`, `serialize.ts`, and `vectorExport.ts`. UI code must not parse generated SVG to recover geometry.

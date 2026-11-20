@@ -23,6 +23,8 @@ const DEGREE = Uint8Array.from({ length: 256 }, (_, bits) => {
   return count;
 });
 
+const firstDirection = (bits: number) => 31 - Math.clz32(bits & -bits);
+
 const THIN_RULES = Uint8Array.from(DEGREE, (degree, bits) => {
   if (degree < 2 || degree > 6) return 0;
   let topology = bits;
@@ -31,7 +33,8 @@ const THIN_RULES = Uint8Array.from(DEGREE, (degree, bits) => {
     if (bits & adjacent) topology &= ~(1 << diagonal);
   }
   // A one-pixel branch can look like a wide end under eight-neighbor counting.
-  const endpoint = DEGREE[topology] === 1 ? 4 : 0;
+  const endpoint =
+    DEGREE[topology] === 1 ? 4 | (firstDirection(topology) << 3) : 0;
   const rotated = (bits >> 1) | ((bits & 1) << 7);
   if (DEGREE[~bits & rotated & 255] !== 1) return 0;
   const includes = (required: number) => (bits & required) === required;
@@ -44,34 +47,50 @@ const THIN_RULES = Uint8Array.from(DEGREE, (degree, bits) => {
 const luminance = (r: number, g: number, b: number): number =>
   0.2126 * r + 0.7152 * g + 0.0722 * b;
 
+type TipSupport = (pixel: number, direction: number) => boolean;
+
 const createBinaryMask = (
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
   options: WorkerConversionOptions,
-): Uint8Array => {
+): { mask: Uint8Array; strongInk?: Uint8Array } => {
   const mask = new Uint8Array(width * height);
   const lightForeground = options.invert || !options.blackOnWhite;
+  const strongInk =
+    options.turdSize >= 1 ? new Uint8Array(mask.length) : undefined;
+  const cutoff = lightForeground
+    ? 255 - (255 - options.threshold) * 0.35
+    : options.threshold * 0.35;
   for (let index = 0; index < mask.length; index += 1) {
     const offset = index * 4;
-    const alpha = pixels[offset + 3] / 255;
-    const value = luminance(
-      pixels[offset] * alpha + 255 * (1 - alpha),
-      pixels[offset + 1] * alpha + 255 * (1 - alpha),
-      pixels[offset + 2] * alpha + 255 * (1 - alpha),
-    );
+    const opacity = pixels[offset + 3];
+    const alpha = opacity / 255;
+    const matte = 255 * (1 - alpha);
+    const value =
+      opacity === 255
+        ? luminance(pixels[offset], pixels[offset + 1], pixels[offset + 2])
+        : luminance(
+            pixels[offset] * alpha + matte,
+            pixels[offset + 1] * alpha + matte,
+            pixels[offset + 2] * alpha + matte,
+          );
     mask[index] = lightForeground
       ? Number(value >= options.threshold)
       : Number(value < options.threshold);
+    if (strongInk && mask[index])
+      strongInk[index] = Number(
+        lightForeground ? value > cutoff : value < cutoff,
+      );
   }
-  return mask;
+  return { mask, strongInk };
 };
 
 export const thinBinaryMask = (
   input: Uint8Array,
   inputWidth: number,
   inputHeight: number,
-  preserveShortTips = true,
+  preserveShortTips: boolean | TipSupport = true,
 ): Uint8Array => {
   // A zero border lets the same thinning rules apply to cropped artwork.
   const width = inputWidth + 2;
@@ -82,7 +101,17 @@ export const thinBinaryMask = (
       input.subarray(y * inputWidth, (y + 1) * inputWidth),
       (y + 1) * width + 1,
     );
-  const offsets = NEIGHBORS.map(([dx, dy]) => dy * width + dx);
+  const rows = new Int32Array(height);
+  const ends = new Int32Array(height);
+  for (let y = 1; y < height - 1; y += 1) {
+    const base = y * width;
+    let first = base + 1;
+    let last = base + width - 2;
+    while (first <= last && !mask[first]) first += 1;
+    while (last > first && !mask[last]) last -= 1;
+    rows[y] = first;
+    ends[y] = last;
+  }
   const remove: number[] = [];
   let changed = true;
   while (changed) {
@@ -90,21 +119,31 @@ export const thinBinaryMask = (
     for (const pass of [1, 2]) {
       remove.length = 0;
       for (let y = 1; y < height - 1; y += 1) {
-        for (let x = 1; x < width - 1; x += 1) {
-          const index = y * width + x;
+        const row = y * width;
+        for (let index = rows[y]; index <= ends[y]; index += 1) {
           if (mask[index] === 0) continue;
           const bits =
-            mask[index + offsets[0]] |
-            (mask[index + offsets[1]] << 1) |
-            (mask[index + offsets[2]] << 2) |
-            (mask[index + offsets[3]] << 3) |
-            (mask[index + offsets[4]] << 4) |
-            (mask[index + offsets[5]] << 5) |
-            (mask[index + offsets[6]] << 6) |
-            (mask[index + offsets[7]] << 7);
+            mask[index - width - 1] |
+            (mask[index - width] << 1) |
+            (mask[index - width + 1] << 2) |
+            (mask[index + 1] << 3) |
+            (mask[index + width + 1] << 4) |
+            (mask[index + width] << 5) |
+            (mask[index + width - 1] << 6) |
+            (mask[index - 1] << 7);
           const rule = THIN_RULES[bits];
-          if (rule & pass && !(preserveShortTips && rule & 4))
-            remove.push(index);
+          if (!(rule & pass)) continue;
+          if (
+            rule & 4 &&
+            (preserveShortTips === true ||
+              (preserveShortTips &&
+                preserveShortTips(
+                  (y - 1) * inputWidth + index - row - 1,
+                  rule >> 3,
+                )))
+          )
+            continue;
+          remove.push(index);
         }
       }
       if (remove.length > 0) {
@@ -155,18 +194,69 @@ const neighborBits = (
   return result;
 };
 
-const firstDirection = (bits: number) => 31 - Math.clz32(bits & -bits);
-
 // Scan grain is removed in raster space. Its pixel area is meaningful before
 // thinning, which can collapse specks and short intentional details alike.
+const suppressIsolatedMarks = (
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  size: number,
+  strongInk: Uint8Array,
+) => {
+  const stride = width + 2;
+  const padded = new Uint8Array(stride * (height + 2));
+  for (let y = 0; y < height; y += 1)
+    padded.set(mask.subarray(y * width, (y + 1) * width), (y + 1) * stride + 1);
+  const offsets = [
+    1,
+    -1,
+    stride,
+    -stride,
+    stride + 1,
+    stride - 1,
+    -stride + 1,
+    -stride - 1,
+  ];
+  const onlyNeighbor = (index: number, except: number) => {
+    let found = -1;
+    for (const offset of offsets) {
+      const next = index + offset;
+      if (next === except || !padded[next]) continue;
+      if (found >= 0) return -2;
+      found = next;
+    }
+    return found;
+  };
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const pixel = y * width + x;
+      if (!mask[pixel] || strongInk[pixel]) continue;
+      const paddedIndex = (y + 1) * stride + x + 1;
+      const next = onlyNeighbor(paddedIndex, -1);
+      if (next === -1) mask[pixel] = padded[paddedIndex] = 0;
+      if (next < 0 || size < 2 || onlyNeighbor(next, paddedIndex) !== -1)
+        continue;
+      const partner =
+        (Math.floor(next / stride) - 1) * width + (next % stride) - 1;
+      if (strongInk[partner]) continue;
+      mask[pixel] = mask[partner] = padded[paddedIndex] = padded[next] = 0;
+    }
+  }
+};
+
 const suppressSpecks = (
   mask: Uint8Array,
   width: number,
   height: number,
   size: number,
+  strongInk: Uint8Array,
 ) => {
-  if (size < 1) return;
-  const offsets = NEIGHBORS.map(([dx, dy]) => dy * width + dx);
+  // The default only considers single pixels and isolated pairs. Checking
+  // local connectivity avoids visiting every pixel of large ink components.
+  if (size < 3) {
+    suppressIsolatedMarks(mask, width, height, size, strongInk);
+    return;
+  }
   const visited = new Uint8Array(mask.length);
   const queue: number[] = [];
   for (let start = 0; start < mask.length; start += 1) {
@@ -176,16 +266,29 @@ const suppressSpecks = (
     visited[start] = 1;
     for (let index = 0; index < queue.length; index += 1) {
       const pixel = queue[index];
-      let bits = neighborBits(mask, pixel, width, height, false);
-      while (bits) {
-        const next = pixel + offsets[firstDirection(bits)];
-        bits &= bits - 1;
-        if (visited[next]) continue;
-        visited[next] = 1;
-        queue.push(next);
+      const x = pixel % width;
+      const y = (pixel - x) / width;
+      const left = Math.max(0, x - 1);
+      const right = Math.min(width - 1, x + 1);
+      for (
+        let row = Math.max(0, y - 1);
+        row <= Math.min(height - 1, y + 1);
+        row += 1
+      ) {
+        for (
+          let next = row * width + left;
+          next <= row * width + right;
+          next += 1
+        ) {
+          if (!mask[next] || visited[next]) continue;
+          visited[next] = 1;
+          queue.push(next);
+        }
       }
     }
-    if (queue.length <= size) for (const pixel of queue) mask[pixel] = 0;
+    if (queue.length > size) continue;
+    if (!queue.some((pixel) => strongInk[pixel]))
+      for (const pixel of queue) mask[pixel] = 0;
   }
 };
 
@@ -203,6 +306,7 @@ export const walkSkeleton = (
   fitCurves = false,
   curveError = tolerance,
   maximumSpurLength = 0,
+  supportsTip?: TipSupport,
 ): { subpaths: VectorSubpath[]; stats: CenterlineGraphStats } => {
   const pixels: number[] = [];
   const graph = new Uint8Array(mask.length);
@@ -217,7 +321,8 @@ export const walkSkeleton = (
     for (const tip of pixels) {
       if (DEGREE[graph[tip]] !== 1) continue;
       let current = tip;
-      let direction = firstDirection(graph[tip]);
+      const tipDirection = firstDirection(graph[tip]);
+      let direction = tipDirection;
       let length = 0;
       const edges: Array<[number, number]> = [];
       while (length < maximumSpurLength) {
@@ -226,7 +331,7 @@ export const walkSkeleton = (
         edges.push([current, direction]);
         current += offsets[direction];
         const degree = DEGREE[graph[current]];
-        if (degree > 2) {
+        if (degree > 2 && !supportsTip?.(tip, tipDirection)) {
           const candidates = spurs.get(current) ?? [];
           candidates.push(edges);
           spurs.set(current, candidates);
@@ -320,9 +425,32 @@ export const traceCenterlines = (
   height: number,
   options: WorkerConversionOptions,
 ): VectorDocument => {
-  const mask = createBinaryMask(pixels, width, height, options);
-  suppressSpecks(mask, width, height, options.turdSize);
-  const thinned = thinBinaryMask(mask, width, height, options.turdSize === 0);
+  const { mask, strongInk } = createBinaryMask(pixels, width, height, options);
+  if (strongInk)
+    suppressSpecks(mask, width, height, options.turdSize, strongInk);
+  const supportsTip: TipSupport | undefined =
+    strongInk &&
+    ((pixel, direction) => {
+      if (!strongInk[pixel]) return false;
+      const x = pixel % width;
+      const y = (pixel - x) / width;
+      const [dx, dy] = NEIGHBORS[(direction + 2) % 8];
+      // Reject dark spurs inside a broad ink mass using the original raster.
+      if (
+        x - dx < 0 ||
+        x - dx >= width ||
+        x + dx < 0 ||
+        x + dx >= width ||
+        y - dy < 0 ||
+        y - dy >= height ||
+        y + dy < 0 ||
+        y + dy >= height
+      )
+        return true;
+      const across = dy * width + dx;
+      return !mask[pixel - across] || !mask[pixel + across];
+    });
+  const thinned = thinBinaryMask(mask, width, height, supportsTip ?? true);
   // A loose tolerance stored for Potrace must not let two nearby
   // centerlines cross or let a narrow loop collapse.
   const tolerance = Math.max(0.05, Math.min(0.45, options.optTolerance));
@@ -334,6 +462,7 @@ export const traceCenterlines = (
     options.optCurve,
     tolerance,
     Math.min(4, options.turdSize),
+    supportsTip,
   );
   const background =
     options.backgroundColor === "transparent"

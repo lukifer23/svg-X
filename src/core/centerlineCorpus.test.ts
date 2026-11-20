@@ -118,3 +118,40 @@ test("keeps the archived drawing's four loops and offers a fine-detail setting",
   expect(detail.loops).toBe(4);
   expect(detail.paths).toBeGreaterThan(cleaned.paths);
 });
+
+test.each([false, true])(
+  "keeps dark fine linework and drops equal-size grain in inverse polarity %s",
+  (invert) => {
+    const { image, reference, topology } = cases.find(
+      ({ name }) => name === "fine-linework",
+    )!;
+    const pixels = image.pixels.map((value, index) =>
+      invert && index % 4 !== 3 ? 255 - value : value,
+    );
+    const traced = traceCenterlines(pixels, image.width, image.height, {
+      ...centerlineOptions,
+      invert,
+    });
+    const report = measureCenterlines(traced, reference);
+    expect(report).toMatchObject({ ...topology, paths: 4 });
+    expect(report.tracedToSource?.mean).toBeLessThan(0.05);
+    expect(report.sourceToTraced?.mean).toBeLessThan(0.05);
+  },
+);
+
+test.each([
+  ["velocipede-patent-scan", 33],
+  ["marconi-patent-scan", 0],
+] as const)("keeps the archived %s topology", (name, loops) => {
+  const { image } = cases.find((item) => item.name === name)!;
+  const report = measureCenterlines(
+    traceCenterlines(
+      image.pixels,
+      image.width,
+      image.height,
+      centerlineOptions,
+    ),
+  );
+  expect(report.loops).toBe(loops);
+  expect(report.paths).toBeGreaterThan(75);
+});

@@ -564,7 +564,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               {renderSlider(
                 "turdSize",
                 "Speckle Suppression",
-                "Removes isolated ink components up to this many pixels. Also trims short junction spurs, up to four pixels. Use zero to retain fine detail.",
+                "Removes weak isolated marks up to this size and weak short spurs. Strong ink and narrow tips are protected. Set to zero to disable cleanup.",
                 turdSize,
                 0,
                 Math.max(32, turdSize),

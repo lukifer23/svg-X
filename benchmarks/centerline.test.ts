@@ -111,30 +111,44 @@ test("measures centerline topology, distance and warmed trace time", async () =>
     }),
   );
   const label = process.env.BENCH_LABEL || "current";
-  const scan = cases.find(({ name }) => name === "wright-patent-scan")!.image;
-  const scanInk = Buffer.alloc(scan.width * scan.height);
-  for (let pixel = 0; pixel < scanInk.length; pixel += 1) {
-    const i = pixel * 4;
-    const luma =
-      0.2126 * scan.pixels[i] +
-      0.7152 * scan.pixels[i + 1] +
-      0.0722 * scan.pixels[i + 2];
-    scanInk[pixel] = luma < centerlineOptions.threshold ? 255 : 0;
-  }
   const archiveScanInkAgreement = await Promise.all(
-    [false, true].map(async (optCurve) => {
-      const traced = await pixelMask(
-        traceCenterlines(scan.pixels, scan.width, scan.height, {
-          ...centerlineOptions,
-          optCurve,
-        }),
-      );
-      return {
-        optCurve,
-        traceNearInk: withinOnePixel(traced, scanInk, scan.width, scan.height),
-        inkNearTrace: withinOnePixel(scanInk, traced, scan.width, scan.height),
-      };
-    }),
+    cases
+      .filter(({ name }) => name.endsWith("-patent-scan"))
+      .flatMap(({ name, image: scan }) => {
+        const scanInk = Buffer.alloc(scan.width * scan.height);
+        for (let pixel = 0; pixel < scanInk.length; pixel += 1) {
+          const i = pixel * 4;
+          const luma =
+            0.2126 * scan.pixels[i] +
+            0.7152 * scan.pixels[i + 1] +
+            0.0722 * scan.pixels[i + 2];
+          scanInk[pixel] = luma < centerlineOptions.threshold ? 255 : 0;
+        }
+        return [false, true].map(async (optCurve) => {
+          const traced = await pixelMask(
+            traceCenterlines(scan.pixels, scan.width, scan.height, {
+              ...centerlineOptions,
+              optCurve,
+            }),
+          );
+          return {
+            name,
+            optCurve,
+            traceNearInk: withinOnePixel(
+              traced,
+              scanInk,
+              scan.width,
+              scan.height,
+            ),
+            inkNearTrace: withinOnePixel(
+              scanInk,
+              traced,
+              scan.width,
+              scan.height,
+            ),
+          };
+        });
+      }),
   );
   const report = JSON.stringify(
     {
@@ -176,5 +190,5 @@ test("measures centerline topology, distance and warmed trace time", async () =>
       }),
     ),
   );
-  expect(reports).toHaveLength(14);
+  expect(reports).toHaveLength(cases.length * 2);
 }, 120_000);
