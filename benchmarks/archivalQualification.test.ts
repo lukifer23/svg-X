@@ -5,6 +5,7 @@ import { cpus, platform } from "node:os";
 import sharp from "sharp";
 import { expect, test } from "vitest";
 import { traceCenterlines } from "../src/core/centerline";
+import { serializeVectorDocument } from "../src/core/serialize";
 import {
   enclosedRegions,
   measureArchivalReference,
@@ -12,19 +13,24 @@ import {
 } from "../tests/fixtures/archivalLoopReview";
 import { centerlineOptions } from "../tests/fixtures/centerlineCorpus";
 import references from "../tests/fixtures/qualification/references.json";
+import freshReferences from "../tests/fixtures/qualification/fresh-references.json";
 
 const baselineUrl = new URL(
-  "../results/archival-qualification-2581262.json",
+  "../results/archival-scale-before.json",
   import.meta.url,
 );
 const sha256 = (bytes: Uint8Array) =>
   createHash("sha256").update(bytes).digest("hex");
+const recoveredAtFullSize: Readonly<Partial<Record<string, string[]>>> = {
+  telephone: ["lower-box-face"],
+  "multiple-telegraph": ["lower-transmitter-terminal", "receiver-block"],
+};
 
 test("qualifies centerline against separately annotated archival drawings", async () => {
   const timing = process.env.SVGX_QUALIFICATION_TIMING === "1";
   const recording = process.env.SVGX_QUALIFICATION_REPORT;
   const reports = [];
-  for (const reference of references) {
+  for (const reference of [...references, ...freshReferences]) {
     const source = await readFile(
       new URL(
         `../tests/fixtures/qualification/${reference.id}.jpg`,
@@ -64,12 +70,40 @@ test("qualifies centerline against separately annotated archival drawings", asyn
             points.map((point) => point.map(scaled)),
           ]),
         );
-      const stroke = await rasterizeStroke(trace());
-      const geometry = measureArchivalReference(stroke, width, height, {
+      const document = trace();
+      const stroke = await rasterizeStroke(document);
+      const annotations = {
         loops: mapPoints(reference.loops),
         open: {},
         paper: reference.paper.map((box) => box.map(scaled)),
-      });
+      };
+      const geometry = measureArchivalReference(
+        stroke,
+        width,
+        height,
+        annotations,
+      );
+      const comparableStrokeWidth = Math.max(width, height) / 1000;
+      const comparableStroke = await sharp(
+        Buffer.from(
+          serializeVectorDocument({
+            ...document,
+            shapes: document.shapes.map((shape) => ({
+              ...shape,
+              strokeWidth: comparableStrokeWidth,
+            })),
+          }),
+        ),
+      )
+        .extractChannel("alpha")
+        .raw()
+        .toBuffer();
+      const comparableLoops = measureArchivalReference(
+        comparableStroke,
+        width,
+        height,
+        annotations,
+      ).loops;
       const open = Object.fromEntries(
         Object.entries(reference.open).map(([feature, { box, point }]) => {
           const [left, top, right, bottom] = box.map(scaled);
@@ -113,6 +147,7 @@ test("qualifies centerline against separately annotated archival drawings", asyn
         sourceSha256: sha256(source),
         inputSha256: sha256(pixels),
         ...geometry,
+        comparableLoops,
         open,
         inkHits,
         ...(timing && {
@@ -144,8 +179,8 @@ test("qualifies centerline against separately annotated archival drawings", asyn
     await readFile(baselineUrl, "utf8"),
   );
   expect(reports).toHaveLength(baseline.reports.length);
-  for (const [index, current] of reports.entries()) {
-    const previous = baseline.reports[index];
+  for (const [index, previous] of baseline.reports.entries()) {
+    const current = reports[index];
     const label = `${current.id} at ${current.limit} px`;
     expect(current.sourceSha256, label).toBe(previous.sourceSha256);
     expect(
@@ -161,6 +196,17 @@ test("qualifies centerline against separately annotated archival drawings", asyn
         current.loops[feature].iou,
         `${label} ${feature}`,
       ).toBeGreaterThanOrEqual(result.iou - 0.02);
+    }
+    if (current.limit === 2000) {
+      for (const feature of recoveredAtFullSize[current.id] ?? []) {
+        expect(current.loops[feature].matched, `${label} ${feature}`).toBe(
+          true,
+        );
+        expect(
+          current.comparableLoops[feature].matched,
+          `${label} ${feature} at matched stroke scale`,
+        ).toBe(true);
+      }
     }
     for (const [feature, open] of Object.entries(previous.open))
       if (open) expect(current.open[feature], `${label} ${feature}`).toBe(true);

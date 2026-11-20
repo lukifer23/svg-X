@@ -1,6 +1,7 @@
 export interface ScanInkEvidence {
   contrast: Uint8Array;
   minimumContrast: number;
+  resolutionScale: 1 | 2;
 }
 
 const TILE_SIZE = 16;
@@ -12,6 +13,28 @@ const AXES = [
   [1, 1],
   [1, -1],
 ] as const;
+
+// One native-pixel binomial pass damps high-frequency paper grain before
+// ridge screening. The grid and all subsequent geometry stay full size.
+const smoothDenseScan = (tones: Uint8Array, width: number, height: number) => {
+  const smoothed = tones.slice();
+  for (let y = 1; y < height - 1; y += 1) {
+    const row = y * width;
+    const above = row - width;
+    const below = row + width;
+    let left = tones[above] + 2 * tones[row] + tones[below];
+    let center = tones[above + 1] + 2 * tones[row + 1] + tones[below + 1];
+    for (let x = 1; x < width - 1; x += 1) {
+      const next = x + 1;
+      const right =
+        tones[above + next] + 2 * tones[row + next] + tones[below + next];
+      smoothed[row + x] = (left + 2 * center + right + 8) >> 4;
+      left = center;
+      center = right;
+    }
+  }
+  return smoothed;
+};
 
 // Estimate paper from the lighter part of each tile. Ink and darker grain
 // usually occupy a minority of a line drawing's background samples.
@@ -48,7 +71,14 @@ export const traceScanInk = (
   inkThreshold: number,
   preserveEvidence: boolean,
 ): { mask: Uint8Array; strongInk?: Uint8Array; evidence: ScanInkEvidence } => {
+  // Select the nearest calibrated scale for the supported quality limits.
+  // A fixed two-pixel flank can sample inside a real stroke at 2,000 px.
+  const resolutionScale = Math.max(width, height) >= 1500 ? 2 : 1;
+  if (resolutionScale === 2) tones = smoothDenseScan(tones, width, height);
   const { paper, columns, rows } = estimatePaper(tones, width, height);
+  const narrowRadius = 2 * resolutionScale;
+  const minimumRun = MINIMUM_RUN * resolutionScale;
+  const wideMinimumRun = WIDE_MINIMUM_RUN * resolutionScale;
   const contrast = new Uint8Array(tones.length);
   // Interpolate between tile centers to keep tile boundaries out of the mask.
   const xTile = new Int32Array(width);
@@ -107,16 +137,20 @@ export const traceScanInk = (
         const [dx, dy] = AXES[axis];
         // A fade candidate must be darker than the two sides of its stroke.
         const offset = dx * width - dy;
-        for (let radius = 2; radius <= 4; radius += 1) {
+        for (
+          let radius = narrowRadius;
+          radius <= 2 * narrowRadius;
+          radius += 1
+        ) {
           const fx = -dy * radius;
           const fy = dx * radius;
           if (!inside(x + fx, y + fy) || !inside(x - fx, y - fy)) break;
           if (
-            radius > 2 &&
+            radius > narrowRadius &&
             (ink < 36 ||
               Math.min(
-                contrast[index - 2 * offset],
-                contrast[index + 2 * offset],
+                contrast[index - narrowRadius * offset],
+                contrast[index + narrowRadius * offset],
               ) <
                 minimumContrast + 5)
           )
@@ -130,7 +164,7 @@ export const traceScanInk = (
             8
           )
             continue;
-          if (radius === 2) ridges[index] |= 1 << axis;
+          if (radius === narrowRadius) ridges[index] |= 1 << axis;
           else {
             // Widen only where the closer flanks are also ink. A wider
             // neighborhood alone would confuse separate thin strokes.
@@ -153,7 +187,7 @@ export const traceScanInk = (
       for (const sign of [-1, 1]) {
         for (
           let step = 1;
-          step < WIDE_MINIMUM_RUN && support < WIDE_MINIMUM_RUN;
+          step < wideMinimumRun && support < wideMinimumRun;
           step += 1
         ) {
           const nx = x + dx * step * sign;
@@ -162,7 +196,7 @@ export const traceScanInk = (
           support += 1;
         }
       }
-      if (support >= WIDE_MINIMUM_RUN) ridges[index] |= bit;
+      if (support >= wideMinimumRun) ridges[index] |= bit;
     }
   }
   for (let index = 0; index < ridges.length; index += 1) {
@@ -175,7 +209,7 @@ export const traceScanInk = (
       const [dx, dy] = AXES[axis];
       let run = 1;
       for (const direction of [-1, 1]) {
-        for (let step = 1; step < MINIMUM_RUN && run < MINIMUM_RUN; step += 1) {
+        for (let step = 1; step < minimumRun && run < minimumRun; step += 1) {
           const nx = x + dx * step * direction;
           const ny = y + dy * step * direction;
           if (!inside(nx, ny)) break;
@@ -184,7 +218,7 @@ export const traceScanInk = (
           run += 1;
         }
       }
-      if (run >= MINIMUM_RUN) {
+      if (run >= minimumRun) {
         mask[index] = 1;
         break;
       }
@@ -374,6 +408,6 @@ export const traceScanInk = (
   return {
     mask: connected,
     strongInk,
-    evidence: { contrast, minimumContrast },
+    evidence: { contrast, minimumContrast, resolutionScale },
   };
 };

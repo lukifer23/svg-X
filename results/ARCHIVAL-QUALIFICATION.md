@@ -39,3 +39,6 @@ hit ink checkpoint. It also limits paper pixels to the baseline and
 allows up to 0.02 IoU variation per marked region. Timing is reported
 separately to avoid gating on shared runner load.
 [Raw baseline](archival-qualification-2581262.json)
+
+The [full-resolution follow-up](ARCHIVAL-SCALE.md) locates the loss in
+ink screening and checks the repair on two further archival drawings.

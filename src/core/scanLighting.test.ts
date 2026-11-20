@@ -142,6 +142,32 @@ test("leaves shadowed paper and isolated grain blank", () => {
   expect(document.shapes).toHaveLength(0);
 });
 
+test("keeps close strokes separate and a blank gap open at 2,000 pixels", () => {
+  const width = 2000;
+  const height = 160;
+  const pixels = new Uint8ClampedArray(width * height * 4).fill(255);
+  for (const center of [62, 72]) {
+    for (let y = center - 2; y <= center + 2; y += 1) {
+      for (let x = 240; x < 1760; x += 1) {
+        if (center === 62 && x >= 999 && x < 1011) continue;
+        const offset = (y * width + x) * 4;
+        pixels.fill(24, offset, offset + 3);
+      }
+    }
+  }
+  const scan = emulateFadedScan({ pixels, width, height });
+  const trace = traceCenterlines(scan.pixels, width, height, {
+    ...centerlineOptions,
+    normalizeScanLighting: true,
+  });
+  expect(measureCenterlines(trace)).toMatchObject({
+    tips: 6,
+    junctions: 0,
+    loops: 0,
+    paths: 3,
+  });
+});
+
 test("handles a single paper tile and cropped boundaries", () => {
   const width = 10;
   const height = 10;

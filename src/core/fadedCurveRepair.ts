@@ -3,6 +3,7 @@ import type { ScanInkEvidence } from "./scanLighting";
 interface Tip {
   index: number;
   behind: number;
+  steps: number;
   x: number;
   y: number;
   dx: number;
@@ -34,9 +35,10 @@ export const repairFadedCurves = (
   skeleton: Uint8Array,
   width: number,
   height: number,
-  { contrast, minimumContrast }: ScanInkEvidence,
+  { contrast, minimumContrast, resolutionScale }: ScanInkEvidence,
   neighborsAt: (index: number) => number,
 ): void => {
+  const minimumTangentSteps = TANGENT_STEPS - resolutionScale;
   const offsets = NEIGHBORS.map(([dx, dy]) => dx + dy * width);
   const tips = new Map<number, Tip[]>();
   const columns = Math.ceil(width / MAX_GAP);
@@ -54,7 +56,7 @@ export const repairFadedCurves = (
       if (!next || next & (next - 1)) break;
       direction = firstDirection(next);
     }
-    if (steps < TANGENT_STEPS - 1) continue;
+    if (steps < minimumTangentSteps) continue;
     const x = index % width;
     const y = (index - x) / width;
     const dx = x - (current % width);
@@ -65,6 +67,7 @@ export const repairFadedCurves = (
     const bucket = tips.get(key) ?? [];
     bucket.push({
       index,
+      steps,
       behind: index + offsets[firstDirection(bits)],
       x,
       y,
@@ -108,6 +111,11 @@ export const repairFadedCurves = (
     const lengthSquared = dx * dx + dy * dy;
     if (lengthSquared < 4 || lengthSquared > MAX_GAP * MAX_GAP) return;
     const length = Math.sqrt(lengthSquared);
+    const shortTangent = Math.min(left.steps, right.steps) < TANGENT_STEPS - 1;
+    // On dense scans a nearby junction can truncate a valid tangent.
+    // Consider it only for a short, continuously ink-backed span.
+    if (shortTangent && length > 8) return;
+    const requiredInk = shortTangent ? minimumContrast : inkFloor;
     const alignmentLeft = (dx * left.dx + dy * left.dy) / length;
     const alignmentRight = -(dx * right.dx + dy * right.dy) / length;
     if (alignmentLeft < MIN_ALIGNMENT || alignmentRight < MIN_ALIGNMENT) return;
@@ -149,7 +157,7 @@ export const repairFadedCurves = (
         const index = y * width + x;
         if (index === last || index === right.index) continue;
         if (
-          contrast[index] < inkFloor ||
+          contrast[index] < requiredInk ||
           touchesOtherStroke(index, left, right)
         )
           return;
@@ -175,7 +183,13 @@ export const repairFadedCurves = (
         pixels.push(index);
         last = index;
       }
-      if (!pixels.length || raised * 4 < pixels.length * 3) return;
+      if (
+        !pixels.length ||
+        (shortTangent
+          ? raised * 3 < pixels.length * 2
+          : raised * 4 < pixels.length * 3)
+      )
+        return;
       // Prefer the unshifted trajectory and penalize curvature mismatch.
       return {
         left,

@@ -55,9 +55,13 @@ checkpoints and nearby paper boxes are measured separately. The regular
 suite tests both curve-fitting settings and requires the rim to stay open
 if an arc is erased before fading.
 
-`npm run test:archival` gates the [held-out archival baseline](../results/ARCHIVAL-QUALIFICATION.md)
+`npm run test:archival` gates the [full-resolution repair](../results/ARCHIVAL-SCALE.md)
 on Linux CI. It checks annotated loop interiors, local open gaps, blank
-paper, and individual ink checkpoints on three untouched archive drawings.
+paper, and individual ink checkpoints on five untouched archive drawings.
+Three recovered loops must match at the 2,000-pixel limit at both a
+one-pixel stroke and the same relative stroke width as the smaller render.
+The earlier [held-out baseline](../results/ARCHIVAL-QUALIFICATION.md) remains
+available for comparison.
 Set `SVGX_QUALIFICATION_TIMING=1` and `SVGX_QUALIFICATION_REPORT` to a
 new file path to record raw timings and quality results on your machine.
 
