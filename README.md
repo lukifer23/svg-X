@@ -90,7 +90,7 @@ Above a size threshold, color quantization runs across a renderer-side pool capp
 
 The renderer never supplies arbitrary filesystem paths. Electron grants opaque IDs for user-selected input and output directories. Main-process operations validate the grant, filename, extension, size, and final resolved child path.
 
-Batch decoding returns bounded raw RGBA buffers rather than base64 data. Output uses atomic exclusive creation. Existing files and names already produced by the current or earlier runs are never overwritten; collisions become `name-1.svg`, `name-2.svg`, and so on. Cancellation terminates the active worker before any pending write. Completed files remain intact.
+Batch decoding sends raw RGBA at the selected quality limit (1000 or 2000 pixels on the longest side), unless an explicit batch resize is set. Output uses exclusive creation. Collisions become `name-1.svg`, `name-2.svg`, and so on. Cancelling stops active tracing and new writes, then waits for any native decode or write already in progress. Resume processes the pending files, and Retry Failed handles failed files separately.
 
 Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, browser permissions are denied by default, and only credential-free HTTPS links may open through the operating system. The browser entry point and packaged server enforce a restrictive Content Security Policy; the packaged server also sends isolation, no-referrer, no-sniff, and permission-policy headers.
 

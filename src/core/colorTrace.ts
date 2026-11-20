@@ -5,10 +5,11 @@ import {
   simplifyRing,
   type Point,
 } from "./geometry";
-import type {
-  VectorDocument,
-  VectorShape,
-  WorkerConversionOptions,
+import {
+  MAX_PALETTE_COLORS,
+  type VectorDocument,
+  type VectorShape,
+  type WorkerConversionOptions,
 } from "./vectorDocument";
 
 interface LabColor {
@@ -751,7 +752,7 @@ export const colorSeeds = (
 ): PaletteColor[] =>
   paletteSeeds(
     pixels,
-    Math.max(2, Math.min(8, options.colorSteps)),
+    Math.max(2, Math.min(MAX_PALETTE_COLORS, Math.round(options.colorSteps))),
     options.fillStrategy,
   );
 

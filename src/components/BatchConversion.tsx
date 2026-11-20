@@ -68,12 +68,14 @@ async function readFileAsPixels(
   grantId: string,
   fileId: string,
   resizeOptions: ResizeOptions,
+  highestQuality: boolean,
 ): Promise<RawImageInput> {
   if (!window.electronAPI) throw new Error("Electron API unavailable");
   return window.electronAPI.readBatchInput({
     grantId,
     fileId,
     resize: resizeOptions,
+    highestQuality,
   });
 }
 
@@ -125,6 +127,8 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     null,
   );
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isSelectingInput, setIsSelectingInput] = useState(false);
   const [processingItems, setProcessingItems] = useState<ProcessingItem[]>([]);
   const [stats, setStats] = useState<BatchStats>({
     total: 0,
@@ -190,10 +194,10 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
 
   const handleSelectInputDirectory = async () => {
     if (!window.electronAPI) return;
+    setIsSelectingInput(true);
     try {
       const selectedDir = await window.electronAPI.selectInputDirectory();
       if (!selectedDir) return;
-      setInputDirectory(selectedDir);
       setErrorMessage(null);
 
       const files = await window.electronAPI.listBatchInputs(
@@ -206,15 +210,16 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         status: "pending",
         retryCount: 0,
       }));
+      setInputDirectory(selectedDir);
 
       if (items.length === 0) {
         setErrorMessage(
           "No supported image files found (PNG, JPG, GIF, BMP, WEBP, AVIF, HEIC, TIFF).",
         );
-        return;
       }
 
       setProcessingItems(items);
+      setFailureReport([]);
       setStats({ total: items.length, completed: 0, failed: 0, skipped: 0 });
       completedTimes.current = [];
       setAvgMsPerFile(null);
@@ -223,6 +228,8 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       setErrorMessage(
         `Error selecting directory: ${error instanceof Error ? error.message : String(error)}`,
       );
+    } finally {
+      setIsSelectingInput(false);
     }
   };
 
@@ -267,15 +274,16 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
               inputDirectory.grantId,
               item.fileId,
               resizeOptionsRef.current,
+              potraceParams.highestQuality,
             );
-            if (isCancelled.current)
+            if (abortController.signal.aborted)
               throw new DOMException("Conversion cancelled", "AbortError");
             const svgData = await processImage(
               fileData,
               potraceParams,
               abortController.signal,
             );
-            if (isCancelled.current)
+            if (abortController.signal.aborted)
               throw new DOMException("Conversion cancelled", "AbortError");
             await electronApi.writeBatchOutput({
               grantId: outputDirectory.grantId,
@@ -333,9 +341,12 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         }
       };
 
-      await Promise.all(Array.from({ length: concurrency }, () => worker()));
-      if (!isCancelled.current) {
+      try {
+        await Promise.all(Array.from({ length: concurrency }, () => worker()));
+      } finally {
         setIsProcessing(false);
+        setIsCancelling(false);
+        setEtaMs(null);
         setCurrentFileIndex(-1);
       }
     },
@@ -349,10 +360,21 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
   );
 
   const startBatchProcessing = async () => {
-    if (!inputDirectory || !outputDirectory || processingItems.length === 0)
+    if (
+      isSelectingInput ||
+      !inputDirectory ||
+      !outputDirectory ||
+      processingItems.length === 0
+    )
       return;
+    const pendingIndices = processingItems.flatMap((item, index) =>
+      item.status === "pending" ? [index] : [],
+    );
+    const resuming =
+      pendingIndices.length > 0 &&
+      pendingIndices.length < processingItems.length;
     const confirmed = await showConfirm(
-      `Process ${processingItems.length} images from:\n${inputDirectory.displayPath}\n\nSVGs will be saved to:\n${outputDirectory.displayPath}`,
+      `Process ${resuming ? pendingIndices.length : processingItems.length} images from:\n${inputDirectory.displayPath}\n\nSVGs will be saved to:\n${outputDirectory.displayPath}`,
     );
     setConfirm(null);
     if (!confirmed) return;
@@ -360,6 +382,12 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     completedTimes.current = [];
     setAvgMsPerFile(null);
     setEtaMs(null);
+    if (resuming) {
+      setIsProcessing(true);
+      setCurrentFileIndex(pendingIndices[0]);
+      void executeBatch(processingItems, pendingIndices);
+      return;
+    }
     setStats({
       total: processingItems.length,
       completed: 0,
@@ -384,11 +412,9 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
 
   const cancelProcessing = useCallback(() => {
     isCancelled.current = true;
+    setIsCancelling(true);
     for (const controller of activeAbortControllers.current.values())
       controller.abort();
-    activeAbortControllers.current.clear();
-    setIsProcessing(false);
-    setCurrentFileIndex(-1);
   }, []);
 
   const retryFailed = useCallback(() => {
@@ -435,6 +461,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       prevIsProcessing.current &&
       !isProcessing &&
       autoOpenOutput &&
+      !isCancelled.current &&
       currentFileIndex === -1
     ) {
       openOutputDirectory();
@@ -677,7 +704,8 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button
                 onClick={handleSelectInputDirectory}
-                disabled={isProcessing}
+                aria-busy={isSelectingInput}
+                disabled={isProcessing || isSelectingInput}
                 className="btn btn-primary flex items-center gap-2"
               >
                 <FolderInput className="w-4 h-4" /> Select Input Directory
@@ -861,6 +889,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             {!isProcessing && hasFailed && (
               <button
                 onClick={retryFailed}
+                disabled={isSelectingInput}
                 className="btn btn-secondary flex items-center gap-2"
               >
                 <RotateCw className="w-4 h-4" /> Retry Failed ({stats.failed})
@@ -882,9 +911,11 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             {isProcessing ? (
               <button
                 onClick={cancelProcessing}
+                disabled={isCancelling}
                 className="btn flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
               >
-                <Square className="w-4 h-4" /> Cancel
+                <Square className="w-4 h-4" />{" "}
+                {isCancelling ? "Cancelling…" : "Cancel"}
               </button>
             ) : (
               <button
@@ -892,11 +923,16 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
                 disabled={
                   !inputDirectory ||
                   !outputDirectory ||
+                  isSelectingInput ||
                   processingItems.length === 0
                 }
                 className="btn btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Play className="w-4 h-4" /> Start Batch Processing
+                <Play className="w-4 h-4" />{" "}
+                {processingItems.some((item) => item.status === "pending") &&
+                stats.completed + stats.failed > 0
+                  ? "Resume Pending Files"
+                  : "Start Batch Processing"}
               </button>
             )}
           </div>

@@ -23,24 +23,28 @@ const distanceToSegment = (point: Point, start: Point, end: Point): number => {
 
 export const simplifyOpen = (points: Point[], tolerance: number): Point[] => {
   if (points.length <= 2) return points.slice();
-  let furthest = 0;
-  let index = -1;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    const distance = distanceToSegment(
-      points[i],
-      points[0],
-      points[points.length - 1],
-    );
-    if (distance > furthest) {
-      furthest = distance;
-      index = i;
+  const result = [points[0]];
+  const pendingEnds = [points.length - 1];
+  let start = 0;
+  while (pendingEnds.length > 0) {
+    const end = pendingEnds[pendingEnds.length - 1];
+    let furthest = tolerance;
+    let split = -1;
+    for (let i = start + 1; i < end; i += 1) {
+      const distance = distanceToSegment(points[i], points[start], points[end]);
+      if (distance > furthest) {
+        furthest = distance;
+        split = i;
+      }
+    }
+    if (split !== -1) pendingEnds.push(split);
+    else {
+      result.push(points[end]);
+      start = end;
+      pendingEnds.pop();
     }
   }
-  if (furthest <= tolerance || index < 0)
-    return [points[0], points[points.length - 1]];
-  const left = simplifyOpen(points.slice(0, index + 1), tolerance);
-  const right = simplifyOpen(points.slice(index), tolerance);
-  return [...left.slice(0, -1), ...right];
+  return result;
 };
 
 export const ringArea = (points: Point[]): number => {

@@ -1,4 +1,5 @@
 import { DEFAULT_PARAMS, type TracingParams } from "./imageProcessor";
+import { MAX_PALETTE_COLORS } from "../core/vectorDocument";
 
 export const SETTINGS_STORAGE_KEY = "svgx-settings-v3";
 export const PREVIOUS_SETTINGS_STORAGE_KEY = "svgx-settings-v2";
@@ -62,7 +63,14 @@ export const normalizeSettings = (input: unknown): TracingParams => {
     background: paint(value.background, DEFAULT_PARAMS.background),
     invert: bool(value.invert, DEFAULT_PARAMS.invert),
     highestQuality: bool(value.highestQuality, DEFAULT_PARAMS.highestQuality),
-    colorSteps: finite(value.colorSteps, DEFAULT_PARAMS.colorSteps, 2, 64),
+    colorSteps: Math.round(
+      finite(
+        value.colorSteps,
+        DEFAULT_PARAMS.colorSteps,
+        2,
+        MAX_PALETTE_COLORS,
+      ),
+    ),
     colorCurveFit: bool(value.colorCurveFit, DEFAULT_PARAMS.colorCurveFit),
     fillStrategy: fillStrategies.has(String(value.fillStrategy))
       ? (value.fillStrategy as TracingParams["fillStrategy"])

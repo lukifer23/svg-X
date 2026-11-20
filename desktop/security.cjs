@@ -1,4 +1,5 @@
 const path = require("node:path");
+const fs = require("node:fs/promises");
 
 const isAllowedNavigation = (candidate, allowedOrigins) => {
   let parsed;
@@ -49,9 +50,20 @@ const validateText = (content, maximumBytes) => {
   }
 };
 
+const resolveBatchFile = async (root, name) => {
+  const target = safeChild(root, name);
+  const info = await fs.lstat(target);
+  if (!info.isFile()) throw new Error("Batch input must be a regular file");
+  const resolved = await fs.realpath(target);
+  if (path.relative(root, path.dirname(resolved)) !== "")
+    throw new Error("Batch input is outside the selected directory");
+  return { path: resolved, size: info.size };
+};
+
 module.exports = {
   isAllowedNavigation,
   isSafeExternalUrl,
   safeChild,
+  resolveBatchFile,
   validateText,
 };

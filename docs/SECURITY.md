@@ -2,13 +2,13 @@
 
 ## Filesystem boundary
 
-The preload exposes narrow operations, not Node.js or arbitrary paths. A user-selected directory becomes an opaque grant stored in the main process. Batch enumeration, reads, writes, and folder opening require a matching grant type. Child names must be basenames that resolve inside the granted root.
+The preload exposes narrow operations. The main process stores a canonical directory path behind each opaque grant. Batch enumeration, reads, writes, and folder opening require a matching grant type. Batch reads require a regular file whose resolved path is directly within the granted root.
 
 Inputs are extension allowlisted, limited to 50 MB and 100 million decoded pixels, and decoded with fail-on-error behavior. Text exports are limited to 25 MB. Batch SVG output uses exclusive `wx` creation, so simultaneous jobs and pre-existing files cannot be overwritten.
 
 ## Renderer boundary
 
-Electron uses context isolation, renderer sandboxing, no Node integration, sender validation for every IPC handler, exact parsed-origin navigation checks, and denied in-app popup creation. Browser permission checks and requests are denied by default. Only credential-free HTTPS links may be handed to the operating system; HTTP, file, custom-scheme, and credential-bearing URLs are rejected.
+Electron uses context isolation, renderer sandboxing, no Node integration, top-frame sender validation for IPC, exact parsed-origin navigation checks, and denied in-app popup creation. Browser permission checks and requests are denied by default. Only credential-free HTTPS links may be handed to the operating system; HTTP, file, custom-scheme, and credential-bearing URLs are rejected.
 
 The browser entry point carries a restrictive Content Security Policy. The packaged same-origin server also sends CSP, opener/resource isolation, no-referrer, no-sniff, and permission-policy headers. Module workers and local blob/data image previews are explicitly allowed; objects, forms, framing, and third-party scripts are not.
 

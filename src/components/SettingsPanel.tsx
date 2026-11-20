@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Settings } from "lucide-react";
+import { MAX_PALETTE_COLORS } from "../core/vectorDocument";
 import {
   TurnPolicy,
   FillStrategy,
@@ -466,14 +467,14 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               >
                 {renderSlider(
                   "colorSteps",
-                  "Color Steps",
-                  "Number of color layers to generate. More steps = richer detail and more colors, but slower processing. Range: 2–8.",
+                  "Palette size",
+                  "Maximum palette colors. Larger palettes retain more shades and take longer to trace.",
                   colorSteps,
                   2,
-                  8,
+                  MAX_PALETTE_COLORS,
                   1,
                   (v) => String(v),
-                  (colorSteps - 2) / 6,
+                  (colorSteps - 2) / (MAX_PALETTE_COLORS - 2),
                   (v) => onParamChange("colorSteps", v),
                 )}
 

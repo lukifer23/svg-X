@@ -7,7 +7,7 @@ import {
   traceColorDocument,
   wuVarianceSeeds,
 } from "./colorTrace";
-import { walkSkeleton } from "./centerline";
+import { thinBinaryMask, walkSkeleton } from "./centerline";
 import type { VectorShape, WorkerConversionOptions } from "./vectorDocument";
 
 const options = (
@@ -45,6 +45,19 @@ const rgba = (
 };
 
 describe("color region topology", () => {
+  test("retains sixteen distinct flat regions when a larger palette is selected", () => {
+    const pixels = rgba(32, 8, (x) => {
+      const index = x >> 1;
+      return [32 + (index % 4) * 64, 32 + (index >> 2) * 64, 96, 255];
+    });
+    const document = traceColorDocument(
+      pixels,
+      32,
+      8,
+      options({ mode: "color", colorSteps: 16, optCurve: false }),
+    );
+    expect(new Set(document.shapes.map((shape) => shape.fill)).size).toBe(16);
+  });
   test("merges adjacent color islands to a path budget without dropping pixels", () => {
     const labels = Uint8Array.from([0, 1, 0, 1, 0, 1]);
     const result = mergeComponentsToBudget(
@@ -170,6 +183,35 @@ describe("color region topology", () => {
         command.type === "M" || command.type === "L" ? [command.x] : [],
     );
     expect(xCoordinates.every((x) => x <= 1)).toBe(true);
+  });
+});
+
+test("thins a cropped line the same way as the identical line with whitespace", () => {
+  const width = 16;
+  const height = 5;
+  const cropped = new Uint8Array(width * height).fill(1);
+  const paddedWidth = width + 4;
+  const padded = new Uint8Array(paddedWidth * (height + 4));
+  for (let y = 0; y < height; y += 1)
+    padded.fill(
+      1,
+      (y + 2) * paddedWidth + 2,
+      (y + 2) * paddedWidth + 2 + width,
+    );
+  const expected = thinBinaryMask(padded, paddedWidth, height + 4);
+  const actual = thinBinaryMask(cropped, width, height);
+  for (let y = 0; y < height; y += 1) {
+    expect(actual.subarray(y * width, (y + 1) * width)).toEqual(
+      expected.subarray(
+        (y + 2) * paddedWidth + 2,
+        (y + 2) * paddedWidth + 2 + width,
+      ),
+    );
+  }
+  expect(walkSkeleton(actual, width, height, 0.15).stats).toEqual({
+    endpoints: 2,
+    junctions: 0,
+    cycles: 0,
   });
 });
 

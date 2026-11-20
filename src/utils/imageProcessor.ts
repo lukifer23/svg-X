@@ -2,6 +2,7 @@ import slugify from "slugify";
 import { optimize as svgoOptimize } from "svgo";
 import { canParallelize, quantizeColorInParallel } from "../core/colorParallel";
 import { getVectorWorkerPool, type WorkResult } from "../core/workerPool";
+import { MAX_PALETTE_COLORS } from "../core/vectorDocument";
 import type {
   ConversionMode,
   ConversionProgress,
@@ -202,7 +203,7 @@ const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
   invert: params.invert,
   foregroundColor: params.color,
   backgroundColor: params.background,
-  colorSteps: Math.max(2, Math.min(64, params.colorSteps)),
+  colorSteps: Math.max(2, Math.min(MAX_PALETTE_COLORS, params.colorSteps)),
   fillStrategy: params.fillStrategy,
   strokeWidth: Math.max(0.1, params.strokeWidth),
   maxPaths: Math.max(1, params.maxPaths),

@@ -43,32 +43,27 @@ const createBinaryMask = (
   return mask;
 };
 
-const transitions = (
-  mask: Uint8Array,
-  x: number,
-  y: number,
-  width: number,
-): number => {
-  const values = NEIGHBORS.map(([dx, dy]) => mask[(y + dy) * width + x + dx]);
-  let count = 0;
-  for (let index = 0; index < values.length; index += 1) {
-    if (values[index] === 0 && values[(index + 1) % values.length] === 1)
-      count += 1;
-  }
-  return count;
-};
-
 export const thinBinaryMask = (
   input: Uint8Array,
-  width: number,
-  height: number,
+  inputWidth: number,
+  inputHeight: number,
 ): Uint8Array => {
-  const mask = new Uint8Array(input);
+  // A zero border lets the same thinning rules apply to cropped artwork.
+  const width = inputWidth + 2;
+  const height = inputHeight + 2;
+  const mask = new Uint8Array(width * height);
+  for (let y = 0; y < inputHeight; y += 1)
+    mask.set(
+      input.subarray(y * inputWidth, (y + 1) * inputWidth),
+      (y + 1) * width + 1,
+    );
+  const offsets = NEIGHBORS.map(([dx, dy]) => dy * width + dx);
+  const remove: number[] = [];
   let changed = true;
   while (changed) {
     changed = false;
     for (const secondPass of [false, true]) {
-      const remove: number[] = [];
+      remove.length = 0;
       for (let y = 1; y < height - 1; y += 1) {
         for (let x = 1; x < width - 1; x += 1) {
           const index = y * width + x;
@@ -77,15 +72,16 @@ export const thinBinaryMask = (
           const p4 = mask[y * width + x + 1];
           const p6 = mask[(y + 1) * width + x];
           const p8 = mask[y * width + x - 1];
-          const neighborCount = NEIGHBORS.reduce(
-            (sum, [dx, dy]) => sum + mask[(y + dy) * width + x + dx],
-            0,
-          );
-          if (
-            neighborCount < 2 ||
-            neighborCount > 6 ||
-            transitions(mask, x, y, width) !== 1
-          )
+          let neighborCount = 0;
+          let transitions = 0;
+          let previous = mask[index + offsets[7]];
+          for (const offset of offsets) {
+            const value = mask[index + offset];
+            neighborCount += value;
+            transitions += (1 - previous) * value;
+            previous = value;
+          }
+          if (neighborCount < 2 || neighborCount > 6 || transitions !== 1)
             continue;
           const firstConstraint = secondPass ? p2 * p4 * p8 : p2 * p4 * p6;
           const secondConstraint = secondPass ? p2 * p6 * p8 : p4 * p6 * p8;
@@ -99,7 +95,12 @@ export const thinBinaryMask = (
       }
     }
   }
-  return mask;
+  const result = new Uint8Array(input.length);
+  for (let y = 0; y < inputHeight; y += 1) {
+    const start = (y + 1) * width + 1;
+    result.set(mask.subarray(start, start + inputWidth), y * inputWidth);
+  }
+  return result;
 };
 
 const edgeKey = (a: number, b: number): string =>

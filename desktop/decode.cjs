@@ -3,6 +3,30 @@ const sharp = require("sharp");
 // Inputs are capped at 100 million decoded pixels by the decoder itself.
 const MAX_INPUT_PIXELS = 100_000_000;
 
+const batchResizeOptions = (resize, highestQuality) => {
+  if (resize?.enabled !== true) {
+    const size = highestQuality === true ? 2000 : 1000;
+    return {
+      width: size,
+      height: size,
+      fit: "inside",
+      withoutEnlargement: true,
+    };
+  }
+  const dimension = (value) => {
+    if (!Number.isInteger(value) || value < 1 || value > 8192)
+      throw new Error(
+        "Batch resize dimensions must be integers from 1 to 8192",
+      );
+    return value;
+  };
+  return {
+    width: dimension(resize.width),
+    height: dimension(resize.height),
+    fit: resize.maintainAspectRatio === false ? "fill" : "inside",
+  };
+};
+
 /**
  * Decode an image source to RGBA with alpha, applying EXIF orientation.
  *
@@ -38,4 +62,4 @@ const decodeToRgba = async (source, resizeOptions) => {
   return { pixels, width: info.width, height: info.height };
 };
 
-module.exports = { decodeToRgba, MAX_INPUT_PIXELS };
+module.exports = { batchResizeOptions, decodeToRgba, MAX_INPUT_PIXELS };

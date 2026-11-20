@@ -6,14 +6,16 @@ import sharp from "sharp";
 import { describe, expect, test } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { decodeToRgba } = require("../../desktop/decode.cjs") as {
-  decodeToRgba: (
-    source:
-      | { path: string }
-      | { raw: { pixels: Buffer; width: number; height: number } },
-    resize: unknown,
-  ) => Promise<{ pixels: ArrayBuffer; width: number; height: number }>;
-};
+const { batchResizeOptions, decodeToRgba } =
+  require("../../desktop/decode.cjs") as {
+    batchResizeOptions: (resize: unknown, highQuality: boolean) => unknown;
+    decodeToRgba: (
+      source:
+        | { path: string }
+        | { raw: { pixels: Buffer; width: number; height: number } },
+      resize: unknown,
+    ) => Promise<{ pixels: ArrayBuffer; width: number; height: number }>;
+  };
 
 const makeLandscape = () => {
   const width = 40;
@@ -73,5 +75,35 @@ describe("desktop decode orientation", () => {
     expect(result.width).toBe(40);
     expect(result.height).toBe(20);
     expect(result.pixels.byteLength).toBe(40 * 20 * 4);
+  });
+
+  test("bounds automatic batch decode by quality and preserves explicit resize", async () => {
+    const source = {
+      raw: {
+        pixels: Buffer.alloc(2100 * 10 * 4, 255),
+        width: 2100,
+        height: 10,
+      },
+    };
+    const normal = await decodeToRgba(source, batchResizeOptions(null, false));
+    const high = await decodeToRgba(source, batchResizeOptions(null, true));
+    const custom = await decodeToRgba(
+      source,
+      batchResizeOptions(
+        {
+          enabled: true,
+          width: 500,
+          height: 11,
+          maintainAspectRatio: false,
+        },
+        false,
+      ),
+    );
+    expect([normal.width, high.width, custom.width, custom.height]).toEqual([
+      1000, 2000, 500, 11,
+    ]);
+    expect(() =>
+      batchResizeOptions({ enabled: true, width: 1.5, height: 20 }, false),
+    ).toThrow(/integers/);
   });
 });

@@ -151,3 +151,4 @@ export type VectorWorkerResponse =
       diagnostics: ConversionDiagnostics;
     }
   | { type: "error"; version: 1; jobId: string; error: string };
+export const MAX_PALETTE_COLORS = 16;

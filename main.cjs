@@ -7,13 +7,13 @@ const express = require("express");
 const {
   isAllowedNavigation,
   isSafeExternalUrl,
-  safeChild,
+  resolveBatchFile,
   validateText,
 } = require("./desktop/security.cjs");
 const { collectNetworkUrls } = require("./desktop/network.cjs");
 const { writeUniqueOutput } = require("./desktop/files.cjs");
 const { decodeBmp } = require("./desktop/bmp.cjs");
-const { decodeToRgba } = require("./desktop/decode.cjs");
+const { batchResizeOptions, decodeToRgba } = require("./desktop/decode.cjs");
 
 const expressApp = express();
 const grants = new Map();
@@ -95,24 +95,19 @@ const resolveGrant = (grantId, kind) => {
 };
 
 const requireRenderer = (event) => {
-  if (!mainWindow || event.sender.id !== mainWindow.webContents.id)
+  if (
+    !mainWindow ||
+    event.sender.id !== mainWindow.webContents.id ||
+    !event.senderFrame ||
+    event.senderFrame !== mainWindow.webContents.mainFrame
+  )
     throw new Error("Untrusted IPC sender");
 };
 
-const decodeInput = async (inputPath, resize) => {
-  const stats = await fs.promises.stat(inputPath);
-  if (!stats.isFile() || stats.size > MAX_INPUT_BYTES)
-    throw new Error("Input exceeds the 50 MB limit");
+const decodeInput = async (inputPath, resizeOptions) => {
   const extension = path.extname(inputPath).toLowerCase();
   if (!IMAGE_EXTENSIONS.has(extension))
     throw new Error(`Unsupported image format: ${extension}`);
-  const resizeOptions = resize?.enabled
-    ? {
-        width: Math.max(1, Math.min(8192, Number(resize.width) || 1)),
-        height: Math.max(1, Math.min(8192, Number(resize.height) || 1)),
-        fit: resize.maintainAspectRatio === false ? "fill" : "inside",
-      }
-    : null;
   if (extension === ".bmp") {
     const bmp = decodeBmp(await fs.promises.readFile(inputPath));
     return decodeToRgba(
@@ -135,7 +130,9 @@ const setupIpc = () => {
           ? "Select Input Directory Containing Images"
           : "Select Output Directory",
     });
-    return result.canceled ? null : issueGrant(result.filePaths[0], kind);
+    return result.canceled
+      ? null
+      : issueGrant(await fs.promises.realpath(result.filePaths[0]), kind);
   });
 
   ipcMain.handle("list-batch-inputs", async (event, grantId) => {
@@ -153,10 +150,16 @@ const setupIpc = () => {
 
   ipcMain.handle(
     "read-batch-input",
-    async (event, { grantId, fileId, resize }) => {
+    async (event, { grantId, fileId, resize, highestQuality }) => {
       requireRenderer(event);
       const { root } = resolveGrant(grantId, "input");
-      return decodeInput(safeChild(root, fileId), resize);
+      const input = await resolveBatchFile(root, fileId);
+      if (input.size > MAX_INPUT_BYTES)
+        throw new Error("Input exceeds the 50 MB limit");
+      return decodeInput(
+        input.path,
+        batchResizeOptions(resize, highestQuality),
+      );
     },
   );
 
