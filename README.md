@@ -56,7 +56,7 @@ Geometry is deduplicated only when canonical commands, paint, stroke, and opacit
 
 ### Centerline
 
-Centerline mode thresholds and Zhang-Suen-thins the raster, classifies endpoints and junctions, follows degree-two chains, and preserves isolated cycles. It emits open stroked paths instead of filled outlines around the skeleton, with optional error-bounded cubic fitting.
+Centerline mode thresholds the raster, removes small ink components, thins with Zhang–Suen rules, and walks the skeleton as a graph. Open branches and attached or isolated loops keep their connectivity. Speckle Suppression also trims short junction spurs. Set it to zero when tiny intentional tips matter. Optional Bézier fitting shares a subpixel error budget with simplification.
 
 Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
 

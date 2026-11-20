@@ -150,17 +150,23 @@ const curveStaysNearPolyline = (
   maximumError: number,
 ): boolean => {
   const margin = Math.max(0.05, maximumError);
-  const minimumX = Math.min(...points.map((point) => point.x)) - margin;
-  const maximumX = Math.max(...points.map((point) => point.x)) + margin;
-  const minimumY = Math.min(...points.map((point) => point.y)) - margin;
-  const maximumY = Math.max(...points.map((point) => point.y)) + margin;
+  let minimumX = Infinity;
+  let maximumX = -Infinity;
+  let minimumY = Infinity;
+  let maximumY = -Infinity;
+  for (const { x, y } of points) {
+    minimumX = Math.min(minimumX, x);
+    maximumX = Math.max(maximumX, x);
+    minimumY = Math.min(minimumY, y);
+    maximumY = Math.max(maximumY, y);
+  }
   for (let sample = 0; sample <= 16; sample += 1) {
     const point = evaluateCubic(curve, sample / 16);
     if (
-      point.x < minimumX ||
-      point.x > maximumX ||
-      point.y < minimumY ||
-      point.y > maximumY
+      point.x < minimumX - margin ||
+      point.x > maximumX + margin ||
+      point.y < minimumY - margin ||
+      point.y > maximumY + margin
     )
       return false;
     let closest = Number.POSITIVE_INFINITY;
@@ -181,13 +187,11 @@ const curveStaysNearPolyline = (
                   denominator,
               ),
             );
-      closest = Math.min(
-        closest,
-        Math.hypot(
-          point.x - (start.x + parameter * deltaX),
-          point.y - (start.y + parameter * deltaY),
-        ),
+      closest = Math.hypot(
+        point.x - (start.x + parameter * deltaX),
+        point.y - (start.y + parameter * deltaY),
       );
+      if (closest <= margin) break;
     }
     if (closest > margin) return false;
   }

@@ -55,6 +55,30 @@ test("uploads, converts, changes mode, and exports real geometry", async ({
   expect((await jsonDownload).suggestedFilename()).toMatch(/\.json$/);
 });
 
+test("traces archived linework as stroked curves through the centerline controls", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open settings panel" }).click();
+  await page.getByRole("radio", { name: /Centerline/ }).click();
+  const suppression = page.getByRole("slider", { name: "Speckle Suppression" });
+  await suppression.focus();
+  await suppression.press("Home");
+  await expect(suppression).toHaveValue("0");
+  await page
+    .getByRole("checkbox", { name: "Fit bounded Bezier curves" })
+    .check();
+  await page.getByRole("button", { name: "Close settings panel" }).click();
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(
+      path.resolve("tests/fixtures/review/wright-patent-scan.png"),
+    );
+  await expect(page.getByText("Conversion complete!")).toBeVisible();
+  const strokes = page.locator('svg path[fill="none"][stroke-linecap="round"]');
+  await expect(strokes).toHaveAttribute("d", /[Cc]/);
+});
+
 test("supports keyboard-safe network dialog and has no serious axe findings", async ({
   page,
 }) => {

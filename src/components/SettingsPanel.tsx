@@ -532,7 +532,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Stroke / Centerline Mode
               </h4>
-              <Tooltip content="Extracts thin skeletal centerlines instead of filled regions. Uses Zhang-Suen thinning to reduce filled shapes to 1-pixel-wide skeletons, then traces and outputs stroked open paths. Best for line art, sketches, architectural drawings, and circuit diagrams." />
+              <Tooltip content="Thins ink to one-pixel centerlines and traces connected strokes, junctions and closed loops. Best for line art, sketches and diagrams." />
             </div>
             <div
               className={`grid ${isMobile ? "grid-cols-1 gap-4" : "sm:grid-cols-2 gap-6"}`}
@@ -560,6 +560,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 (v) => String(v),
                 threshold / 255,
                 (v) => onParamChange("threshold", v),
+              )}
+              {renderSlider(
+                "turdSize",
+                "Speckle Suppression",
+                "Removes isolated ink components up to this many pixels. Also trims short junction spurs, up to four pixels. Use zero to retain fine detail.",
+                turdSize,
+                0,
+                Math.max(32, turdSize),
+                1,
+                (v) => `${v} px`,
+                turdSize / Math.max(32, turdSize),
+                (v) => onParamChange("turdSize", v),
               )}
               <div className={colSpan}>
                 {renderCheckbox(
