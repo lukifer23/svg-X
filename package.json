@@ -27,6 +27,7 @@
     "bench:pipeline": "vitest run --config benchmarks/vitest.config.ts",
     "bench:centerline": "vitest run --config benchmarks/vitest.config.ts benchmarks/centerline.test.ts",
     "bench:scan-lighting": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanLighting.test.ts",
+    "test:archival": "vitest run --config benchmarks/vitest.config.ts benchmarks/archivalQualification.test.ts",
     "dataset:build": "node scripts/build-training-dataset.mjs",
     "test:e2e:web": "npm run test:e2e:web:functional && npm run test:e2e:performance",
     "test:e2e:web:functional": "playwright test --grep-invert \"production worker batch\"",

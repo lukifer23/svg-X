@@ -26,6 +26,8 @@ jobs:
       - run: npm install --global npm@12.0.2
       - run: npm ci
       - run: npm run ci:check
+      - run: npm run test:archival
+        if: runner.os == 'Linux'
 
   package:
     name: Unsigned package (${{ matrix.os }})
@@ -46,11 +48,14 @@ jobs:
       - run: npm install --global npm@12.0.2
       - run: npm ci
       - run: npm run package:dir
+      - name: Install native picker driver
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xdotool
       - name: Launch packaged application smoke test
         shell: bash
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
-            DEBUG=pw:browser* ELECTRON_ENABLE_LOGGING=1 xvfb-run --auto-servernum npm run test:e2e:package
+            SVGX_NATIVE_BATCH=1 SVGX_GTK_PICKER=1 DEBUG=pw:browser* ELECTRON_ENABLE_LOGGING=1 xvfb-run --auto-servernum npm run test:e2e:package
           else
             npm run test:e2e:package
           fi

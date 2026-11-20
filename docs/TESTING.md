@@ -55,6 +55,23 @@ checkpoints and nearby paper boxes are measured separately. The regular
 suite tests both curve-fitting settings and requires the rim to stay open
 if an arc is erased before fading.
 
+`npm run test:archival` gates the [held-out archival baseline](../results/ARCHIVAL-QUALIFICATION.md)
+on Linux CI. It checks annotated loop interiors, local open gaps, blank
+paper, and individual ink checkpoints on three untouched archive drawings.
+Set `SVGX_QUALIFICATION_TIMING=1` and `SVGX_QUALIFICATION_REPORT` to a
+new file path to record raw timings and quality results on your machine.
+
+The Linux package job runs the real folder-to-folder batch scenario
+under Xvfb. To run it yourself, install `xdotool`, then run
+`SVGX_NATIVE_BATCH=1 SVGX_GTK_PICKER=1 xvfb-run -a npm run test:e2e:package`
+after packaging. The test selects real directories in GTK and covers
+mixed formats, a truncated PNG, cancel and resume, collision handling,
+and retry after fixing the bad file. On an interactive desktop, set only
+`SVGX_NATIVE_BATCH=1` and use the native pickers when prompted. The
+smoke reports queue time, cancel-to-drain latency, retry time, and peak
+sampled aggregate Electron working set. The samples can count shared
+pages in more than one process.
+
 Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
 LAN smoke. It selects a reachable advertised non-loopback interface, checks
 discovery and bundled assets, and converts a real upload in Chromium

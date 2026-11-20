@@ -1,4 +1,5 @@
 import { _electron as electron, chromium, expect } from "@playwright/test";
+import { execFile } from "node:child_process";
 import {
   access,
   copyFile,
@@ -11,6 +12,31 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { promisify } from "node:util";
+
+const execute = promisify(execFile);
+const chooseDirectory = async (directory, title) => {
+  if (process.env.SVGX_GTK_PICKER !== "1") {
+    console.log(`Select the real directory in the native picker: ${directory}`);
+    return;
+  }
+  const run = (...args) => execute("xdotool", args, { timeout: 20_000 });
+  const { stdout } = await run(
+    "search",
+    "--sync",
+    "--onlyvisible",
+    "--name",
+    `^${title}$`,
+  );
+  const dialog = stdout.trim().split(/\s+/)[0];
+  await run("windowfocus", "--sync", dialog, "key", "ctrl+l");
+  await delay(200);
+  await run("key", "ctrl+a");
+  await run("type", "--clearmodifiers", "--delay", "10", `${directory}/`);
+  // Open commits the folder typed into GTK's location field.
+  await run("key", "--clearmodifiers", "alt+o");
+};
 
 const packageRoot = process.env.SVGX_PACKAGE_ROOT || "release";
 const candidates =
@@ -47,14 +73,21 @@ const nativeBatch = async (window) => {
     "art!.png",
     ...Array.from({ length: 30 }, (_, index) => `artwork-${index}.png`),
   ];
+  const formats = ["avif", "bmp", "gif", "jpg", "tiff", "webp"];
+  for (const format of formats) names.push(`mixed.${format}`);
   await Promise.all(
     names.map((name) =>
       copyFile(
-        "tests/fixtures/review/color-bicycle.png",
+        name.startsWith("mixed.")
+          ? `tests/fixtures/formats/artwork${path.extname(name)}`
+          : "tests/fixtures/review/color-bicycle.png",
         path.join(input, name),
       ),
     ),
   );
+  const brokenName = "000-broken.png";
+  const brokenPath = path.join(input, brokenName);
+  await writeFile(brokenPath, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const original =
     '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
   await writeFile(path.join(output, "art.svg"), original);
@@ -62,21 +95,20 @@ const nativeBatch = async (window) => {
     name: "Batch conversion",
     exact: true,
   });
-  console.log(`Select the real input directory in the native picker: ${input}`);
   await batch
     .getByRole("button", { name: "Select Input Directory" })
     .evaluate((button) => button.click());
+  await chooseDirectory(input, "Select Input Directory Containing Images");
+  const pickerTimeout = process.env.SVGX_GTK_PICKER === "1" ? 20_000 : 180_000;
   await expect(batch.getByTitle(input, { exact: true })).toBeVisible({
-    timeout: 180_000,
+    timeout: pickerTimeout,
   });
-  console.log(
-    `Select the real output directory in the native picker: ${output}`,
-  );
   await batch
     .getByRole("button", { name: "Select Output Directory" })
     .evaluate((button) => button.click());
+  await chooseDirectory(output, "Select Output Directory");
   await expect(batch.getByTitle(output, { exact: true })).toBeVisible({
-    timeout: 180_000,
+    timeout: pickerTimeout,
   });
   const start = async (name) => {
     await batch.getByRole("button", { name }).click();
@@ -85,14 +117,17 @@ const nativeBatch = async (window) => {
       .getByRole("button", { name: "Continue" })
       .click();
   };
+  const started = performance.now();
   await start("Start Batch Processing");
   await expect(batch.getByText("Done", { exact: true }).first()).toBeVisible({
     timeout: 60_000,
   });
+  const cancelling = performance.now();
   await batch.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     batch.getByRole("button", { name: "Resume Pending Files" }),
   ).toBeVisible({ timeout: 60_000 });
+  const cancelMs = performance.now() - cancelling;
   const paused = await readdir(output);
   expect(paused.length).toBeGreaterThan(1);
   expect(paused.length).toBeLessThan(names.length + 1);
@@ -110,12 +145,14 @@ const nativeBatch = async (window) => {
   await expect(
     batch.getByRole("button", { name: "Start Batch Processing" }),
   ).toBeEnabled();
+  const queueMs = performance.now() - started;
   const files = await readdir(output);
   expect(files).toHaveLength(names.length + 1);
   expect(files).toEqual(
     expect.arrayContaining(["art.svg", "art-1.svg", "art-2.svg"]),
   );
   expect(files.every((name) => name.endsWith(".svg"))).toBe(true);
+  expect(files).not.toContain("000-broken.svg");
   expect(await readFile(path.join(output, "art.svg"), "utf8")).toBe(original);
   for (const [name, saved] of preserved)
     expect(await readFile(path.join(output, name), "utf8")).toBe(saved);
@@ -123,12 +160,39 @@ const nativeBatch = async (window) => {
     expect(await readFile(path.join(output, name), "utf8")).toMatch(
       /<svg[\s\S]*<path/,
     );
+  const completed = await Promise.all(
+    files.map(async (name) => [
+      name,
+      await readFile(path.join(output, name), "utf8"),
+    ]),
+  );
+  const retry = batch.getByRole("button", {
+    name: "Retry Failed (1)",
+    exact: true,
+  });
+  await expect(retry).toBeVisible();
+  await copyFile("tests/fixtures/review/color-bicycle.png", brokenPath);
+  const retryStarted = performance.now();
+  await retry.click();
+  await expect(
+    batch.getByRole("button", { name: "Start Batch Processing" }),
+  ).toBeEnabled({ timeout: 60_000 });
+  const retryMs = performance.now() - retryStarted;
+  expect(await readFile(path.join(output, "000-broken.svg"), "utf8")).toMatch(
+    /<svg[\s\S]*<path/,
+  );
+  expect(await readdir(output)).toHaveLength(names.length + 2);
+  for (const [name, saved] of completed)
+    expect(await readFile(path.join(output, name), "utf8")).toBe(saved);
+  await expect(retry).toHaveCount(0);
   console.log(
-    `Native batch passed: ${paused.length - 1} complete at cancellation, ${names.length} complete after resume; three colliding names verified.`,
+    `Native batch passed: ${paused.length - 1} complete at cancellation, ${names.length} after resume, one repaired retry; queue ${queueMs.toFixed(0)} ms, cancel drain ${cancelMs.toFixed(0)} ms, retry ${retryMs.toFixed(0)} ms.`,
   );
 };
 const launchArgs = [`--user-data-dir=${userDataDir}`];
 if (process.platform === "linux") launchArgs.push("--no-sandbox");
+if (process.env.SVGX_GTK_PICKER === "1")
+  launchArgs.push("--gtk-version=3", "--xdg-portal-required-version=999");
 const application = await electron.launch({
   executablePath,
   env: { ...process.env, SVGX_PORT: port, SVGX_LAN: lanEnabled ? "1" : "0" },
@@ -239,7 +303,49 @@ try {
   await window
     .getByRole("dialog", { name: "Batch conversion" })
     .waitFor({ state: "visible" });
-  if (process.env.SVGX_NATIVE_BATCH === "1") await nativeBatch(window);
+  if (process.env.SVGX_NATIVE_BATCH === "1") {
+    let sampling = true;
+    let peakWorkingSet = 0;
+    let samples = 0;
+    let sampleError;
+    const sampleMemory = async () => {
+      while (sampling) {
+        try {
+          const workingSet = await application.evaluate(({ app }) =>
+            app
+              .getAppMetrics()
+              .reduce((total, { memory }) => total + memory.workingSetSize, 0),
+          );
+          peakWorkingSet = Math.max(peakWorkingSet, workingSet);
+          samples += 1;
+        } catch (error) {
+          sampleError = error;
+          break;
+        }
+        await delay(250);
+      }
+    };
+    const measurements = sampleMemory();
+    try {
+      await nativeBatch(window);
+    } catch (error) {
+      console.error(
+        await window
+          .getByRole("dialog", { name: "Batch conversion" })
+          .innerText({ timeout: 2000 })
+          .catch(() => ""),
+      );
+      throw error;
+    } finally {
+      sampling = false;
+      await measurements;
+    }
+    if (sampleError) throw sampleError;
+    expect(peakWorkingSet).toBeGreaterThan(0);
+    console.log(
+      `Native batch peak sampled aggregate working set: ${(peakWorkingSet / 1024).toFixed(1)} MiB (${samples} samples).`,
+    );
+  }
   await window.keyboard.press("Escape");
   await batchTrigger.waitFor({ state: "visible" });
   await window
