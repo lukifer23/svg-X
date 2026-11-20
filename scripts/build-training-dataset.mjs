@@ -112,7 +112,13 @@ if (args.length !== 2)
   );
 const [manifestPath, output] = args.map((arg) => path.resolve(arg));
 const config = JSON.parse(await readFile(manifestPath, "utf8"));
-const { seed = "svgx-v1", variants = 3, maxDimension = 768, items } = config;
+const {
+  seed = "svgx-v1",
+  variants = 3,
+  maxDimension = 768,
+  items,
+  notices = [],
+} = config;
 if (
   !requiredText(seed) ||
   !Number.isInteger(variants) ||
@@ -122,6 +128,8 @@ if (
   maxDimension < 16 ||
   maxDimension > 2048 ||
   !Array.isArray(items) ||
+  !Array.isArray(notices) ||
+  notices.length > 100 ||
   items.length === 0 ||
   items.length > 10_000
 )
@@ -130,6 +138,28 @@ if (
   );
 
 const manifestDirectory = path.dirname(manifestPath);
+const noticeFiles = new Map();
+for (const filename of notices) {
+  if (
+    !requiredText(filename) ||
+    path.isAbsolute(filename) ||
+    path.extname(filename) !== ".txt"
+  )
+    throw new Error("Each license notice must be a relative .txt file");
+  const source = path.resolve(manifestDirectory, filename);
+  const relative = path.relative(manifestDirectory, source);
+  const name = path.basename(source);
+  if (
+    relative.split(path.sep)[0] === ".." ||
+    path.isAbsolute(relative) ||
+    noticeFiles.has(name)
+  )
+    throw new Error(`Invalid or duplicate license notice: ${filename}`);
+  const info = await stat(source);
+  if (!info.isFile() || info.size === 0 || info.size > 128 * 1024)
+    throw new Error(`Invalid license notice size: ${filename}`);
+  noticeFiles.set(name, await readFile(source));
+}
 const seen = new Set();
 const rasterGroups = new Map();
 await mkdir(output);
@@ -226,6 +256,13 @@ try {
   }
 } finally {
   await index.close();
+}
+if (noticeFiles.size) {
+  await mkdir(path.join(output, "notices"));
+  for (const [name, contents] of noticeFiles)
+    await writeFile(path.join(output, "notices", name), contents, {
+      flag: "wx",
+    });
 }
 await rename(partial, path.join(output, "manifest.jsonl"));
 console.log(

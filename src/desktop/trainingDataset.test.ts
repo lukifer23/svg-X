@@ -104,3 +104,53 @@ test("rejects external SVG references and prevents exact raster split leakage", 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("audits a published dataset and flags near-duplicate targets across splits", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "svgx-dataset-audit-"));
+  const audit = (output: string) =>
+    run(process.execPath, ["scripts/audit-training-dataset.mjs", output]);
+  try {
+    const curated = path.join(root, "curated");
+    const corpus = "examples/training-data/corpus";
+    await build(path.join(corpus, "manifest.json"), curated);
+    expect(JSON.parse((await audit(curated)).stdout)).toMatchObject({
+      rows: 128,
+      uniqueTargets: 32,
+      bySplit: { train: 23, validation: 4, test: 5 },
+      flagged: 0,
+    });
+    const notice = "lucide-LICENSE.txt";
+    expect(await readFile(path.join(curated, "notices", notice), "utf8")).toBe(
+      await readFile(path.join(corpus, "lucide", notice), "utf8"),
+    );
+
+    const manifest = path.join(root, "source.json");
+    await Promise.all([
+      writeFile(path.join(root, "train.svg"), svg),
+      writeFile(
+        path.join(root, "validation.svg"),
+        svg.replace('stroke="black"', 'stroke="#333333"'),
+      ),
+      writeFile(
+        path.join(root, "test.svg"),
+        '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="40"><rect x="8" y="8" width="32" height="24"/></svg>',
+      ),
+      writeFile(
+        manifest,
+        JSON.stringify({
+          variants: 1,
+          items: [
+            { ...item, svg: "train.svg", group: "maki/airport" },
+            { ...item, svg: "validation.svg", group: "lucide/bug" },
+            { ...item, svg: "test.svg", group: "lucide/orbit" },
+          ],
+        }),
+      ),
+    ]);
+    const near = path.join(root, "near");
+    await build(manifest, near);
+    await expect(audit(near)).rejects.toThrow(/Review cross-split silhouettes/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

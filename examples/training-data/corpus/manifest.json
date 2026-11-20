@@ -1,0 +1,168 @@
+{
+  "seed": "svgx-licensed-starter-v1",
+  "variants": 4,
+  "maxDimension": 128,
+  "items": [
+    {
+      "svg": "maki/airport.svg",
+      "group": "maki/airport",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/amusement-park.svg",
+      "group": "maki/amusement-park",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/aquarium.svg",
+      "group": "maki/aquarium",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/bicycle.svg",
+      "group": "maki/bicycle",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/bakery.svg",
+      "group": "maki/bakery",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/bridge.svg",
+      "group": "maki/bridge",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/castle.svg",
+      "group": "maki/castle",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/ferry.svg",
+      "group": "maki/ferry",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/rail.svg",
+      "group": "maki/rail",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/volcano.svg",
+      "group": "maki/volcano",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/dam.svg",
+      "group": "maki/dam",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/museum.svg",
+      "group": "maki/museum",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/harbor.svg",
+      "group": "maki/harbor",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "lucide/circuit-board.svg",
+      "group": "lucide/circuit-board",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/radar.svg",
+      "group": "lucide/radar",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/workflow.svg",
+      "group": "lucide/workflow",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/network.svg",
+      "group": "lucide/network",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/bug.svg",
+      "group": "lucide/bug",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/spline.svg",
+      "group": "lucide/spline",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/route.svg",
+      "group": "lucide/route",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/umbrella.svg",
+      "group": "lucide/umbrella",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/satellite.svg",
+      "group": "lucide/satellite",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/telescope.svg",
+      "group": "lucide/telescope",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/binary.svg",
+      "group": "lucide/binary",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/component.svg",
+      "group": "lucide/component",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/waypoints.svg",
+      "group": "lucide/waypoints",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/flask-conical.svg",
+      "group": "lucide/flask-conical",
+      "license": "ISC"
+    },
+    {
+      "svg": "maki/garden.svg",
+      "group": "maki/garden",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "maki/mountain.svg",
+      "group": "maki/mountain",
+      "license": "CC0-1.0"
+    },
+    {
+      "svg": "lucide/microscope.svg",
+      "group": "lucide/microscope",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/recycle.svg",
+      "group": "lucide/recycle",
+      "license": "ISC"
+    },
+    {
+      "svg": "lucide/orbit.svg",
+      "group": "lucide/orbit",
+      "license": "ISC"
+    }
+  ],
+  "notices": ["maki/maki-LICENSE.txt", "lucide/lucide-LICENSE.txt"]
+}

@@ -30,6 +30,7 @@
     "test:archival": "vitest run --config benchmarks/vitest.config.ts benchmarks/archivalQualification.test.ts",
     "test:export-consumers": "cross-env SVGX_EXPORT_CONSUMERS=1 vitest run --config benchmarks/vitest.config.ts benchmarks/exportConsumers.test.ts",
     "dataset:build": "node scripts/build-training-dataset.mjs",
+    "dataset:audit": "node scripts/audit-training-dataset.mjs",
     "test:e2e:web": "npm run test:e2e:web:functional && npm run test:e2e:performance",
     "test:e2e:web:functional": "playwright test --grep-invert \"production worker batch\"",
     "test:e2e:performance": "playwright test e2e/web/performance.spec.ts --project=chromium --workers=1 --retries=0",

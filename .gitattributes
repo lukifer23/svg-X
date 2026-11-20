@@ -11,3 +11,5 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.png binary
+examples/training-data/corpus/**/*.svg -text
+examples/training-data/corpus/**/*-LICENSE.txt -text

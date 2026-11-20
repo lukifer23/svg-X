@@ -4,7 +4,7 @@ SVG-X is a local-first raster-to-vector converter for the browser and Electron. 
 
 The current `main` branch is an unreleased recovery build. Historical tags and releases remain the source of truth for previously published binaries.
 
-The latest implementation audit, validation evidence, and explicit remaining release limits are recorded in [`docs/AUDIT-2026-11-16.md`](docs/AUDIT-2026-11-16.md).
+The [testing guide](docs/TESTING.md) links the current validation evidence, including [held-out scan results](results/ARCHIVAL-QUALIFICATION.md) and [independent export checks](results/EXPORT-CONSUMERS.md). The [November recovery audit](docs/AUDIT-2026-11-20.md) records earlier engineering findings.
 
 ## Requirements
 
@@ -94,7 +94,7 @@ The renderer never supplies arbitrary filesystem paths. Electron grants opaque I
 
 Batch decoding sends raw RGBA at the selected quality limit (1000 or 2000 pixels on the longest side), unless an explicit batch resize is set. The main process stages each SVG and publishes it without replacing an existing file. Collisions become `name-1.svg`, `name-2.svg`, and so on. Cancelling stops active tracing and prevents unpublished files from being committed. A native decode already running is drained, and a file already being published can finish. Resume processes the pending files, and Retry Failed handles failed files separately.
 
-For model development, `npm run dataset:build` batch-generates raster inputs and aligned labels from source SVGs. See the [training dataset guide](docs/TRAINING-DATA.md).
+For model development, `npm run dataset:build` generates paired raster inputs and labels from source SVGs. The starter corpus includes 32 licensed source designs, and `npm run dataset:audit` flags near-duplicate silhouettes across splits. See the [training dataset guide](docs/TRAINING-DATA.md).
 
 Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, browser permissions are denied by default, and only credential-free HTTPS links may open through the operating system. The browser entry point and packaged server enforce a restrictive Content Security Policy; the packaged server also sends isolation, no-referrer, no-sniff, and permission-policy headers.
 
