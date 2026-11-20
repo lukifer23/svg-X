@@ -64,7 +64,24 @@ describe("settings migration", () => {
         strokeMode: true,
       }),
     });
-    expect(loadSettings(storage).mode).toBe("centerline");
+    expect(loadSettings(storage)).toMatchObject({
+      mode: "centerline",
+      normalizeScanLighting: false,
+    });
     expect(storage.values.has(PREVIOUS_SETTINGS_STORAGE_KEY)).toBe(false);
+  });
+
+  test("keeps an explicit scan-lighting preference", () => {
+    const storage = memoryStorage({
+      [SETTINGS_STORAGE_KEY]: JSON.stringify({
+        mode: "centerline",
+        normalizeScanLighting: true,
+      }),
+    });
+    expect(loadSettings(storage).normalizeScanLighting).toBe(true);
+    expect(
+      normalizeSettings({ normalizeScanLighting: "true" })
+        .normalizeScanLighting,
+    ).toBe(false);
   });
 });

@@ -61,6 +61,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   fillStrategy,
   strokeWidth,
   centerlineCurveFit,
+  normalizeScanLighting,
   maxPaths,
   svgoOptimize,
   onParamChange,
@@ -106,6 +107,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     fillStrategy,
     strokeWidth,
     centerlineCurveFit,
+    normalizeScanLighting,
     maxPaths,
     svgoOptimize,
   };
@@ -579,6 +581,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   "Fit bounded Bezier curves",
                   "Smooth centerline chains with error-bounded Bezier fitting. Straight segments preserve exact skeleton geometry by default.",
                   centerlineCurveFit,
+                )}
+                {renderCheckbox(
+                  "normalizeScanLighting",
+                  "Recover faded scan lines",
+                  "Compensates for uneven paper lighting and looks for connected faint lines. Leave off for clean originals and solid artwork.",
+                  normalizeScanLighting,
                 )}
                 {renderCheckbox(
                   "blackOnWhite",

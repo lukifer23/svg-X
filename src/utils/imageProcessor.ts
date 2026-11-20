@@ -32,6 +32,7 @@ export interface TracingParams {
   fillStrategy: FillStrategy;
   strokeWidth: number;
   centerlineCurveFit: boolean;
+  normalizeScanLighting: boolean;
   maxPaths: number;
   svgoOptimize: boolean;
 }
@@ -54,6 +55,7 @@ export const DEFAULT_PARAMS: TracingParams = {
   fillStrategy: "dominant",
   strokeWidth: 2,
   centerlineCurveFit: false,
+  normalizeScanLighting: false,
   maxPaths: 2000,
   svgoOptimize: true,
 };
@@ -187,6 +189,7 @@ const decodeImage = async (
 };
 
 const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
+  normalizeScanLighting: params.normalizeScanLighting,
   mode: params.mode,
   threshold: Math.max(0, Math.min(255, params.threshold)),
   turdSize: Math.max(0, params.turdSize),

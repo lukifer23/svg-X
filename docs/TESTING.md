@@ -34,6 +34,11 @@ trace times with both polygon and cubic output. See
 [Centerline results](../results/CENTERLINE.md) and
 [scan cleanup results](../results/SCAN-CLEANUP.md).
 
+Use `npm run bench:scan-lighting` for the faded-line comparison. It runs
+the three archival scans untouched and with identical seeded lighting,
+fade and grain distortions, plus calibrated line art. See
+[scan lighting measurements](../results/SCAN-LIGHTING.md).
+
 Set `SVGX_NATIVE_BATCH=1` before running `npm run test:e2e:package` on a
 desktop to exercise the real directory pickers. Select each temporary path
 printed by the harness. The smoke then cancels after some outputs complete,

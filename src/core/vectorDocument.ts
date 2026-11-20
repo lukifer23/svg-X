@@ -72,6 +72,7 @@ export interface ConversionResult {
 }
 
 export interface WorkerConversionOptions {
+  normalizeScanLighting?: boolean;
   mode: ConversionMode;
   threshold: number;
   turdSize: number;

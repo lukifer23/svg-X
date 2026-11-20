@@ -68,6 +68,9 @@ test("traces archived linework as stroked curves through the centerline controls
   await page
     .getByRole("checkbox", { name: "Fit bounded Bezier curves" })
     .check();
+  await page
+    .getByRole("checkbox", { name: "Recover faded scan lines" })
+    .check();
   await page.getByRole("button", { name: "Close settings panel" }).click();
   await page
     .locator('input[type="file"]')

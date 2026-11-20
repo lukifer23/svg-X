@@ -1,5 +1,6 @@
 import { fitPointsToSubpath } from "./curveFit";
 import { pointsToSubpath, simplifyOpen, type Point } from "./geometry";
+import { traceScanInk } from "./scanLighting";
 import type {
   VectorDocument,
   VectorSubpath,
@@ -55,8 +56,27 @@ const createBinaryMask = (
   height: number,
   options: WorkerConversionOptions,
 ): { mask: Uint8Array; strongInk?: Uint8Array } => {
-  const mask = new Uint8Array(width * height);
   const lightForeground = options.invert || !options.blackOnWhite;
+  if (options.normalizeScanLighting) {
+    const tones = new Uint8Array(width * height);
+    for (let index = 0; index < tones.length; index += 1) {
+      const offset = index * 4;
+      const alpha = pixels[offset + 3] / 255;
+      const value =
+        255 * (1 - alpha) +
+        luminance(pixels[offset], pixels[offset + 1], pixels[offset + 2]) *
+          alpha;
+      tones[index] = Math.round(lightForeground ? 255 - value : value);
+    }
+    return traceScanInk(
+      tones,
+      width,
+      height,
+      lightForeground ? 255 - options.threshold : options.threshold,
+      options.turdSize >= 1,
+    );
+  }
+  const mask = new Uint8Array(width * height);
   const strongInk =
     options.turdSize >= 1 ? new Uint8Array(mask.length) : undefined;
   const cutoff = lightForeground

@@ -85,6 +85,7 @@ export const normalizeSettings = (input: unknown): TracingParams => {
       value.centerlineCurveFit,
       DEFAULT_PARAMS.centerlineCurveFit,
     ),
+    normalizeScanLighting: bool(value.normalizeScanLighting, false),
     maxPaths: finite(value.maxPaths, DEFAULT_PARAMS.maxPaths, 1, 100_000),
     svgoOptimize: bool(value.svgoOptimize, DEFAULT_PARAMS.svgoOptimize),
   };
