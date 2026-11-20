@@ -16,7 +16,7 @@ interface Link {
   score: number;
 }
 
-const MAX_GAP = 12;
+const MAX_GAP = 20;
 const TANGENT_STEPS = 4;
 const MIN_ALIGNMENT = 0.7;
 const NEIGHBORS = [
@@ -117,6 +117,9 @@ export const repairFadedCurves = (
     const nx = Math.round(normalX * 2);
     const ny = Math.round(normalY * 2);
     const flankOffset = ny * width + nx;
+    const wideX = Math.round(normalX * 4);
+    const wideY = Math.round(normalY * 4);
+    const wideOffset = wideY * width + wideX;
     const handle = length / 3;
     const count = Math.ceil(length * 3);
     const sample = (bias: number): Link | undefined => {
@@ -157,7 +160,16 @@ export const repairFadedCurves = (
               contrast[index - flankOffset],
               contrast[index + flankOffset],
             ) >=
-          3
+            3 ||
+          (contrast[index] >= minimumContrast &&
+            inside(x + wideX, y + wideY) &&
+            inside(x - wideX, y - wideY) &&
+            contrast[index] -
+              Math.max(
+                contrast[index - wideOffset],
+                contrast[index + wideOffset],
+              ) >=
+              6)
         )
           raised += 1;
         pixels.push(index);

@@ -1,4 +1,4 @@
-import { _electron as electron, expect } from "@playwright/test";
+import { _electron as electron, chromium, expect } from "@playwright/test";
 import {
   access,
   copyFile,
@@ -36,6 +36,7 @@ if (!executablePath)
   throw new Error(`Packaged executable not found in: ${candidates.join(", ")}`);
 
 const port = String(3900 + Math.floor(Math.random() * 500));
+const lanEnabled = process.env.SVGX_TEST_LAN === "1";
 const userDataDir = await mkdtemp(path.join(os.tmpdir(), "svg-x-e2e-"));
 const nativeBatch = async (window) => {
   const input = path.join(userDataDir, "batch-input");
@@ -130,7 +131,7 @@ const launchArgs = [`--user-data-dir=${userDataDir}`];
 if (process.platform === "linux") launchArgs.push("--no-sandbox");
 const application = await electron.launch({
   executablePath,
-  env: { ...process.env, SVGX_PORT: port, SVGX_LAN: "0" },
+  env: { ...process.env, SVGX_PORT: port, SVGX_LAN: lanEnabled ? "1" : "0" },
   args: launchArgs,
 });
 try {
@@ -158,17 +159,77 @@ try {
     if (!healthResponse.headers.get(header))
       throw new Error(`Packaged server omitted security header: ${header}`);
   const health = await healthResponse.json();
-  if (health.ok !== true || health.lanEnabled !== false)
+  if (health.ok !== true || health.lanEnabled !== lanEnabled)
     throw new Error(
       `Invalid packaged health response: ${JSON.stringify(health)}`,
     );
   const networkInfo = await fetch(
     `http://127.0.0.1:${port}/api/network-info`,
   ).then((response) => response.json());
-  if (networkInfo.lanEnabled !== false || networkInfo.networkUrls.length !== 0)
+  if (
+    networkInfo.lanEnabled !== lanEnabled ||
+    (!lanEnabled && networkInfo.networkUrls.length !== 0)
+  )
     throw new Error(
       `LAN was advertised without opt-in: ${JSON.stringify(networkInfo)}`,
     );
+  if (lanEnabled) {
+    const actualAddresses = new Set(
+      Object.values(os.networkInterfaces()).flatMap((entries) =>
+        (entries ?? [])
+          .filter((entry) => !entry.internal)
+          .map((entry) => entry.address),
+      ),
+    );
+    let reachable;
+    for (const url of networkInfo.networkUrls) {
+      try {
+        const origin = new URL(url);
+        if (!actualAddresses.has(origin.hostname.replace(/^\[|\]$/g, "")))
+          continue;
+        const info = await fetch(new URL("/api/network-info", origin), {
+          signal: AbortSignal.timeout(2500),
+        });
+        const home = await fetch(origin, { signal: AbortSignal.timeout(2500) });
+        const asset = (await home.text()).match(
+          /<script[^>]+src="([^"]+)"/,
+        )?.[1];
+        if (!info.ok || !(await info.json()).lanEnabled || !home.ok || !asset)
+          continue;
+        const js = await fetch(new URL(asset, origin), {
+          signal: AbortSignal.timeout(2500),
+        });
+        if (!js.ok) continue;
+        await js.arrayBuffer();
+        reachable = origin.href;
+        break;
+      } catch {
+        // Some advertised adapters, for example VPNs, can block local probes.
+      }
+    }
+    if (!reachable)
+      throw new Error(
+        "LAN listener was unreachable through every advertised non-loopback address",
+      );
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(reachable);
+      if (await page.evaluate(() => Boolean(window.electronAPI)))
+        throw new Error("The LAN web client received the desktop IPC bridge");
+      await page
+        .locator('input[type="file"]')
+        .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
+      await expect(page.getByText("Conversion complete!")).toBeVisible({
+        timeout: 60_000,
+      });
+    } finally {
+      await browser.close();
+    }
+    console.log(
+      "LAN interface served discovery and completed a browser conversion without desktop IPC",
+    );
+  }
 
   const batchTrigger = window.getByRole("button", {
     name: "Open batch conversion",

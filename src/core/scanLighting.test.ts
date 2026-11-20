@@ -100,3 +100,14 @@ test("leaves fully erased arcs open even when grain falls in the gaps", () => {
   expect(report.junctions).toBe(0);
   expect(report.tracedToSource?.outside).toBeLessThan(0.01);
 });
+
+test("recovers more graph cycles on the faded mechanism artwork", () => {
+  const { scan } = pairs.find(
+    ({ name }) => name === "mechanism-artwork-faded",
+  )!;
+  const document = traceCenterlines(scan.pixels, scan.width, scan.height, {
+    ...centerlineOptions,
+    normalizeScanLighting: true,
+  });
+  expect(measureCenterlines(document).loops).toBeGreaterThan(4);
+});

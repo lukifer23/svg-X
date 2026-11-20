@@ -41,6 +41,16 @@ fade and grain distortions, plus calibrated line art. See
 checks three known curves, including two close nested loops, in both polygon
 and Bézier output. The fully erased-arc control must stay open.
 See [broken-loop results](../results/FADED-CURVES.md).
+The [real-scan follow-up](../results/REAL-SCAN-LOOPS.md) also compares enclosed
+regions against the clean trace to distinguish useful closed loops from
+graph cycles that do not enclose a matching region.
+
+Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
+LAN smoke. It selects a reachable advertised non-loopback interface, checks
+discovery and bundled assets, and converts a real upload in Chromium
+without the native bridge. It probes the host interface from the same
+machine. A second-device connection additionally depends on network routing
+and firewall rules. The smoke closes its Electron and browser processes.
 
 Set `SVGX_NATIVE_BATCH=1` before running `npm run test:e2e:package` on a
 desktop to exercise the real directory pickers. Select each temporary path

@@ -1,0 +1,12 @@
+{
+  "seed": "svgx-training-v1",
+  "variants": 4,
+  "maxDimension": 256,
+  "items": [
+    {
+      "svg": "nested-rings.svg",
+      "group": "svgx-nested-rings",
+      "license": "MIT"
+    }
+  ]
+}

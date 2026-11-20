@@ -58,7 +58,7 @@ Geometry is deduplicated only when canonical commands, paint, stroke, and opacit
 
 Centerline mode thresholds the raster, cleans small weak marks, thins with Zhang–Suen rules, and walks the skeleton as a graph. Speckle Suppression keeps small high-contrast strokes and uses raster width to protect narrow, strong tips while trimming short spurs. Set it to zero to disable cleanup when keeping faint details matters most. Optional Bézier fitting shares a subpixel error budget with simplification.
 
-Turn on **Recover faded scan lines** for shaded or washed-out line drawings. It estimates local paper tone, looks for directional stroke support, and can reconnect short breaks in curves and loops when the scan still shows faint ink across the gap. Fully erased or ambiguous gaps stay open. Leave it off for ordinary artwork and compare both modes on textured paper. See the [scan lighting](results/SCAN-LIGHTING.md) and [broken-loop](results/FADED-CURVES.md) benchmarks.
+Turn on **Recover faded scan lines** for shaded or washed-out line drawings. It estimates local paper tone, looks for directional stroke support at two widths, and can reconnect short breaks when the scan still shows ink across the gap. Leave it off for ordinary artwork and compare both modes on textured paper. See the [real-scan loop benchmark](results/REAL-SCAN-LOOPS.md).
 
 Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
 
@@ -94,6 +94,8 @@ The renderer never supplies arbitrary filesystem paths. Electron grants opaque I
 
 Batch decoding sends raw RGBA at the selected quality limit (1000 or 2000 pixels on the longest side), unless an explicit batch resize is set. The main process stages each SVG and publishes it without replacing an existing file. Collisions become `name-1.svg`, `name-2.svg`, and so on. Cancelling stops active tracing and prevents unpublished files from being committed. A native decode already running is drained, and a file already being published can finish. Resume processes the pending files, and Retry Failed handles failed files separately.
 
+For model development, `npm run dataset:build` batch-generates raster inputs and aligned labels from source SVGs. See the [training dataset guide](docs/TRAINING-DATA.md).
+
 Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, browser permissions are denied by default, and only credential-free HTTPS links may open through the operating system. The browser entry point and packaged server enforce a restrictive Content Security Policy; the packaged server also sends isolation, no-referrer, no-sniff, and permission-policy headers.
 
 ## Network mode
@@ -113,6 +115,8 @@ The same-origin endpoints are:
 - `/api/network-info`
 
 Without `SVGX_LAN=1`, network URLs are not advertised. Opt-in LAN mode binds dual-stack IPv6 where the platform permits it, advertises bracketed IPv6 and IPv4 interface URLs, and the packaged server falls back to IPv4 on hosts without IPv6 socket support. Set `SVGX_HOST=0.0.0.0` for the Vite development server on an IPv4-only host. Port conflicts are surfaced instead of being silently ignored. Override the port with `SVGX_PORT`.
+
+For a packaged build, set the same variable before launching the app and open an advertised URL on the intended LAN device. The [LAN smoke](docs/TESTING.md) checks the host interface and a browser conversion. Remote clients do not get the native batch or filesystem bridge.
 
 ## Inputs and transparency
 

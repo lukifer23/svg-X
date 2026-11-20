@@ -52,6 +52,74 @@ const agreement = (
   return { total, matched, ratio: total ? matched / total : 0 };
 };
 
+const enclosedRegions = (stroke: Buffer, width: number, height: number) => {
+  const labels = new Int32Array(stroke.length);
+  const areas = [0];
+  const queue: number[] = [];
+  for (let start = 0; start < stroke.length; start += 1) {
+    if (stroke[start] >= 64 || labels[start]) continue;
+    const id = areas.length;
+    queue.length = 0;
+    queue.push(start);
+    labels[start] = id;
+    let frame = false;
+    const offer = (pixel: number) => {
+      if (!labels[pixel] && stroke[pixel] < 64) {
+        labels[pixel] = id;
+        queue.push(pixel);
+      }
+    };
+    for (let i = 0; i < queue.length; i += 1) {
+      const pixel = queue[i];
+      const x = pixel % width;
+      const y = (pixel - x) / width;
+      frame ||= x === 0 || y === 0 || x + 1 === width || y + 1 === height;
+      if (x > 0) offer(pixel - 1);
+      if (x + 1 < width) offer(pixel + 1);
+      if (y > 0) offer(pixel - width);
+      if (y + 1 < height) offer(pixel + width);
+    }
+    areas.push(!frame && queue.length >= 4 ? queue.length : 0);
+  }
+  return { labels, areas };
+};
+
+const compareEnclosures = (
+  before: Buffer,
+  after: Buffer,
+  width: number,
+  height: number,
+) => {
+  const reference = enclosedRegions(before, width, height);
+  const traced = enclosedRegions(after, width, height);
+  const overlaps = new Map<number, Map<number, number>>();
+  for (let i = 0; i < before.length; i += 1) {
+    const left = reference.labels[i];
+    const right = traced.labels[i];
+    if (!reference.areas[left] || !traced.areas[right]) continue;
+    const bucket = overlaps.get(left) ?? new Map();
+    bucket.set(right, (bucket.get(right) ?? 0) + 1);
+    overlaps.set(left, bucket);
+  }
+  let matched = 0;
+  for (const [left, bucket] of overlaps) {
+    for (const [right, overlap] of bucket) {
+      if (
+        overlap / (reference.areas[left] + traced.areas[right] - overlap) <
+        0.65
+      )
+        continue;
+      matched += 1;
+      break;
+    }
+  }
+  return {
+    reference: reference.areas.filter(Boolean).length,
+    traced: traced.areas.filter(Boolean).length,
+    matched,
+  };
+};
+
 test("measures faded-line retention, grain rejection and cost", async () => {
   const label = process.env.BENCH_LABEL || "current";
   const options = { ...centerlineOptions, normalizeScanLighting: true };
@@ -86,6 +154,7 @@ test("measures faded-line retention, grain rejection and cost", async () => {
       samplesMs,
       referenceToTrace: agreement(before, after, width, height),
       traceToReference: agreement(after, before, width, height),
+      enclosures: compareEnclosures(before, after, width, height),
       ...measureCenterlines(document, clean.reference),
     });
   }

@@ -5,6 +5,7 @@ export interface ScanInkEvidence {
 
 const TILE_SIZE = 16;
 const MINIMUM_RUN = 3;
+const WIDE_MINIMUM_RUN = 4;
 const AXES = [
   [1, 0],
   [0, 1],
@@ -88,6 +89,8 @@ export const traceScanInk = (
   const mask = new Uint8Array(tones.length);
   const strongInk = preserveEvidence ? new Uint8Array(tones.length) : undefined;
   const ridges = new Uint8Array(tones.length);
+  const wide = new Uint8Array(tones.length);
+  const wideCandidates: number[] = [];
   const inside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height;
   for (let y = 0; y < height; y += 1) {
@@ -103,19 +106,63 @@ export const traceScanInk = (
       for (let axis = 0; axis < AXES.length; axis += 1) {
         const [dx, dy] = AXES[axis];
         // A fade candidate must be darker than the two sides of its stroke.
-        const fx = -dy * 2;
-        const fy = dx * 2;
-        if (!inside(x + fx, y + fy) || !inside(x - fx, y - fy)) continue;
-        if (
-          ink -
-            Math.max(
-              contrast[(y + fy) * width + x + fx],
-              contrast[(y - fy) * width + x - fx],
-            ) >=
-          8
-        )
-          ridges[index] |= 1 << axis;
+        const offset = dx * width - dy;
+        for (let radius = 2; radius <= 4; radius += 1) {
+          const fx = -dy * radius;
+          const fy = dx * radius;
+          if (!inside(x + fx, y + fy) || !inside(x - fx, y - fy)) break;
+          if (
+            radius > 2 &&
+            (ink < 36 ||
+              Math.min(
+                contrast[index - 2 * offset],
+                contrast[index + 2 * offset],
+              ) <
+                minimumContrast + 5)
+          )
+            break;
+          if (
+            ink -
+              Math.max(
+                contrast[index + radius * offset],
+                contrast[index - radius * offset],
+              ) <
+            8
+          )
+            continue;
+          if (radius === 2) ridges[index] |= 1 << axis;
+          else {
+            // Widen only where the closer flanks are also ink. A wider
+            // neighborhood alone would confuse separate thin strokes.
+            if (!wide[index]) wideCandidates.push(index);
+            wide[index] |= 1 << axis;
+          }
+          break;
+        }
       }
+    }
+  }
+  for (const index of wideCandidates) {
+    const x = index % width;
+    const y = (index - x) / width;
+    for (let axis = 0; axis < AXES.length; axis += 1) {
+      const bit = 1 << axis;
+      if (!(wide[index] & bit)) continue;
+      const [dx, dy] = AXES[axis];
+      let support = 1;
+      for (const sign of [-1, 1]) {
+        for (
+          let step = 1;
+          step < WIDE_MINIMUM_RUN && support < WIDE_MINIMUM_RUN;
+          step += 1
+        ) {
+          const nx = x + dx * step * sign;
+          const ny = y + dy * step * sign;
+          if (!inside(nx, ny) || !(wide[ny * width + nx] & bit)) break;
+          support += 1;
+        }
+      }
+      if (support >= WIDE_MINIMUM_RUN) ridges[index] |= bit;
     }
   }
   for (let index = 0; index < ridges.length; index += 1) {
@@ -143,6 +190,18 @@ export const traceScanInk = (
       }
     }
   }
+  // Restore tiny pockets of still-dark ink missed by directional screening
+  // inside a wide stroke. Do not fill white gaps between separate strokes.
+  const filled = mask.slice();
+  for (let y = 1; y < height - 1; y += 1) {
+    for (let x = 1; x < width - 1; x += 1) {
+      const i = y * width + x;
+      if (mask[i] || contrast[i] < minimumContrast) continue;
+      if (mask[i - 1] && mask[i + 1] && mask[i - width] && mask[i + width])
+        filled[i] = 1;
+    }
+  }
+  mask.set(filled);
   // At crossings, the other arm can hide both flanks of a true ridge.
   // Restore only existing ink along a short run between accepted pixels.
   // Newly restored pixels cannot seed another bridge.

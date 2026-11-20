@@ -1,5 +1,8 @@
 # Faded curve and loop repair
 
+The [real-scan follow-up](REAL-SCAN-LOOPS.md) adds wider-ink recovery and an
+enclosure-matching metric.
+
 Lighting recovery already rejoined some straight fragments, but only
 between separate connected components. Severe fading also erodes bends
 into short gaps that no longer satisfy the straight-ridge detector. After
