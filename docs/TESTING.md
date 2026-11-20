@@ -37,7 +37,10 @@ trace times with both polygon and cubic output. See
 Use `npm run bench:scan-lighting` for the faded-line comparison. It runs
 the three archival scans untouched and with identical seeded lighting,
 fade and grain distortions, plus calibrated line art. See
-[scan lighting measurements](../results/SCAN-LIGHTING.md).
+[scan lighting measurements](../results/SCAN-LIGHTING.md). The loop fixture
+checks three known curves, including two close nested loops, in both polygon
+and Bézier output. The fully erased-arc control must stay open.
+See [broken-loop results](../results/FADED-CURVES.md).
 
 Set `SVGX_NATIVE_BATCH=1` before running `npm run test:e2e:package` on a
 desktop to exercise the real directory pickers. Select each temporary path

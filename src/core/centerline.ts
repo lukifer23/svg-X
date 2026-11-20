@@ -1,6 +1,7 @@
 import { fitPointsToSubpath } from "./curveFit";
+import { repairFadedCurves } from "./fadedCurveRepair";
 import { pointsToSubpath, simplifyOpen, type Point } from "./geometry";
-import { traceScanInk } from "./scanLighting";
+import { traceScanInk, type ScanInkEvidence } from "./scanLighting";
 import type {
   VectorDocument,
   VectorSubpath,
@@ -55,7 +56,7 @@ const createBinaryMask = (
   width: number,
   height: number,
   options: WorkerConversionOptions,
-): { mask: Uint8Array; strongInk?: Uint8Array } => {
+): { mask: Uint8Array; strongInk?: Uint8Array; evidence?: ScanInkEvidence } => {
   const lightForeground = options.invert || !options.blackOnWhite;
   if (options.normalizeScanLighting) {
     const tones = new Uint8Array(width * height);
@@ -445,7 +446,12 @@ export const traceCenterlines = (
   height: number,
   options: WorkerConversionOptions,
 ): VectorDocument => {
-  const { mask, strongInk } = createBinaryMask(pixels, width, height, options);
+  const { mask, strongInk, evidence } = createBinaryMask(
+    pixels,
+    width,
+    height,
+    options,
+  );
   if (strongInk)
     suppressSpecks(mask, width, height, options.turdSize, strongInk);
   const supportsTip: TipSupport | undefined =
@@ -471,6 +477,10 @@ export const traceCenterlines = (
       return !mask[pixel - across] || !mask[pixel + across];
     });
   const thinned = thinBinaryMask(mask, width, height, supportsTip ?? true);
+  if (evidence)
+    repairFadedCurves(thinned, width, height, evidence, (index) =>
+      neighborBits(thinned, index, width, height, true),
+    );
   // A loose tolerance stored for Potrace must not let two nearby
   // centerlines cross or let a narrow loop collapse.
   const tolerance = Math.max(0.05, Math.min(0.45, options.optTolerance));

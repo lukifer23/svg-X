@@ -1,5 +1,8 @@
 # Faint linework and scan lighting
 
+This records the original lighting-recovery comparison. The follow-up
+[broken-loop benchmark](FADED-CURVES.md) measures the curve repair pass.
+
 `Recover faded scan lines` is a Centerline option and defaults to off.
 It estimates local paper tone from the lighter fifth of each tile and
 interpolates the estimates between tile centers. Strong local contrast can

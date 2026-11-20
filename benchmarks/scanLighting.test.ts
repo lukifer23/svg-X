@@ -93,5 +93,5 @@ test("measures faded-line retention, grain rejection and cost", async () => {
     new URL(`../results/scan-lighting-${label}.json`, import.meta.url),
     `${JSON.stringify({ label, platform: platform(), cpu: cpus()[0]?.model, node: process.version, reports }, null, 2)}\n`,
   );
-  expect(reports).toHaveLength(9);
+  expect(reports).toHaveLength(10);
 }, 120_000);

@@ -19,6 +19,7 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 - `sharedColorBoundaries.ts`: splits rings at junctions, canonicalizes each boundary chain, and reuses the same fitted segments in reverse on the other side.
 - `centerline.ts`: foreground thresholding with separate ink confidence, contrast-aware component cleanup, table-driven Zhang–Suen thinning, width-aware spur pruning, and graph walks with cycle tracking. Thinning skips the blank area outside each raster row's initial foreground bounds.
 - `scanLighting.ts`: opt-in centerline preprocessing. Interpolated paper estimates compensate for uneven lighting. Weak candidates need bilateral contrast and directional continuation. Short links can reconnect different components through existing raster ink.
+- `fadedCurveRepair.ts`: uses scan contrast after thinning to test short cubic continuations between facing skeleton tips. Spatial buckets limit the search to nearby tips. Reciprocal matches and clearance checks reject ambiguous links and contacts with nearby strokes. Accepted links can close loops within a connected component.
 - `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
 
 Serialization and conversion types live in `vectorDocument.ts`, `serialize.ts`, and `vectorExport.ts`. UI code must not parse generated SVG to recover geometry.

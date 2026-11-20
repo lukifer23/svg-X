@@ -585,7 +585,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 {renderCheckbox(
                   "normalizeScanLighting",
                   "Recover faded scan lines",
-                  "Compensates for uneven paper lighting and looks for connected faint lines. Leave off for clean originals and solid artwork.",
+                  "Compensates for uneven lighting and can join short breaks backed by faint ink. Leave off for clean originals and solid artwork.",
                   normalizeScanLighting,
                 )}
                 {renderCheckbox(

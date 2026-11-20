@@ -1,3 +1,8 @@
+export interface ScanInkEvidence {
+  contrast: Uint8Array;
+  minimumContrast: number;
+}
+
 const TILE_SIZE = 16;
 const MINIMUM_RUN = 3;
 const AXES = [
@@ -41,7 +46,7 @@ export const traceScanInk = (
   height: number,
   inkThreshold: number,
   preserveEvidence: boolean,
-): { mask: Uint8Array; strongInk?: Uint8Array } => {
+): { mask: Uint8Array; strongInk?: Uint8Array; evidence: ScanInkEvidence } => {
   const { paper, columns, rows } = estimatePaper(tones, width, height);
   const contrast = new Uint8Array(tones.length);
   // Interpolate between tile centers to keep tile boundaries out of the mask.
@@ -213,5 +218,9 @@ export const traceScanInk = (
     }
     join(start, end);
   }
-  return { mask: connected, strongInk };
+  return {
+    mask: connected,
+    strongInk,
+    evidence: { contrast, minimumContrast },
+  };
 };
