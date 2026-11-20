@@ -20,14 +20,20 @@ declare global {
       listBatchInputs: (
         grantId: string,
       ) => Promise<Array<{ id: string; name: string }>>;
+      beginBatch: (request: {
+        inputGrantId: string;
+        outputGrantId: string;
+      }) => Promise<string>;
+      cancelBatch: (id: string) => Promise<void>;
+      finishBatch: (id: string) => Promise<void>;
       readBatchInput: (request: {
-        grantId: string;
+        runId: string;
         fileId: string;
         resize: ResizeRequest;
         highestQuality: boolean;
       }) => Promise<{ pixels: ArrayBuffer; width: number; height: number }>;
       writeBatchOutput: (request: {
-        grantId: string;
+        runId: string;
         baseName: string;
         content: string;
       }) => Promise<{ success: true; name: string }>;

@@ -4,7 +4,7 @@
 
 The preload exposes narrow operations. The main process stores a canonical directory path behind each opaque grant. Batch enumeration, reads, writes, and folder opening require a matching grant type. Batch reads require a regular file whose resolved path is directly within the granted root.
 
-Inputs are extension allowlisted, limited to 50 MB and 100 million decoded pixels, and decoded with fail-on-error behavior. Text exports are limited to 25 MB. Batch SVG output uses exclusive `wx` creation, so simultaneous jobs and pre-existing files cannot be overwritten.
+Inputs are extension allowlisted, limited to 50 MB and 100 million decoded pixels, and decoded with fail-on-error behavior. Text exports are limited to 25 MB. Each native batch binds its input and output grants to one cancellable run. Batch SVG output is staged in the output directory and published with a no-clobber hard link. Filesystems without usable hard links use an exclusive copy. The copy preserves collision safety but can expose a file while it is being written.
 
 ## Renderer boundary
 

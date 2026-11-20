@@ -1,7 +1,8 @@
 export type ConversionMode = "bw" | "color" | "centerline";
 
 export type VectorCommand =
-  | { type: "M" | "L"; x: number; y: number }
+  | { type: "M"; x: number; y: number }
+  | { type: "L"; x: number; y: number }
   | {
       type: "C";
       x1: number;

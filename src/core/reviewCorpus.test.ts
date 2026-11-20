@@ -5,7 +5,11 @@ import { traceBlackAndWhite } from "./bwTrace";
 import { traceCenterlines } from "./centerline";
 import { traceColorDocument } from "./colorTrace";
 import { serializeVectorDocument } from "./serialize";
-import type { ConversionMode, WorkerConversionOptions } from "./vectorDocument";
+import type {
+  ConversionMode,
+  VectorDocument,
+  WorkerConversionOptions,
+} from "./vectorDocument";
 
 const fixture = (name: string): URL =>
   new URL(`../../tests/fixtures/review/${name}`, import.meta.url);
@@ -46,7 +50,77 @@ const options = (mode: ConversionMode): WorkerConversionOptions => ({
   maxPaths: 2_000,
 });
 
+const checkSharedSegments = (document: VectorDocument) => {
+  const { width, height } = document;
+  const edges = new Map<string, number>();
+  let cubics = 0;
+  for (const shape of document.shapes) {
+    for (const { commands } of shape.subpaths) {
+      let x = 0;
+      let y = 0;
+      for (const command of commands) {
+        if (command.type === "Z") continue;
+        const end = [command.x, command.y];
+        if (command.type !== "M") {
+          const onFrame =
+            command.type === "L" &&
+            ((x === command.x && (x === 0 || x === width)) ||
+              (y === command.y && (y === 0 || y === height)));
+          if (!onFrame) {
+            const start = [x, y];
+            const controls =
+              command.type === "C"
+                ? [
+                    [command.x1, command.y1],
+                    [command.x2, command.y2],
+                  ]
+                : [];
+            if (command.type === "C") cubics += 1;
+            const forward = JSON.stringify([start, ...controls, end]);
+            const backward = JSON.stringify([
+              end,
+              ...controls.reverse(),
+              start,
+            ]);
+            const key = forward < backward ? forward : backward;
+            edges.set(
+              key,
+              (edges.get(key) ?? 0) + (forward < backward ? 1 : -1),
+            );
+          }
+        }
+        [x, y] = end;
+      }
+    }
+  }
+  expect(cubics).toBeGreaterThan(0);
+  expect([...edges.values()].filter((count) => count !== 0)).toHaveLength(0);
+};
+
 describe("generated visual review corpus", () => {
+  test.each(["color-bicycle.png", "realistic-still-life.png"])(
+    "uses exact reversed cubic geometry on both sides of every internal edge in %s",
+    async (name) => {
+      const image = await decode(name, 192);
+      // A white matte is the production default and makes the outer frame
+      // the only boundary with a single painted side.
+      for (let i = 0; i < image.pixels.length; i += 4) {
+        const alpha = image.pixels[i + 3] / 255;
+        for (let channel = 0; channel < 3; channel += 1)
+          image.pixels[i + channel] = Math.round(
+            image.pixels[i + channel] * alpha + 255 * (1 - alpha),
+          );
+        image.pixels[i + 3] = 255;
+      }
+      const document = traceColorDocument(
+        image.pixels,
+        image.width,
+        image.height,
+        options("color"),
+      );
+      checkSharedSegments(document);
+    },
+  );
   test("traces the flat-color artwork as multiple closed color regions", async () => {
     const image = await decode("color-bicycle.png");
     const document = traceColorDocument(

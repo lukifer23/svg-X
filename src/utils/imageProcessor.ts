@@ -209,13 +209,19 @@ const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
   maxPaths: Math.max(1, params.maxPaths),
 });
 
-const optimizeSvg = (svg: string): string => {
+const optimizeSvg = (svg: string, mode: ConversionMode): string => {
   try {
     return svgoOptimize(svg, {
       plugins: [
         {
           name: "preset-default",
-          params: { overrides: { cleanupIds: false } },
+          params: {
+            overrides: {
+              cleanupIds: false,
+              // Independent relative-coordinate rounding can split a shared edge.
+              ...(mode === "color" ? { convertPathData: false } : {}),
+            },
+          },
         },
       ],
     }).data;
@@ -321,7 +327,9 @@ const executeConversion = async (
   }
   progressCallback("optimizing");
   const optimizeStart = now();
-  const svg = params.svgoOptimize ? optimizeSvg(result.rawSvg) : result.rawSvg;
+  const svg = params.svgoOptimize
+    ? optimizeSvg(result.rawSvg, options.mode)
+    : result.rawSvg;
   const optimizeMs = now() - optimizeStart;
   const totalMs = now() - totalStart;
   progressCallback("done");

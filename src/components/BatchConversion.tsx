@@ -65,14 +65,14 @@ interface DirectoryGrant {
 }
 
 async function readFileAsPixels(
-  grantId: string,
+  runId: string,
   fileId: string,
   resizeOptions: ResizeOptions,
   highestQuality: boolean,
 ): Promise<RawImageInput> {
   if (!window.electronAPI) throw new Error("Electron API unavailable");
   return window.electronAPI.readBatchInput({
-    grantId,
+    runId,
     fileId,
     resize: resizeOptions,
     highestQuality,
@@ -164,6 +164,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
   const resizeOptionsRef = useRef<ResizeOptions>(resizeOptions);
   const skipFailedRef = useRef(skipFailed);
   const isCancelled = useRef(false);
+  const activeRun = useRef<string | null>(null);
   const activeAbortControllers = useRef(new Map<number, AbortController>());
   const processingItemsRef = useRef<ProcessingItem[]>([]);
   const completedTimes = useRef<number[]>([]);
@@ -256,7 +257,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         Math.min(4, (navigator.hardwareConcurrency || 2) - 1, indices.length),
       );
 
-      const worker = async () => {
+      const worker = async (runId: string) => {
         while (!isCancelled.current && !halted) {
           const queuePosition = nextIndex++;
           if (queuePosition >= indices.length) return;
@@ -271,7 +272,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
           });
           try {
             const fileData = await readFileAsPixels(
-              inputDirectory.grantId,
+              runId,
               item.fileId,
               resizeOptionsRef.current,
               potraceParams.highestQuality,
@@ -286,7 +287,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             if (abortController.signal.aborted)
               throw new DOMException("Conversion cancelled", "AbortError");
             await electronApi.writeBatchOutput({
-              grantId: outputDirectory.grantId,
+              runId,
               baseName: getOptimizedFilename(item.fileName),
               content: svgData,
             });
@@ -310,7 +311,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             });
           } catch (error) {
             if (
-              isCancelled.current ||
+              abortController.signal.aborted ||
               (error instanceof DOMException && error.name === "AbortError")
             ) {
               updateItemAtIndex(itemIndex, {
@@ -334,6 +335,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
               halted = true;
               for (const controller of activeAbortControllers.current.values())
                 controller.abort();
+              await electronApi.cancelBatch(runId).catch(() => undefined);
             }
           } finally {
             activeAbortControllers.current.delete(itemIndex);
@@ -342,8 +344,23 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       };
 
       try {
-        await Promise.all(Array.from({ length: concurrency }, () => worker()));
+        const runId = await electronApi.beginBatch({
+          inputGrantId: inputDirectory.grantId,
+          outputGrantId: outputDirectory.grantId,
+        });
+        activeRun.current = runId;
+        try {
+          if (!isCancelled.current)
+            await Promise.all(
+              Array.from({ length: concurrency }, () => worker(runId)),
+            );
+        } finally {
+          await electronApi.finishBatch(runId);
+        }
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : String(error));
       } finally {
+        activeRun.current = null;
         setIsProcessing(false);
         setIsCancelling(false);
         setEtaMs(null);
@@ -415,6 +432,14 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     setIsCancelling(true);
     for (const controller of activeAbortControllers.current.values())
       controller.abort();
+    if (activeRun.current)
+      void window.electronAPI
+        ?.cancelBatch(activeRun.current)
+        .catch((error) =>
+          setErrorMessage(
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
   }, []);
 
   const retryFailed = useCallback(() => {

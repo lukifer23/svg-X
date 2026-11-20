@@ -1,10 +1,5 @@
-import { fitPointsToSubpath } from "./curveFit";
-import {
-  pointsToSubpath,
-  ringArea,
-  simplifyRing,
-  type Point,
-} from "./geometry";
+import { ringArea, type Point } from "./geometry";
+import { createSharedBoundaryFitter } from "./sharedColorBoundaries";
 import {
   MAX_PALETTE_COLORS,
   type VectorDocument,
@@ -544,6 +539,7 @@ export const mergeComponentsToBudget = (
   height: number,
   palette: LabColor[],
   budget: number,
+  minimumArea = 1,
 ): {
   labels: Uint8Array;
   initial: number;
@@ -556,7 +552,7 @@ export const mergeComponentsToBudget = (
     height,
   );
   const initial = components.length;
-  if (initial <= budget)
+  if (initial <= budget && minimumArea <= 1)
     return { labels, initial, remaining: initial, merged: 0 };
 
   const parent = Int32Array.from(components, (component) => component.id);
@@ -576,13 +572,13 @@ export const mergeComponentsToBudget = (
     .sort((left, right) => components[left].area - components[right].area);
 
   let changed = true;
-  while (remaining > budget && changed) {
+  while (changed) {
     changed = false;
     for (const candidate of ordered) {
-      if (remaining <= budget) break;
       const source = find(candidate);
       if (source !== candidate) continue;
       const sourceComponent = components[source];
+      if (remaining <= budget && sourceComponent.area >= minimumArea) continue;
       const sourcePalette = palette[sourceComponent.label];
       // Single pass replaces the former entries[] -> map -> filter -> sort ->
       // [0] allocation chain. The comparator is identical: smallest perceptual
@@ -633,6 +629,7 @@ export const mergeComponentsToBudget = (
     }
   }
 
+  if (remaining === initial) return { labels, initial, remaining, merged: 0 };
   const mergedLabels = labels.slice();
   for (let pixel = 0; pixel < componentAt.length; pixel += 1) {
     if (componentAt[pixel] >= 0)
@@ -784,8 +781,16 @@ export const assembleColorDocument = (
     height,
     palette,
     Math.max(1, options.maxPaths),
+    Math.max(1, options.turdSize),
   );
   const labels = componentMerge.labels;
+  const fitBoundary = createSharedBoundaryFitter(
+    labels,
+    width,
+    height,
+    options.optCurve,
+    options.optTolerance,
+  );
   const indexed = palette
     .map((color, index) => ({ color, index }))
     .sort((left, right) => right.color.count - left.color.count);
@@ -793,13 +798,9 @@ export const assembleColorDocument = (
   indexed.forEach(({ color, index }) => {
     const rings = traceBoundaries(labels, width, height, index)
       .map((points) => ({
-        points: simplifyRing(points, Math.max(0.15, options.optTolerance)),
+        points,
         area: Math.abs(ringArea(points)),
       }))
-      .filter(
-        (ring) =>
-          ring.points.length >= 3 && ring.area >= Math.max(1, options.turdSize),
-      )
       .sort((left, right) => right.area - left.area);
     if (rings.length === 0) return;
     shapes.push({
@@ -809,15 +810,7 @@ export const assembleColorDocument = (
       strokeWidth: 0,
       opacity: 1,
       fillRule: "evenodd",
-      subpaths: rings.map((ring) =>
-        options.optCurve
-          ? fitPointsToSubpath(
-              ring.points,
-              true,
-              Math.max(0.05, options.optTolerance),
-            )
-          : pointsToSubpath(ring.points, true),
-      ),
+      subpaths: rings.map((ring) => fitBoundary(ring.points)),
     });
   });
   const deduplicated = deduplicateShapes(shapes);

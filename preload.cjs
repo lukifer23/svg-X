@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("select-directory-grant", "output"),
   listBatchInputs: (grantId) =>
     ipcRenderer.invoke("list-batch-inputs", grantId),
+  beginBatch: (request) => ipcRenderer.invoke("begin-batch", request),
+  cancelBatch: (id) => ipcRenderer.invoke("cancel-batch", id),
+  finishBatch: (id) => ipcRenderer.invoke("finish-batch", id),
   readBatchInput: (request) => ipcRenderer.invoke("read-batch-input", request),
   writeBatchOutput: (request) =>
     ipcRenderer.invoke("write-batch-output", request),

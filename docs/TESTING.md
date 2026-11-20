@@ -25,3 +25,10 @@ but is not evidence that the 1.5x release criterion passed. The default remains
 1.5x whenever the environment variable is absent.
 
 The historical pre-recovery checkout failed before tests because its dependency install did not complete. Do not invent a relative speed or quality claim against it. A future released baseline must store hardware, fixture hashes, settings, raw timings, SSIM, and Delta E values before percentage comparisons become release gates.
+
+Set `SVGX_NATIVE_BATCH=1` before running `npm run test:e2e:package` on a
+desktop to exercise the real directory pickers. Select each temporary path
+printed by the harness. The smoke then cancels after some outputs complete,
+resumes pending work, validates every generated SVG, and checks that the
+pre-existing SVG and outputs completed before cancellation retain their
+original bytes. The default unattended smoke still runs on all CI platforms.

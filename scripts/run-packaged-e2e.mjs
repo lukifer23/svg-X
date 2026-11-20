@@ -1,5 +1,14 @@
-import { _electron as electron } from "playwright";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { _electron as electron, expect } from "@playwright/test";
+import {
+  access,
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -28,6 +37,95 @@ if (!executablePath)
 
 const port = String(3900 + Math.floor(Math.random() * 500));
 const userDataDir = await mkdtemp(path.join(os.tmpdir(), "svg-x-e2e-"));
+const nativeBatch = async (window) => {
+  const input = path.join(userDataDir, "batch-input");
+  const output = path.join(userDataDir, "batch-output");
+  await Promise.all([mkdir(input), mkdir(output)]);
+  const names = [
+    "art.png",
+    "art!.png",
+    ...Array.from({ length: 30 }, (_, index) => `artwork-${index}.png`),
+  ];
+  await Promise.all(
+    names.map((name) =>
+      copyFile(
+        "tests/fixtures/review/color-bicycle.png",
+        path.join(input, name),
+      ),
+    ),
+  );
+  const original =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>';
+  await writeFile(path.join(output, "art.svg"), original);
+  const batch = window.getByRole("dialog", {
+    name: "Batch conversion",
+    exact: true,
+  });
+  console.log(`Select the real input directory in the native picker: ${input}`);
+  await batch
+    .getByRole("button", { name: "Select Input Directory" })
+    .evaluate((button) => button.click());
+  await expect(batch.getByTitle(input, { exact: true })).toBeVisible({
+    timeout: 180_000,
+  });
+  console.log(
+    `Select the real output directory in the native picker: ${output}`,
+  );
+  await batch
+    .getByRole("button", { name: "Select Output Directory" })
+    .evaluate((button) => button.click());
+  await expect(batch.getByTitle(output, { exact: true })).toBeVisible({
+    timeout: 180_000,
+  });
+  const start = async (name) => {
+    await batch.getByRole("button", { name }).click();
+    await window
+      .getByRole("dialog", { name: "Confirm batch conversion" })
+      .getByRole("button", { name: "Continue" })
+      .click();
+  };
+  await start("Start Batch Processing");
+  await expect(batch.getByText("Done", { exact: true }).first()).toBeVisible({
+    timeout: 60_000,
+  });
+  await batch.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    batch.getByRole("button", { name: "Resume Pending Files" }),
+  ).toBeVisible({ timeout: 60_000 });
+  const paused = await readdir(output);
+  expect(paused.length).toBeGreaterThan(1);
+  expect(paused.length).toBeLessThan(names.length + 1);
+  expect(paused.every((name) => name.endsWith(".svg"))).toBe(true);
+  const preserved = await Promise.all(
+    paused.map(async (name) => [
+      name,
+      await readFile(path.join(output, name), "utf8"),
+    ]),
+  );
+  await start("Resume Pending Files");
+  await expect(batch.getByText(/Remaining:\s*0/)).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(
+    batch.getByRole("button", { name: "Start Batch Processing" }),
+  ).toBeEnabled();
+  const files = await readdir(output);
+  expect(files).toHaveLength(names.length + 1);
+  expect(files).toEqual(
+    expect.arrayContaining(["art.svg", "art-1.svg", "art-2.svg"]),
+  );
+  expect(files.every((name) => name.endsWith(".svg"))).toBe(true);
+  expect(await readFile(path.join(output, "art.svg"), "utf8")).toBe(original);
+  for (const [name, saved] of preserved)
+    expect(await readFile(path.join(output, name), "utf8")).toBe(saved);
+  for (const name of files.filter((name) => name !== "art.svg"))
+    expect(await readFile(path.join(output, name), "utf8")).toMatch(
+      /<svg[\s\S]*<path/,
+    );
+  console.log(
+    `Native batch passed: ${paused.length - 1} complete at cancellation, ${names.length} complete after resume; three colliding names verified.`,
+  );
+};
 const launchArgs = [`--user-data-dir=${userDataDir}`];
 if (process.platform === "linux") launchArgs.push("--no-sandbox");
 const application = await electron.launch({
@@ -80,6 +178,7 @@ try {
   await window
     .getByRole("dialog", { name: "Batch conversion" })
     .waitFor({ state: "visible" });
+  if (process.env.SVGX_NATIVE_BATCH === "1") await nativeBatch(window);
   await window.keyboard.press("Escape");
   await batchTrigger.waitFor({ state: "visible" });
   await window

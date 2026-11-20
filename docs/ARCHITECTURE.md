@@ -16,6 +16,7 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 
 - `bwTrace.ts`: Potrace adapter and compatibility preprocessing.
 - `colorTrace.ts`: Wu cumulative-moment palette seeds, OKLab refinement, disjoint labels, lossless component-budget merging, shared-grid topology, compound even-odd regions, canonical deduplication.
+- `sharedColorBoundaries.ts`: splits rings at junctions, canonicalizes each boundary chain, and reuses the same fitted segments in reverse on the other side.
 - `centerline.ts`: thresholding, thinning, endpoint/junction classification, degree-two walks, and cycle preservation.
 - `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
 
@@ -27,7 +28,7 @@ The default pool size is `max(1, min(4, hardwareConcurrency - 1))`. Batch input 
 
 ## Color pipeline hot paths
 
-The color converter runs, in order: Wu/tonal palette seeds, OKLab precompute, four palette-refinement iterations, pixel labeling, component-budget merging, one boundary trace per palette label, ring simplification, and curve fitting. The per-pixel color math uses a 256-entry sRGB→linear lookup table and indexed loops over flat typed arrays; boundary tracing uses integer lattice keys and keeps no per-component pixel lists. These are behavior-preserving: `npm run bench:pipeline` verifies that each fixture's serialized-SVG SHA-256 is unchanged and reports every stage's time in `results/pipeline-<label>.json` (see `results/PERFORMANCE.md`).
+The color converter seeds a palette, precomputes OKLab, refines the palette four times, labels pixels, merges components, and traces each palette label. A shared-chain fit uses the same endpoints and reversed cubic controls in adjacent rings. Component cleanup happens before this step so holes and neighboring outlines agree. Color SVG optimization preserves path coordinates. The per-pixel color math uses a 256-entry sRGB-to-linear lookup table and flat typed arrays. Boundary tracing uses integer lattice keys and keeps no per-component pixel lists. See `results/PERFORMANCE.md` for historical benchmarks.
 
 Decode applies EXIF orientation on both paths — the desktop decoder calls Sharp `rotate()` and the browser decoder passes `imageOrientation: "from-image"` to `createImageBitmap` — so the same file vectorizes the same way in every transport.
 

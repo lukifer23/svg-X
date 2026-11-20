@@ -17,6 +17,7 @@ const { batchResizeOptions, decodeToRgba } = require("./desktop/decode.cjs");
 
 const expressApp = express();
 const grants = new Map();
+let batchRun;
 const IMAGE_EXTENSIONS = new Set([
   ".png",
   ".jpg",
@@ -104,6 +105,12 @@ const requireRenderer = (event) => {
     throw new Error("Untrusted IPC sender");
 };
 
+const requireBatch = (runId) => {
+  if (!batchRun || batchRun.id !== runId)
+    throw new Error("Batch run is missing or expired");
+  return batchRun;
+};
+
 const decodeInput = async (inputPath, resizeOptions) => {
   const extension = path.extname(inputPath).toLowerCase();
   if (!IMAGE_EXTENSIONS.has(extension))
@@ -148,28 +155,60 @@ const setupIpc = () => {
       .map((entry) => ({ id: entry.name, name: entry.name }));
   });
 
+  ipcMain.handle("begin-batch", (event, { inputGrantId, outputGrantId }) => {
+    requireRenderer(event);
+    if (batchRun) throw new Error("A batch is already running");
+    const input = resolveGrant(inputGrantId, "input");
+    const output = resolveGrant(outputGrantId, "output");
+    const id = crypto.randomUUID();
+    batchRun = { id, input, output, controller: new AbortController() };
+    return id;
+  });
+
+  ipcMain.handle("cancel-batch", (event, id) => {
+    requireRenderer(event);
+    requireBatch(id).controller.abort();
+  });
+
+  ipcMain.handle("finish-batch", (event, id) => {
+    requireRenderer(event);
+    requireBatch(id).controller.abort();
+    batchRun = undefined;
+  });
+
   ipcMain.handle(
     "read-batch-input",
-    async (event, { grantId, fileId, resize, highestQuality }) => {
+    async (event, { runId, fileId, resize, highestQuality }) => {
       requireRenderer(event);
-      const { root } = resolveGrant(grantId, "input");
+      const {
+        input: { root },
+        controller: { signal },
+      } = requireBatch(runId);
+      signal.throwIfAborted();
       const input = await resolveBatchFile(root, fileId);
       if (input.size > MAX_INPUT_BYTES)
         throw new Error("Input exceeds the 50 MB limit");
-      return decodeInput(
+      signal.throwIfAborted();
+      const result = await decodeInput(
         input.path,
         batchResizeOptions(resize, highestQuality),
       );
+      signal.throwIfAborted();
+      return result;
     },
   );
 
   ipcMain.handle(
     "write-batch-output",
-    async (event, { grantId, baseName, content }) => {
+    async (event, { runId, baseName, content }) => {
       requireRenderer(event);
+      const {
+        output: { root },
+        controller: { signal },
+      } = requireBatch(runId);
+      signal.throwIfAborted();
       validateText(content, MAX_OUTPUT_BYTES);
-      const { root } = resolveGrant(grantId, "output");
-      return writeUniqueOutput(root, baseName, "svg", content);
+      return writeUniqueOutput(root, baseName, "svg", content, signal);
     },
   );
 
@@ -283,6 +322,8 @@ const createWindow = async () => {
   mainWindow.on("closed", () => {
     mainWindow = null;
     grants.clear();
+    batchRun?.controller.abort();
+    batchRun = undefined;
   });
 };
 

@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,6 +13,7 @@ const { normalizeOutputBase, writeUniqueOutput } =
       baseName: string,
       extension: string,
       content: string,
+      signal?: AbortSignal,
     ) => Promise<{ success: boolean; name: string }>;
   };
 
@@ -28,8 +29,27 @@ afterEach(async () => {
 describe("atomic output reservation", () => {
   test("normalizes hostile names", () => {
     expect(normalizeOutputBase("../My Artwork!!.PNG")).toBe("my-artwork-png");
+    expect(normalizeOutputBase("CON")).toBe("image-con");
+    expect(normalizeOutputBase("a".repeat(500))).toHaveLength(240);
   });
 
+  test("aborting a staged write leaves the existing file and no partial output", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "svg-x-abort-"));
+    directories.push(root);
+    await writeFile(path.join(root, "art.svg"), "original");
+    const controller = new AbortController();
+    const pending = writeUniqueOutput(
+      root,
+      "art",
+      "svg",
+      "replacement",
+      controller.signal,
+    );
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(await readdir(root)).toEqual(["art.svg"]);
+    expect(await readFile(path.join(root, "art.svg"), "utf8")).toBe("original");
+  });
   test("never overwrites existing or concurrently reserved output", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "svg-x-output-"));
     directories.push(root);

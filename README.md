@@ -48,9 +48,9 @@ Color mode does not trace nested luminance masks. It:
 
 1. Builds Wu cumulative-moment palette seeds and refines them in OKLab.
 2. Assigns each raster pixel to exactly one palette label.
-3. Extracts oriented boundaries from the shared pixel grid.
+3. Reassigns small connected components before extracting oriented boundaries from the pixel grid.
 4. Groups all rings for a paint into an even-odd compound shape.
-5. Simplifies geometry and fits cubic Béziers within the configured point-error tolerance.
+5. Simplifies and optionally fits each shared boundary once. Adjacent regions use the same coordinates in opposite directions, with fixed junctions and image corners.
 
 Geometry is deduplicated only when canonical commands, paint, stroke, and opacity are all equal. A hash is only an index; canonical equality is still checked.
 
@@ -90,7 +90,7 @@ Above a size threshold, color quantization runs across a renderer-side pool capp
 
 The renderer never supplies arbitrary filesystem paths. Electron grants opaque IDs for user-selected input and output directories. Main-process operations validate the grant, filename, extension, size, and final resolved child path.
 
-Batch decoding sends raw RGBA at the selected quality limit (1000 or 2000 pixels on the longest side), unless an explicit batch resize is set. Output uses exclusive creation. Collisions become `name-1.svg`, `name-2.svg`, and so on. Cancelling stops active tracing and new writes, then waits for any native decode or write already in progress. Resume processes the pending files, and Retry Failed handles failed files separately.
+Batch decoding sends raw RGBA at the selected quality limit (1000 or 2000 pixels on the longest side), unless an explicit batch resize is set. The main process stages each SVG and publishes it without replacing an existing file. Collisions become `name-1.svg`, `name-2.svg`, and so on. Cancelling stops active tracing and prevents unpublished files from being committed. A native decode already running is drained, and a file already being published can finish. Resume processes the pending files, and Retry Failed handles failed files separately.
 
 Native exports are written only after the user chooses a destination in the main-process save dialog. Renderer navigation is restricted, context isolation and sandboxing are enabled, browser permissions are denied by default, and only credential-free HTTPS links may open through the operating system. The browser entry point and packaged server enforce a restrictive Content Security Policy; the packaged server also sends isolation, no-referrer, no-sniff, and permission-policy headers.
 
@@ -183,7 +183,7 @@ No recovery release has been published. Local and hosted unsigned package smoke 
 ## Known limitations
 
 - DXF uses sampled polylines rather than native splines.
-- Color boundaries currently follow the shared pixel grid; antialiased edges are simplified and can be curve-fit, but are not reconstructed as continuous subpixel coverage isolines.
+- Color geometry follows the shared pixel grid. Neighboring shapes have coincident boundaries. SVG renderers that antialias each fill separately can still show faint coverage artifacts at some scales.
 - Color count is bounded to protect output complexity; photographic input is an approximation, not lossless vectorization.
 - White alpha compositing is currently fixed for compatibility.
 - HEIC availability depends on the Sharp build for the target platform.
