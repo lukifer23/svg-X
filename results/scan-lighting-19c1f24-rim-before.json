@@ -1,0 +1,642 @@
+{
+  "label": "19c1f24-rim-before",
+  "platform": "win32",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "node": "v24.19.0",
+  "reports": [
+    {
+      "name": "close-parallel-faded",
+      "distorted": true,
+      "width": 240,
+      "height": 176,
+      "inputSha256": "a21c68e9e3f2af8d3e2b7a58ac596c2140470b93edc9118af34dc59149ad64bd",
+      "medianMs": 4.0441000000000145,
+      "samplesMs": [
+        6.28959999999995,
+        3.9277999999999906,
+        5.731899999999996,
+        5.427900000000022,
+        5.047300000000007,
+        4.700199999999995,
+        4.6001999999999725,
+        3.755999999999972,
+        4.0441000000000145,
+        3.9266000000000076,
+        3.3906000000000063,
+        5.68100000000004,
+        2.225399999999979,
+        2.122000000000014,
+        1.8175999999999704
+      ],
+      "referenceToTrace": {
+        "total": 482,
+        "matched": 482,
+        "ratio": 1
+      },
+      "traceToReference": {
+        "total": 493,
+        "matched": 489,
+        "ratio": 0.9918864097363083
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 0,
+        "matched": 0
+      },
+      "paths": 2,
+      "commands": 10,
+      "tips": 4,
+      "junctions": 0,
+      "loops": 0,
+      "tracedToSource": {
+        "mean": 0.012858502204155098,
+        "outside": 0.002254791431792559
+      },
+      "sourceToTraced": {
+        "mean": 1.9476933470333676e-15,
+        "outside": 0
+      }
+    },
+    {
+      "name": "junctions-faded",
+      "distorted": true,
+      "width": 240,
+      "height": 176,
+      "inputSha256": "c1b0220754d58e4d786de2a4d687e4e9d5da426ce7a00620d1d599d12df081ef",
+      "medianMs": 3.9605000000000246,
+      "samplesMs": [
+        3.6491000000000895,
+        3.7364000000000033,
+        4.15440000000001,
+        3.60570000000007,
+        3.9605000000000246,
+        3.9658000000000584,
+        3.60329999999999,
+        3.6844999999999573,
+        4.249400000000037,
+        5.014300000000048,
+        4.617399999999975,
+        4.188699999999926,
+        4.697200000000066,
+        2.635400000000004,
+        2.2200000000000273
+      ],
+      "referenceToTrace": {
+        "total": 360,
+        "matched": 341,
+        "ratio": 0.9472222222222222
+      },
+      "traceToReference": {
+        "total": 349,
+        "matched": 347,
+        "ratio": 0.994269340974212
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 0,
+        "matched": 0
+      },
+      "paths": 7,
+      "commands": 61,
+      "tips": 7,
+      "junctions": 2,
+      "loops": 0,
+      "tracedToSource": {
+        "mean": 0.06573186269304736,
+        "outside": 0
+      },
+      "sourceToTraced": {
+        "mean": 0.40289691616021606,
+        "outside": 0.042335766423357665
+      }
+    },
+    {
+      "name": "mechanism-artwork-faded",
+      "distorted": true,
+      "width": 1000,
+      "height": 1000,
+      "inputSha256": "44d6e0ab6b7991e4323510d70e23d9a040be62074d22870e61d9b2394a55dd9b",
+      "medianMs": 91.27340000000004,
+      "samplesMs": [
+        115.26260000000002,
+        99.78739999999993,
+        94.05870000000004,
+        95.6993,
+        90.71969999999988,
+        93.55770000000007,
+        86.78420000000006,
+        92.57109999999989,
+        87.11329999999998,
+        84.51549999999997,
+        91.80670000000009,
+        84.80639999999994,
+        91.27340000000004,
+        87.26170000000002,
+        86.45069999999987
+      ],
+      "referenceToTrace": {
+        "total": 14097,
+        "matched": 12998,
+        "ratio": 0.922040150386607
+      },
+      "traceToReference": {
+        "total": 13205,
+        "matched": 13012,
+        "ratio": 0.9853843241196516
+      },
+      "enclosures": {
+        "reference": 40,
+        "traced": 5,
+        "matched": 5
+      },
+      "paths": 149,
+      "commands": 4645,
+      "tips": 228,
+      "junctions": 20,
+      "loops": 7
+    },
+    {
+      "name": "wright-patent-scan",
+      "distorted": false,
+      "width": 298,
+      "height": 196,
+      "inputSha256": "f0e86a5a6698415653d7de4eb93a2b349e9e799cb9f3b23b6cd122b515b26b2d",
+      "medianMs": 6.531500000000051,
+      "samplesMs": [
+        12.211900000000242,
+        11.041799999999967,
+        7.266599999999926,
+        6.741500000000087,
+        6.531500000000051,
+        6.50669999999991,
+        6.6590000000001055,
+        6.432699999999841,
+        6.2590000000000146,
+        7.5229999999996835,
+        6.4570999999996275,
+        6.485400000000027,
+        6.53229999999985,
+        6.247600000000148,
+        6.268700000000081
+      ],
+      "referenceToTrace": {
+        "total": 1902,
+        "matched": 1845,
+        "ratio": 0.9700315457413249
+      },
+      "traceToReference": {
+        "total": 4093,
+        "matched": 2167,
+        "ratio": 0.5294405081847056
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 19,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "upper-truss": {
+            "iou": 0.7853211009174312,
+            "matched": true
+          },
+          "left-truss": {
+            "iou": 0,
+            "matched": false
+          },
+          "lower-truss": {
+            "iou": 0.07277289836888332,
+            "matched": false
+          },
+          "right-lower-bracing": {
+            "iou": 0.21964285714285714,
+            "matched": false
+          }
+        },
+        "open": {
+          "left-exterior-guide": true
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ]
+      },
+      "paths": 335,
+      "commands": 1561,
+      "tips": 268,
+      "junctions": 133,
+      "loops": 26
+    },
+    {
+      "name": "wright-patent-scan-faded",
+      "distorted": true,
+      "width": 298,
+      "height": 196,
+      "inputSha256": "a5b3107b0d1d84c6d1b9f7bd95a011bc253007d66b2e820e3b7d5f959e586865",
+      "medianMs": 4.129900000000362,
+      "samplesMs": [
+        4.473500000000058,
+        4.442300000000159,
+        4.393000000000029,
+        4.357300000000123,
+        4.330500000000029,
+        4.467899999999645,
+        4.129900000000362,
+        4.058500000000095,
+        4.12519999999995,
+        4.042100000000119,
+        4.0776999999998225,
+        4.294100000000071,
+        3.9740999999999076,
+        3.8739999999997963,
+        3.9994000000001506
+      ],
+      "referenceToTrace": {
+        "total": 1902,
+        "matched": 1475,
+        "ratio": 0.7754994742376445
+      },
+      "traceToReference": {
+        "total": 1917,
+        "matched": 1510,
+        "ratio": 0.7876890975482524
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 2,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "upper-truss": {
+            "iou": 0,
+            "matched": false
+          },
+          "left-truss": {
+            "iou": 0,
+            "matched": false
+          },
+          "lower-truss": {
+            "iou": 0,
+            "matched": false
+          },
+          "right-lower-bracing": {
+            "iou": 0.6917808219178082,
+            "matched": true
+          }
+        },
+        "open": {
+          "left-exterior-guide": true
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ]
+      },
+      "paths": 105,
+      "commands": 481,
+      "tips": 158,
+      "junctions": 17,
+      "loops": 3
+    },
+    {
+      "name": "velocipede-patent-scan",
+      "distorted": false,
+      "width": 250,
+      "height": 250,
+      "inputSha256": "8b1e948176e21099819d23d7f1c723e7b657da0bb8348345aec513247bc01e71",
+      "medianMs": 6.890800000000127,
+      "samplesMs": [
+        7.41780000000017,
+        6.794800000000123,
+        7.057800000000043,
+        7.066200000000208,
+        6.780099999999948,
+        6.783600000000206,
+        6.958799999999883,
+        6.890800000000127,
+        6.786799999999857,
+        7.04910000000018,
+        6.6995999999999185,
+        7.399600000000191,
+        6.895900000000438,
+        6.657799999999952,
+        6.787699999999859
+      ],
+      "referenceToTrace": {
+        "total": 1552,
+        "matched": 1469,
+        "ratio": 0.946520618556701
+      },
+      "traceToReference": {
+        "total": 5015,
+        "matched": 1767,
+        "ratio": 0.3523429710867398
+      },
+      "enclosures": {
+        "reference": 13,
+        "traced": 21,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "front-wheel-rim": {
+            "iou": 0.9269456681350955,
+            "matched": true
+          },
+          "crank-bearing": {
+            "iou": 0.4,
+            "matched": false
+          },
+          "upper-pivot": {
+            "iou": 0.4411764705882353,
+            "matched": false
+          },
+          "rear-wheel-seat-sector": {
+            "iou": 0.8578431372549019,
+            "matched": true
+          }
+        },
+        "open": {
+          "cropped-rear-wheel": true,
+          "frame-and-leader": true
+        },
+        "paperStrokePixels": [
+          0,
+          0,
+          2
+        ]
+      },
+      "paths": 368,
+      "commands": 2093,
+      "tips": 276,
+      "junctions": 150,
+      "loops": 26
+    },
+    {
+      "name": "velocipede-patent-scan-faded",
+      "distorted": true,
+      "width": 250,
+      "height": 250,
+      "inputSha256": "857fe70bb5880e8e0ce086e67fbc5bed58a3420a7bdb854d70dc1e47e0295682",
+      "medianMs": 3.7770000000000437,
+      "samplesMs": [
+        3.8070000000002437,
+        3.797299999999723,
+        3.9802999999997155,
+        4.029700000000048,
+        4.093199999999797,
+        3.721299999999701,
+        3.763900000000376,
+        3.725500000000011,
+        3.8685999999997875,
+        3.7624000000000706,
+        3.882999999999811,
+        3.7770000000000437,
+        3.6781999999998334,
+        3.7211999999999534,
+        3.675499999999829
+      ],
+      "referenceToTrace": {
+        "total": 1552,
+        "matched": 1103,
+        "ratio": 0.7106958762886598
+      },
+      "traceToReference": {
+        "total": 1878,
+        "matched": 1112,
+        "ratio": 0.5921192758253461
+      },
+      "enclosures": {
+        "reference": 13,
+        "traced": 0,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "front-wheel-rim": {
+            "iou": 0,
+            "matched": false
+          },
+          "crank-bearing": {
+            "iou": 0,
+            "matched": false
+          },
+          "upper-pivot": {
+            "iou": 0,
+            "matched": false
+          },
+          "rear-wheel-seat-sector": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "open": {
+          "cropped-rear-wheel": true,
+          "frame-and-leader": true
+        },
+        "paperStrokePixels": [
+          0,
+          0,
+          0
+        ]
+      },
+      "rimReview": {
+        "closedSubpathIoU": 0,
+        "forkBodyRimPixels": 0,
+        "forkContactPixels": 0,
+        "forkMarksPresent": 8,
+        "rimPaperStrokePixels": [
+          0,
+          0
+        ]
+      },
+      "paths": 150,
+      "commands": 670,
+      "tips": 285,
+      "junctions": 5,
+      "loops": 1
+    },
+    {
+      "name": "marconi-patent-scan",
+      "distorted": false,
+      "width": 250,
+      "height": 250,
+      "inputSha256": "a5211568a8a3f84ca91d8f6b8f26c44dcb47ef7e901f1f711fb260626530dddb",
+      "medianMs": 3.8782000000001062,
+      "samplesMs": [
+        3.8342999999999847,
+        3.822400000000016,
+        3.9029999999997926,
+        3.89870000000019,
+        3.8782000000001062,
+        3.7876000000001113,
+        4.182999999999993,
+        3.85570000000007,
+        3.860700000000179,
+        3.8438999999998487,
+        4.0482999999999265,
+        3.9079999999999018,
+        3.9937999999997373,
+        3.847099999999955,
+        3.893999999999778
+      ],
+      "referenceToTrace": {
+        "total": 1413,
+        "matched": 1411,
+        "ratio": 0.9985845718329794
+      },
+      "traceToReference": {
+        "total": 2058,
+        "matched": 1553,
+        "ratio": 0.7546161321671526
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 6,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "fig-g-counter": {
+            "iou": 0.5909090909090909,
+            "matched": true
+          }
+        },
+        "open": {
+          "first-capacitor": true,
+          "second-capacitor": false,
+          "third-capacitor": true,
+          "fourth-capacitor": true
+        },
+        "paperStrokePixels": [
+          0,
+          0,
+          0
+        ]
+      },
+      "paths": 150,
+      "commands": 831,
+      "tips": 120,
+      "junctions": 59,
+      "loops": 5
+    },
+    {
+      "name": "marconi-patent-scan-faded",
+      "distorted": true,
+      "width": 250,
+      "height": 250,
+      "inputSha256": "79dcece7fea19ebabd0df080cee90cf8c4327616a29beb58c68579571ac0cd5f",
+      "medianMs": 3.666400000000067,
+      "samplesMs": [
+        3.660099999999602,
+        3.607299999999668,
+        3.707499999999982,
+        4.836700000000292,
+        3.6983000000000175,
+        3.666400000000067,
+        3.7229999999999563,
+        3.692500000000109,
+        3.6299999999996544,
+        4.01680000000033,
+        4.367900000000191,
+        3.4879000000000815,
+        3.4050999999999476,
+        3.4213999999997213,
+        3.377899999999954
+      ],
+      "referenceToTrace": {
+        "total": 1413,
+        "matched": 1287,
+        "ratio": 0.910828025477707
+      },
+      "traceToReference": {
+        "total": 1627,
+        "matched": 1330,
+        "ratio": 0.8174554394591272
+      },
+      "enclosures": {
+        "reference": 0,
+        "traced": 0,
+        "matched": 0
+      },
+      "manual": {
+        "loops": {
+          "fig-g-counter": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "open": {
+          "first-capacitor": true,
+          "second-capacitor": true,
+          "third-capacitor": true,
+          "fourth-capacitor": true
+        },
+        "paperStrokePixels": [
+          0,
+          0,
+          0
+        ]
+      },
+      "paths": 117,
+      "commands": 586,
+      "tips": 183,
+      "junctions": 16,
+      "loops": 1
+    },
+    {
+      "name": "curved-loops-faded",
+      "distorted": true,
+      "width": 208,
+      "height": 120,
+      "inputSha256": "7c7c73b28e9af74222123d37e5586af170fc8fdf43d0823623e33a13872d4d5b",
+      "medianMs": 1.616899999999987,
+      "samplesMs": [
+        1.6383999999998196,
+        1.6606000000001586,
+        1.6287999999999556,
+        2.553899999999885,
+        1.840400000000045,
+        1.6446999999998297,
+        1.647099999999682,
+        1.6075000000000728,
+        1.5965000000001055,
+        1.5937999999996464,
+        1.5985999999998057,
+        1.5927999999998974,
+        1.5695000000000618,
+        1.616700000000037,
+        1.616899999999987
+      ],
+      "referenceToTrace": {
+        "total": 953,
+        "matched": 953,
+        "ratio": 1
+      },
+      "traceToReference": {
+        "total": 968,
+        "matched": 968,
+        "ratio": 1
+      },
+      "enclosures": {
+        "reference": 3,
+        "traced": 3,
+        "matched": 3
+      },
+      "paths": 3,
+      "commands": 412,
+      "tips": 0,
+      "junctions": 0,
+      "loops": 3,
+      "tracedToSource": {
+        "mean": 0.3512340578115698,
+        "outside": 0
+      },
+      "sourceToTraced": {
+        "mean": 0.33308587569567993,
+        "outside": 0
+      }
+    }
+  ]
+}

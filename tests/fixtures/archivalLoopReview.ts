@@ -123,3 +123,65 @@ export const measureArchivalReference = (
 export const archivalReferences: Readonly<
   Partial<Record<string, ArchivalReference>>
 > = references;
+
+export const measureVelocipedeRim = async (
+  document: VectorDocument,
+  fullTrace: Buffer,
+) => {
+  const { width, height, shapes } = document;
+  const reference = references["velocipede-patent-scan"];
+  const { forkBody, forkContact, forkMarks, rimPaper } =
+    reference.frontWheelReview;
+  const count = (
+    [left, top, right, bottom]: number[],
+    hits: (index: number) => boolean,
+  ) => {
+    let total = 0;
+    for (let y = top; y < bottom; y += 1)
+      for (let x = left; x < right; x += 1)
+        total += Number(hits(y * width + x));
+    return total;
+  };
+  let closedSubpathIoU = 0;
+  let forkBodyRimPixels = 0;
+  let forkContactPixels = 0;
+  for (const shape of shapes) {
+    for (const subpath of shape.subpaths) {
+      if (!subpath.closed || shape.stroke === "none") continue;
+      const stroke = await rasterizeStroke({
+        ...document,
+        shapes: [{ ...shape, subpaths: [subpath] }],
+      });
+      const { loops } = measureArchivalReference(stroke, width, height, {
+        loops: { rim: reference.loops["front-wheel-rim"] },
+        open: {},
+        paper: [],
+      });
+      if (loops.rim.iou <= closedSubpathIoU) continue;
+      closedSubpathIoU = loops.rim.iou;
+      forkBodyRimPixels = count(forkBody, (index) => stroke[index] >= 64);
+      const otherStrokes = await rasterizeStroke({
+        ...document,
+        shapes: shapes.map((entry) => ({
+          ...entry,
+          subpaths: entry.subpaths.filter((other) => other !== subpath),
+        })),
+      });
+      forkContactPixels = count(
+        forkContact,
+        (index) => stroke[index] >= 64 && otherStrokes[index] >= 64,
+      );
+    }
+  }
+  return {
+    closedSubpathIoU,
+    forkBodyRimPixels,
+    forkContactPixels,
+    forkMarksPresent: forkMarks.filter(([x, y]) =>
+      count([x - 1, y - 1, x + 2, y + 2], (index) => fullTrace[index] >= 64),
+    ).length,
+    rimPaperStrokePixels: rimPaper.map((box) =>
+      count(box, (index) => fullTrace[index] >= 64),
+    ),
+  };
+};

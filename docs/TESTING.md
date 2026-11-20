@@ -49,6 +49,12 @@ The [archival loop benchmark](../results/ARCHIVAL-LOOPS.md) uses manually
 marked source-image polygons, open gaps, and empty paper zones. The regular
 test suite gates the recovered loops and checks these negative controls.
 
+The [Velocipede rim benchmark](../results/VELOCIPEDE-RIM.md) measures the
+best individual closed subpath as well as the complete SVG. Fork
+checkpoints and nearby paper boxes are measured separately. The regular
+suite tests both curve-fitting settings and requires the rim to stay open
+if an arc is erased before fading.
+
 Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
 LAN smoke. It selects a reachable advertised non-loopback interface, checks
 discovery and bundled assets, and converts a real upload in Chromium

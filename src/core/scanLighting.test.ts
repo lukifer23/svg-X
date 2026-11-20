@@ -2,6 +2,7 @@ import { beforeAll, expect, test } from "vitest";
 import {
   archivalReferences,
   measureArchivalReference,
+  measureVelocipedeRim,
   rasterizeStroke,
 } from "../../tests/fixtures/archivalLoopReview";
 import {
@@ -29,7 +30,7 @@ test.each([
     ["front-wheel-rim", "rear-wheel-seat-sector"],
     [0, 0, 2],
   ],
-  ["velocipede-patent-scan-faded", [], [0, 0, 0]],
+  ["velocipede-patent-scan-faded", ["front-wheel-rim"], [0, 0, 0]],
   ["marconi-patent-scan", ["fig-g-counter"], [0, 0, 0]],
   ["marconi-patent-scan-faded", [], [0, 0, 0]],
 ] as const)(
@@ -60,6 +61,56 @@ test.each([
       );
   },
 );
+
+test.each([false, true])(
+  "recovers the faded Velocipede rim as a separate loop (curve fitting %s)",
+  async (optCurve) => {
+    const {
+      scan: { pixels, width, height },
+    } = pairs.find(({ name }) => name === "velocipede-patent-scan-faded")!;
+    const document = traceCenterlines(pixels, width, height, {
+      ...centerlineOptions,
+      normalizeScanLighting: true,
+      optCurve,
+    });
+    const review = await measureVelocipedeRim(
+      document,
+      await rasterizeStroke(document),
+    );
+    expect(review.closedSubpathIoU).toBeGreaterThan(0.9);
+    expect(review.forkBodyRimPixels).toBe(0);
+    expect(review.forkMarksPresent).toBe(8);
+    expect(review.forkContactPixels).toBeGreaterThan(0);
+    expect(review.rimPaperStrokePixels).toEqual([0, 0]);
+  },
+);
+
+test("leaves the archival rim open when a long arc has no ink", async () => {
+  const { clean } = pairs.find(
+    ({ name }) => name === "velocipede-patent-scan-faded",
+  )!;
+  const { width, height } = clean.image;
+  const pixels = clean.image.pixels.slice();
+  // Erase the rightmost arc before applying the standard fade and grain.
+  for (let y = 140; y < 172; y += 1)
+    for (let x = 234; x < 246; x += 1)
+      pixels.set(
+        pixels.subarray((y * width + 248) * 4, (y * width + 249) * 4),
+        (y * width + x) * 4,
+      );
+  const scan = emulateFadedScan({ pixels, width, height });
+  const trace = traceCenterlines(scan.pixels, width, height, {
+    ...centerlineOptions,
+    normalizeScanLighting: true,
+  });
+  const review = measureArchivalReference(
+    await rasterizeStroke(trace),
+    width,
+    height,
+    archivalReferences[clean.name]!,
+  );
+  expect(review.loops["front-wheel-rim"].matched).toBe(false);
+});
 
 test.each(["close-parallel-faded", "junctions-faded"])(
   "recovers %s across a shadow without tracing the grain",

@@ -7,7 +7,7 @@ import {
   centerlineOptions,
   measureCenterlines,
 } from "../tests/fixtures/centerlineCorpus";
-import { archivalReferences, enclosedRegions, measureArchivalReference, rasterizeStroke } from "../tests/fixtures/archivalLoopReview";
+import { archivalReferences, enclosedRegions, measureArchivalReference, measureVelocipedeRim, rasterizeStroke } from "../tests/fixtures/archivalLoopReview";
 import { scanLightingCorpus } from "../tests/fixtures/scanLightingCorpus";
 
 const agreement = (
@@ -115,6 +115,9 @@ test("measures faded-line retention, grain rejection and cost", async () => {
       traceToReference: agreement(after, before, width, height),
       enclosures: compareEnclosures(before, after, width, height),
       ...(manualReference && { manual: measureArchivalReference(after, width, height, manualReference) }),
+      ...(name === "velocipede-patent-scan-faded" && {
+        rimReview: await measureVelocipedeRim(document, after),
+      }),
       ...measureCenterlines(document, clean.reference),
     });
   }

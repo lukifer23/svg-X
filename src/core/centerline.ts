@@ -1,6 +1,12 @@
+import { recoverCircularStrokes } from "./circularStrokeRecovery";
 import { fitPointsToSubpath } from "./curveFit";
 import { repairFadedCurves } from "./fadedCurveRepair";
-import { pointsToSubpath, simplifyOpen, type Point } from "./geometry";
+import {
+  pointsToSubpath,
+  simplifyOpen,
+  simplifyRing,
+  type Point,
+} from "./geometry";
 import { traceScanInk, type ScanInkEvidence } from "./scanLighting";
 import type {
   VectorDocument,
@@ -484,6 +490,11 @@ export const traceCenterlines = (
   // A loose tolerance stored for Potrace must not let two nearby
   // centerlines cross or let a narrow loop collapse.
   const tolerance = Math.max(0.05, Math.min(0.45, options.optTolerance));
+  const recoveredRings = evidence
+    ? recoverCircularStrokes(thinned, width, height, evidence, (index) =>
+        neighborBits(thinned, index, width, height, true),
+      )
+    : [];
   const { subpaths } = walkSkeleton(
     thinned,
     width,
@@ -494,6 +505,17 @@ export const traceCenterlines = (
     Math.min(4, options.turdSize),
     supportsTip,
   );
+  for (const ring of recoveredRings) {
+    const geometry = simplifyRing(
+      ring,
+      options.optCurve ? tolerance / 2 : tolerance,
+    );
+    subpaths.push(
+      options.optCurve
+        ? fitPointsToSubpath(geometry, true, tolerance / 2)
+        : pointsToSubpath(geometry, true),
+    );
+  }
   const background =
     options.backgroundColor === "transparent"
       ? []

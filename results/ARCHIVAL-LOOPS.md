@@ -54,3 +54,6 @@ from DocsTeach and the National Archives.
 [Wright](https://docsteach.org/document/flying-machine-wright-brothers/)
 [Velocipede](https://docsteach.org/document/drawing-of-velocipede/)
 [Marconi](https://docsteach.org/document/patent-drawing-for-g-marconis-wireless-telegraphy/)
+
+The [Velocipede rim follow-up](VELOCIPEDE-RIM.md) evaluates the subsequent
+near-circular stroke recovery against the same rim reference.
