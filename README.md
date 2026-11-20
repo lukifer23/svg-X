@@ -58,7 +58,7 @@ Geometry is deduplicated only when canonical commands, paint, stroke, and opacit
 
 Centerline mode thresholds the raster, cleans small weak marks, thins with Zhang–Suen rules, and walks the skeleton as a graph. Speckle Suppression keeps small high-contrast strokes and uses raster width to protect narrow, strong tips while trimming short spurs. Set it to zero to disable cleanup when keeping faint details matters most. Optional Bézier fitting shares a subpixel error budget with simplification.
 
-Turn on **Recover faded scan lines** for shaded or washed-out line drawings. It estimates local paper tone, looks for directional stroke support at two widths, and can reconnect short breaks when the scan still shows ink across the gap. Leave it off for ordinary artwork and compare both modes on textured paper. See the [real-scan loop benchmark](results/REAL-SCAN-LOOPS.md).
+Turn on **Recover faded scan lines** for shaded or washed-out line drawings. It estimates local paper tone, looks for directional stroke support at two widths, and can reconnect short breaks when the scan still shows ink across the gap. Leave it off for ordinary artwork and compare both modes on textured paper. See the [hand-reviewed archival benchmark](results/ARCHIVAL-LOOPS.md) and the [mechanism loop benchmark](results/REAL-SCAN-LOOPS.md).
 
 Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
 

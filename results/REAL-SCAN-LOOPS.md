@@ -38,3 +38,6 @@ Reproduce with `npm run bench:scan-lighting`. See the
 [before report](scan-lighting-74d5482-real-before.json) and
 [after report](scan-lighting-real-after.json). Archival provenance is in
 the [scan cleanup report](SCAN-CLEANUP.md).
+
+The [archival follow-up](ARCHIVAL-LOOPS.md) scores Wright, Velocipede, and
+Marconi against source-image annotations drawn by hand.

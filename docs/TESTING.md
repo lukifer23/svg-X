@@ -45,6 +45,10 @@ The [real-scan follow-up](../results/REAL-SCAN-LOOPS.md) also compares enclosed
 regions against the clean trace to distinguish useful closed loops from
 graph cycles that do not enclose a matching region.
 
+The [archival loop benchmark](../results/ARCHIVAL-LOOPS.md) uses manually
+marked source-image polygons, open gaps, and empty paper zones. The regular
+test suite gates the recovered loops and checks these negative controls.
+
 Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
 LAN smoke. It selects a reachable advertised non-loopback interface, checks
 discovery and bundled assets, and converts a real upload in Chromium

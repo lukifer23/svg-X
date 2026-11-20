@@ -1,5 +1,10 @@
 import { beforeAll, expect, test } from "vitest";
 import {
+  archivalReferences,
+  measureArchivalReference,
+  rasterizeStroke,
+} from "../../tests/fixtures/archivalLoopReview";
+import {
   centerlineOptions,
   measureCenterlines,
 } from "../../tests/fixtures/centerlineCorpus";
@@ -15,6 +20,46 @@ let pairs: ScanPair[];
 beforeAll(async () => {
   pairs = await scanLightingCorpus();
 });
+
+test.each([
+  ["wright-patent-scan", ["upper-truss"], [0, 0]],
+  ["wright-patent-scan-faded", ["right-lower-bracing"], [0, 0]],
+  [
+    "velocipede-patent-scan",
+    ["front-wheel-rim", "rear-wheel-seat-sector"],
+    [0, 0, 2],
+  ],
+  ["velocipede-patent-scan-faded", [], [0, 0, 0]],
+  ["marconi-patent-scan", ["fig-g-counter"], [0, 0, 0]],
+  ["marconi-patent-scan-faded", [], [0, 0, 0]],
+] as const)(
+  "preserves reviewed geometry in %s",
+  async (name, required, maxPaper) => {
+    const { scan, clean } = pairs.find((pair) => pair.name === name)!;
+    const { width, height, pixels } = scan;
+    const trace = traceCenterlines(pixels, width, height, {
+      ...centerlineOptions,
+      normalizeScanLighting: true,
+    });
+    const review = measureArchivalReference(
+      await rasterizeStroke(trace),
+      width,
+      height,
+      archivalReferences[clean.name]!,
+    );
+    for (const id of required) expect(review.loops[id].matched, id).toBe(true);
+    for (const [id, open] of Object.entries(review.open)) {
+      // The unmodified Marconi crop already has an unwanted plate closure.
+      // Allow a future implementation to fix it.
+      if (name === "marconi-patent-scan" && id === "second-capacitor") continue;
+      expect(open, id).toBe(true);
+    }
+    for (const [index, count] of review.paperStrokePixels.entries())
+      expect(count, `paper zone ${index + 1}`).toBeLessThanOrEqual(
+        maxPaper[index],
+      );
+  },
+);
 
 test.each(["close-parallel-faded", "junctions-faded"])(
   "recovers %s across a shadow without tracing the grain",

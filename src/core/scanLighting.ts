@@ -277,6 +277,100 @@ export const traceScanInk = (
     }
     join(start, end);
   }
+  // A one- or two-pixel break can have visible ink even when the
+  // directional run cannot pass through a bend or crossing. Seed the
+  // repair from the existing mask so new pixels cannot extend a bridge.
+  const gapFloor = minimumContrast * 1.5;
+  for (let start = 0; start < mask.length; start += 1) {
+    if (!mask[start] || contrast[start] < minimumContrast) continue;
+    const x = start % width;
+    const y = (start - x) / width;
+    for (let axis = 0; axis < AXES.length; axis += 1) {
+      const [dx, dy] = AXES[axis];
+      const along = dy * width + dx;
+      const across = dx * width - dy;
+      const first = start + along;
+      if (
+        !inside(x + dx, y + dy) ||
+        connected[first] ||
+        contrast[first] < gapFloor
+      )
+        continue;
+      for (let length = 2; length <= 3; length += 1) {
+        const ex = x + dx * length;
+        const ey = y + dy * length;
+        if (!inside(ex, ey)) break;
+        const end = start + along * length;
+        if (!mask[end]) continue;
+        // Faint, aligned anchors already have directional flank evidence.
+        // Elsewhere require a prominent ridge across the gap as well.
+        const faintAndAligned =
+          Math.max(contrast[start], contrast[end]) <= minimumContrast * 3 &&
+          (ridges[start] & ridges[end] & (1 << axis)) !== 0;
+        const anchor = Math.min(contrast[start], contrast[end]);
+        const component = root(start);
+        if (
+          anchor < minimumContrast * (faintAndAligned ? 1 : 2) ||
+          anchor * 2 < Math.max(contrast[start], contrast[end]) ||
+          component !== root(end)
+        )
+          break;
+        const requiredInk = faintAndAligned
+          ? gapFloor
+          : Math.max(gapFloor, 0.7 * anchor);
+        let valid = true;
+        let ink = 0;
+        let left = 0;
+        let right = 0;
+        for (let step = 1; step < length; step += 1) {
+          const gx = x + step * dx;
+          const gy = y + step * dy;
+          const gap = start + step * along;
+          if (
+            connected[gap] ||
+            !inside(gx - 2 * dy, gy + 2 * dx) ||
+            !inside(gx + 2 * dy, gy - 2 * dx) ||
+            contrast[gap] < requiredInk
+          ) {
+            valid = false;
+            break;
+          }
+          ink += contrast[gap];
+          left += contrast[gap - 2 * across];
+          right += contrast[gap + 2 * across];
+          // A contact within a different component would merge strokes.
+          for (
+            let ny = Math.max(0, gy - 1);
+            valid && ny <= Math.min(height - 1, gy + 1);
+            ny += 1
+          ) {
+            for (
+              let nx = Math.max(0, gx - 1);
+              nx <= Math.min(width - 1, gx + 1);
+              nx += 1
+            ) {
+              const neighbor = ny * width + nx;
+              if (connected[neighbor] && root(neighbor) !== component) {
+                valid = false;
+                break;
+              }
+            }
+          }
+        }
+        if (
+          valid &&
+          (faintAndAligned || ink - Math.max(left, right) >= 6 * (length - 1))
+        ) {
+          for (let step = 1; step < length; step += 1) {
+            const gap = start + step * along;
+            connected[gap] = 1;
+            parent[gap] = component;
+          }
+        }
+        break;
+      }
+    }
+  }
   return {
     mask: connected,
     strongInk,

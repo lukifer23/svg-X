@@ -1,24 +1,14 @@
 import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { cpus, platform } from "node:os";
-import sharp from "sharp";
 import { expect, test } from "vitest";
 import { traceCenterlines } from "../src/core/centerline";
-import { serializeVectorDocument } from "../src/core/serialize";
-import type { VectorDocument } from "../src/core/vectorDocument";
 import {
   centerlineOptions,
   measureCenterlines,
 } from "../tests/fixtures/centerlineCorpus";
+import { archivalReferences, enclosedRegions, measureArchivalReference, rasterizeStroke } from "../tests/fixtures/archivalLoopReview";
 import { scanLightingCorpus } from "../tests/fixtures/scanLightingCorpus";
-
-const rasterizeStroke = async (document: VectorDocument) => {
-  const shapes = document.shapes.map((shape) => ({ ...shape, strokeWidth: 1 }));
-  return sharp(Buffer.from(serializeVectorDocument({ ...document, shapes })))
-    .extractChannel("alpha")
-    .raw()
-    .toBuffer();
-};
 
 const agreement = (
   source: Buffer,
@@ -50,38 +40,6 @@ const agreement = (
     matched += Number(near);
   }
   return { total, matched, ratio: total ? matched / total : 0 };
-};
-
-const enclosedRegions = (stroke: Buffer, width: number, height: number) => {
-  const labels = new Int32Array(stroke.length);
-  const areas = [0];
-  const queue: number[] = [];
-  for (let start = 0; start < stroke.length; start += 1) {
-    if (stroke[start] >= 64 || labels[start]) continue;
-    const id = areas.length;
-    queue.length = 0;
-    queue.push(start);
-    labels[start] = id;
-    let frame = false;
-    const offer = (pixel: number) => {
-      if (!labels[pixel] && stroke[pixel] < 64) {
-        labels[pixel] = id;
-        queue.push(pixel);
-      }
-    };
-    for (let i = 0; i < queue.length; i += 1) {
-      const pixel = queue[i];
-      const x = pixel % width;
-      const y = (pixel - x) / width;
-      frame ||= x === 0 || y === 0 || x + 1 === width || y + 1 === height;
-      if (x > 0) offer(pixel - 1);
-      if (x + 1 < width) offer(pixel + 1);
-      if (y > 0) offer(pixel - width);
-      if (y + 1 < height) offer(pixel + width);
-    }
-    areas.push(!frame && queue.length >= 4 ? queue.length : 0);
-  }
-  return { labels, areas };
 };
 
 const compareEnclosures = (
@@ -144,6 +102,7 @@ test("measures faded-line retention, grain rejection and cost", async () => {
       rasterizeStroke(cleanDocument),
       rasterizeStroke(document),
     ]);
+    const manualReference = archivalReferences[clean.name];
     reports.push({
       name,
       distorted,
@@ -155,6 +114,7 @@ test("measures faded-line retention, grain rejection and cost", async () => {
       referenceToTrace: agreement(before, after, width, height),
       traceToReference: agreement(after, before, width, height),
       enclosures: compareEnclosures(before, after, width, height),
+      ...(manualReference && { manual: measureArchivalReference(after, width, height, manualReference) }),
       ...measureCenterlines(document, clean.reference),
     });
   }
