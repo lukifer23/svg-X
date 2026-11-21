@@ -30,6 +30,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Kept native batch sessions alive until pending decode and output cleanup settles, including on application quit. Added regression tests for cancellation at actual Sharp submission, SVG staging, and exclusive publication.
 - Omitted scoped and link-local IPv6 browser URLs from LAN discovery. The same-host packaged LAN smoke now compares SVG, EPS, DXF, and JSON in all three conversion modes and prints hashes for second-device verification.
 - Fixed DEB maintainer metadata and Linux desktop launcher association. Added unsigned distribution smoke tests for the Windows portable EXE, macOS DMG and ZIP, and Linux AppImage and DEB.
+- Added a manual, unpublished desktop signing rehearsal for Windows Authenticode and macOS Developer ID signing, notarization, and stapling. It uses separately provisioned signing environments.
 
 ## Historical releases
 

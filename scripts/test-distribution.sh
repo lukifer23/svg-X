@@ -2,6 +2,21 @@
 set -euo pipefail
 shopt -s nullglob
 
+test_mac_app() {
+  local bundle="$1"
+  if [[ ${SVGX_EXPECT_NOTARIZED:-0} == 1 ]]; then
+    codesign --verify --deep --strict --verbose=2 "$bundle"
+    local signature
+    signature="$(codesign --display --verbose=4 "$bundle" 2>&1)"
+    grep -Fx "TeamIdentifier=${APPLE_TEAM_ID:?}" <<< "$signature"
+    grep -E '^Authority=Developer ID Application: ' <<< "$signature"
+    grep -E '^CodeDirectory .*flags=.*\([^)]*runtime' <<< "$signature"
+    xcrun stapler validate "$bundle"
+    spctl --assess --type execute --verbose=2 "$bundle"
+  fi
+  SVGX_PACKAGE_EXE="$bundle/Contents/MacOS/SVG-X" npm run test:e2e:package
+}
+
 case "$(uname -s)" in
   Linux)
     appimages=(release/*.AppImage)
@@ -56,10 +71,10 @@ case "$(uname -s)" in
     ditto "$work/mount/SVG-X.app" "$work/from-dmg/SVG-X.app"
     hdiutil detach "$work/mount"
     mounted=0
-    SVGX_PACKAGE_EXE="$work/from-dmg/SVG-X.app/Contents/MacOS/SVG-X" npm run test:e2e:package
+    test_mac_app "$work/from-dmg/SVG-X.app"
 
     ditto -x -k "${archives[0]}" "$work/from-zip"
-    SVGX_PACKAGE_EXE="$work/from-zip/SVG-X.app/Contents/MacOS/SVG-X" npm run test:e2e:package
+    test_mac_app "$work/from-zip/SVG-X.app"
     ;;
   *)
     echo "Use this distribution test on Linux or macOS" >&2

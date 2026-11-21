@@ -117,9 +117,10 @@ directory and close any running SVG-X instance before testing.
   batch and same-host LAN checks from the installed DEB.
 
 CI logs SHA-256 hashes for all five files. Its GUI smoke verifies app startup,
-preload version, and real Color mode conversion. Signing, macOS notarization,
-user-facing trust prompts, and upgrade from a historical installer still
-require release qualification.
+preload version, and real Color mode conversion. Use the
+[signing rehearsal](SIGNING.md) for Windows Authenticode and macOS
+notarization. User-facing trust prompts and upgrade from a historical
+installer still require release qualification.
 
 ## Packaged LAN verification
 

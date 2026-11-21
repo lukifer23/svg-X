@@ -1,0 +1,149 @@
+name: Desktop signing rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to qualify
+        type: choice
+        options: [both, windows, macos]
+        default: both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-signing-rehearsal
+
+jobs:
+  validated:
+    name: Require successful CI for this commit
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Check CI result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=success" --jq '.total_count')"
+          if [[ "$runs" == 0 ]]; then
+            echo "::error::Wait for CI to pass on $GITHUB_SHA before rehearsing signing"
+            exit 1
+          fi
+
+  windows:
+    name: Sign and verify Windows portable EXE
+    if: github.ref == 'refs/heads/main' && (inputs.platform == 'both' || inputs.platform == 'windows')
+    needs: validated
+    runs-on: windows-2025
+    environment: signing-windows
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+      AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+      AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+      WINDOWS_SIGNING_PUBLISHER: ${{ vars.WINDOWS_SIGNING_PUBLISHER }}
+    steps:
+      - name: Check Windows configuration
+        shell: pwsh
+        run: |
+          $required = @('AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID',
+            'AZURE_SIGNING_ENDPOINT', 'AZURE_SIGNING_ACCOUNT', 'AZURE_SIGNING_PROFILE',
+            'WINDOWS_SIGNING_PUBLISHER')
+          $missing = @($required | Where-Object { -not [Environment]::GetEnvironmentVariable($_) })
+          if ($missing.Count) { throw "Missing signing-windows variables: $($missing -join ', ')" }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.19.0
+      - run: npm install --global npm@12.0.2
+      - run: npm ci
+      - run: npm run build
+      - name: Build and resource-edit inner application
+        run: npm exec --no -- electron-builder --win --x64 --dir --publish never '-c.win.signAndEditExecutable=true' '-c.win.signExecutable=false'
+      - name: Authenticate to Azure using GitHub OIDC
+        uses: Azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3.0.2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign the app inside the portable package
+        uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ env.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ env.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ env.AZURE_SIGNING_PROFILE }}
+          files: ${{ github.workspace }}/release/win-unpacked/SVG-X.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Verify the inner app and package its signed bytes
+        shell: pwsh
+        run: |
+          $inner = 'release/win-unpacked/SVG-X.exe'
+          ./scripts/verify-windows-signature.ps1 -Path $inner -Publisher $env:WINDOWS_SIGNING_PUBLISHER
+          $innerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $inner).Hash
+          npm exec --no -- electron-builder --win portable --x64 --prepackaged release/win-unpacked --publish never
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $inner).Hash -ne $innerHash) {
+            throw 'Portable packaging modified the signed inner executable'
+          }
+          $portable = @(Get-ChildItem release -File -Filter '*.exe')
+          if ($portable.Count -ne 1) { throw 'Expected one portable EXE in release/' }
+          "SVGX_PACKAGE_EXE=$($portable[0].FullName)" >> $env:GITHUB_ENV
+      - name: Sign the outer portable EXE
+        uses: Azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ env.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ env.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ env.AZURE_SIGNING_PROFILE }}
+          files: ${{ env.SVGX_PACKAGE_EXE }}
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+      - name: Verify and launch the signed portable EXE
+        shell: pwsh
+        env:
+          SVGX_TEST_PORTABLE: "1"
+        run: |
+          ./scripts/verify-windows-signature.ps1 -Path $env:SVGX_PACKAGE_EXE -Publisher $env:WINDOWS_SIGNING_PUBLISHER
+          npm run test:e2e:package
+
+  macos:
+    name: Sign, notarize, and verify macOS DMG and ZIP
+    if: github.ref == 'refs/heads/main' && (inputs.platform == 'both' || inputs.platform == 'macos')
+    needs: validated
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: signing-macos
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.19.0
+      - run: npm install --global npm@12.0.2
+      - run: npm ci
+      - run: npm run build
+      - name: Sign, staple and smoke-test the distribution
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ vars.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: bash scripts/notarize-macos.sh

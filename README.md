@@ -188,7 +188,8 @@ The [distribution smoke tests](docs/TESTING.md#unsigned-distribution-files)
 exercise the Windows portable EXE, Linux AppImage and DEB, and macOS DMG and
 ZIP. Use GitHub Issues for support with Linux packages. The Debian maintainer
 field uses the project account's GitHub no-reply address as package metadata.
-Signing, notarization, and clean-device trust checks are separate release gates.
+The [signing rehearsal guide](docs/SIGNING.md) covers credentials and signed
+artifact verification. Clean-device trust checks are a separate release gate.
 
 ## Known limitations
 
