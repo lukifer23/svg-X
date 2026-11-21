@@ -16,6 +16,6 @@ Native export formats are allowlisted (`svg`, `eps`, `dxf`, and `json`). Unknown
 
 ## LAN mode
 
-LAN hosting requires `SVGX_LAN=1`. The server exposes only same-origin static application files, `/api/health`, and `/api/network-info`; permissive CORS is not enabled. Dual-stack binding is attempted first and falls back to IPv4 only when the host lacks IPv6 socket support. Conversion inputs and settings are unchanged for LAN clients.
+LAN hosting requires `SVGX_LAN=1`. The server exposes same-origin static application files, `/api/health`, and `/api/network-info`. The server attempts dual-stack binding first and falls back to IPv4 when the host lacks IPv6 socket support. Discovery omits scoped and link-local IPv6 addresses because the host's interface scope does not identify the corresponding interface on a browser client. On a trusted LAN, allow incoming connections only on the intended private network profile. Conversion inputs stay in the client browser.
 
 Report vulnerabilities privately through GitHub security reporting. Do not include private images, filesystem paths, or exploit payloads in public issues.

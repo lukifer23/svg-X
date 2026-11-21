@@ -1,5 +1,6 @@
 import { _electron as electron, chromium, expect } from "@playwright/test";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   access,
   copyFile,
@@ -16,6 +17,56 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 const execute = promisify(execFile);
+const exportFixtures = [
+  ["bw", "B&W", "wright-patent-scan.png"],
+  ["color", "Color", "color-bicycle.png"],
+  ["centerline", "Centerline", "wright-patent-scan.png"],
+];
+const exportFormats = [
+  ["svg", /^Download SVG$/],
+  ["eps", /^EPS EPS$/],
+  ["dxf", /^DXF DXF$/],
+  ["json", /^JSON JSON Paths$/],
+];
+
+const browserExports = async (browser, origin, mode, label, fixture) => {
+  const page = await browser.newPage();
+  try {
+    await page.goto(origin);
+    expect(await page.evaluate(() => Boolean(window.electronAPI))).toBe(false);
+    await page.getByRole("button", { name: "Open settings panel" }).click();
+    await page.getByRole("radio", { name: label }).click();
+    await page.getByRole("button", { name: "Close settings panel" }).click();
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles(path.resolve("tests/fixtures/review", fixture));
+    await expect(page.getByText("Conversion complete!")).toBeVisible({
+      timeout: 60_000,
+    });
+    const outputs = {};
+    for (const [extension, name] of exportFormats) {
+      if (extension !== "svg")
+        await page.getByRole("button", { name: "More export formats" }).click();
+      const pending = page.waitForEvent("download");
+      await page.getByRole("button", { name }).click();
+      const download = await pending;
+      expect(path.extname(download.suggestedFilename())).toBe(`.${extension}`);
+      outputs[extension] = await readFile(await download.path());
+    }
+    expect(outputs.svg.toString()).toMatch(/<svg[\s\S]*<path/);
+    expect(outputs.eps.toString()).toMatch(/^%!PS-Adobe-[\s\S]*moveto/);
+    expect(outputs.dxf.toString()).toMatch(/\nENTITIES\n[\s\S]*\nPOLYLINE\n/);
+    const document = JSON.parse(outputs.json.toString());
+    expect(document.mode).toBe(mode);
+    expect(document.shapes.some((shape) => shape.subpaths.length > 0)).toBe(
+      true,
+    );
+    return outputs;
+  } finally {
+    await page.close();
+  }
+};
+
 const chooseDirectory = async (directory, title) => {
   if (process.env.SVGX_GTK_PICKER !== "1") {
     console.log(`Select the real directory in the native picker: ${directory}`);
@@ -245,10 +296,12 @@ try {
           .map((entry) => entry.address),
       ),
     );
+    const advertised = networkInfo.networkUrls.map((url) => new URL(url));
+    for (const origin of advertised)
+      expect(origin.hostname).not.toMatch(/^\[fe[89ab][\da-f]:/i);
     let reachable;
-    for (const url of networkInfo.networkUrls) {
+    for (const origin of advertised) {
       try {
-        const origin = new URL(url);
         if (!actualAddresses.has(origin.hostname.replace(/^\[|\]$/g, "")))
           continue;
         const info = await fetch(new URL("/api/network-info", origin), {
@@ -277,32 +330,37 @@ try {
       );
     const browser = await chromium.launch();
     try {
-      const exportFrom = async (url) => {
-        const page = await browser.newPage();
-        await page.goto(url);
-        expect(await page.evaluate(() => Boolean(window.electronAPI))).toBe(
-          false,
+      const loopback = `http://127.0.0.1:${port}`;
+      for (const [mode, label, fixture] of exportFixtures) {
+        const reference = await browserExports(
+          browser,
+          loopback,
+          mode,
+          label,
+          fixture,
         );
-        await page
-          .locator('input[type="file"]')
-          .setInputFiles(
-            path.resolve("tests/fixtures/review/color-bicycle.png"),
+        const lan = await browserExports(
+          browser,
+          reachable,
+          mode,
+          label,
+          fixture,
+        );
+        for (const [extension, bytes] of Object.entries(reference)) {
+          expect(
+            lan[extension].equals(bytes),
+            `${mode} ${extension} parity`,
+          ).toBe(true);
+          console.log(
+            `${mode} ${extension} SHA-256 ${createHash("sha256").update(bytes).digest("hex")}`,
           );
-        await expect(page.getByText("Conversion complete!")).toBeVisible({
-          timeout: 60_000,
-        });
-        const download = page.waitForEvent("download");
-        await page.getByRole("button", { name: "Download SVG" }).click();
-        return readFile(await (await download).path(), "utf8");
-      };
-      const loopback = await exportFrom(`http://127.0.0.1:${port}`);
-      expect(loopback).toMatch(/<svg[\s\S]*<path/);
-      expect(await exportFrom(reachable)).toBe(loopback);
+        }
+      }
     } finally {
       await browser.close();
     }
     console.log(
-      "LAN and loopback browsers exported byte-identical SVG without desktop IPC",
+      `Same-host LAN (${reachable}) and loopback matched all 12 exports without desktop IPC`,
     );
   }
 

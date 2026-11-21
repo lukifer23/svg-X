@@ -114,9 +114,9 @@ The same-origin endpoints are:
 - `/api/health`
 - `/api/network-info`
 
-Without `SVGX_LAN=1`, network URLs are not advertised. Opt-in LAN mode binds dual-stack IPv6 where the platform permits it, advertises bracketed IPv6 and IPv4 interface URLs, and the packaged server falls back to IPv4 on hosts without IPv6 socket support. Set `SVGX_HOST=0.0.0.0` for the Vite development server on an IPv4-only host. Port conflicts are surfaced instead of being silently ignored. Override the port with `SVGX_PORT`.
+Without `SVGX_LAN=1`, network URLs are not advertised. Opt-in LAN mode binds dual-stack IPv6 where the platform permits it and advertises IPv4 and bracketed IPv6 browser URLs. Discovery skips scoped and link-local IPv6 addresses. The packaged server falls back to IPv4 on hosts without IPv6 socket support. Set `SVGX_HOST=0.0.0.0` for the Vite development server on an IPv4-only host. Override the port with `SVGX_PORT`. The app surfaces port conflicts at startup.
 
-For a packaged build, set the same variable before launching the app and open an advertised URL on the intended LAN device. The [LAN smoke](docs/TESTING.md) checks the host interface and a browser conversion. Remote clients do not get the native batch or filesystem bridge.
+For a packaged build, set the same variable before launching the app and open an advertised network URL on the intended LAN device. The [LAN verification guide](docs/TESTING.md#packaged-lan-verification) covers same-host export parity and the second-device check. Browser clients use local downloads. Native batch and filesystem operations require the desktop window.
 
 ## Inputs and transparency
 

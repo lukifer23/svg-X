@@ -84,17 +84,48 @@ Color and Centerline conversions at 72, 144, and 288 DPI. The tests compare
 those renders to librsvg and verify that ezdxf can read the CAD polylines
 against geometry decoded by Python's JSON parser.
 
-Set `SVGX_TEST_LAN=1` before `npm run test:e2e:package` to run the opt-in
-LAN smoke. It selects a reachable advertised non-loopback interface, checks
-discovery and bundled assets, and converts a real upload in Chromium
-without the native bridge. The downloaded SVG must match the browser
-download over loopback byte for byte. It probes the host interface from the same
-machine. A second-device connection additionally depends on network routing
-and firewall rules. The smoke closes its Electron and browser processes.
-
 Set `SVGX_NATIVE_BATCH=1` before running `npm run test:e2e:package` on a
 desktop to exercise the real directory pickers. Select each temporary path
 printed by the harness. The smoke then cancels after some outputs complete,
 resumes pending work, validates every generated SVG, and checks that the
 pre-existing SVG and outputs completed before cancellation retain their
 original bytes. The default unattended smoke still runs on all CI platforms.
+
+## Packaged LAN verification
+
+Build with `npm run package:dir` and install the Playwright Chromium browser
+with `npx playwright install chromium`. Close any running SVG-X desktop
+instance before starting the smoke. On PowerShell, run
+`$env:SVGX_TEST_LAN = "1"; npm run test:e2e:package`. On macOS or Linux, run
+`SVGX_TEST_LAN=1 npm run test:e2e:package`.
+
+The Linux package job runs the same-host check in CI. The smoke launches one
+packaged app. Chromium probes an advertised non-loopback
+address on the same machine and compares SVG, EPS, DXF, and JSON downloads
+against loopback. Every pair must match byte for byte. The smoke prints
+SHA-256 references for all three modes and closes its processes.
+
+For a second **physical** device, use the same package build as the smoke:
+
+1. With the smoke finished, launch one packaged app with `SVGX_LAN=1`. For
+   example, on Windows set `$env:SVGX_LAN = "1"` and run
+   `& .\release\win-unpacked\SVG-X.exe`.
+2. Connect the device to the same trusted LAN. From that device, open the
+   advertised Wi-Fi or Ethernet address in the app's Network Access dialog.
+   Open `/api/health` at the same origin and check that `ok` and `lanEnabled`
+   are both true. If it cannot connect, check the host's inbound firewall
+   permission for the app on the private network, the selected interface,
+   and guest Wi-Fi client isolation.
+3. In a fresh browser session, select B&W and upload the original
+   `tests/fixtures/review/wright-patent-scan.png`. Repeat for Centerline with
+   that same scan and for Color with `tests/fixtures/review/color-bicycle.png`.
+   Keep the other settings at their defaults. For each mode, check the
+   preview and download SVG, EPS, DXF, and JSON. Move or rename the B&W
+   downloads before repeating with Centerline because both use the same
+   input filename.
+4. Transfer the original downloads to the host. Compare their SHA-256 values
+   with the smoke's reference for each mode and format using
+   `Get-FileHash -Algorithm SHA256` or `shasum -a 256`. Record the packaged
+   commit, host platform, client device and browser version, address family,
+   and any mismatches. The same-host smoke leaves second-device reachability
+   and browser behavior unverified.
