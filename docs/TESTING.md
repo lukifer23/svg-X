@@ -55,13 +55,13 @@ checkpoints and nearby paper boxes are measured separately. The regular
 suite tests both curve-fitting settings and requires the rim to stay open
 if an arc is erased before fading.
 
-`npm run test:archival` gates the [full-resolution repair](../results/ARCHIVAL-SCALE.md)
+`npm run test:archival` gates the [full-resolution repairs](../results/ARCHIVAL-PERIMETERS.md)
 on Linux CI. It checks annotated loop interiors, local open gaps, blank
-paper, and individual ink checkpoints on five untouched archive drawings.
-Three recovered loops must match at the 2,000-pixel limit at both a
-one-pixel stroke and the same relative stroke width as the smaller render.
-The earlier [held-out baseline](../results/ARCHIVAL-QUALIFICATION.md) remains
-available for comparison.
+paper, and individual ink checkpoints on seven untouched archive drawings.
+Recovered loops must match at the 2,000-pixel limit at both a one-pixel
+stroke and the same relative stroke width as the smaller render. The
+Photophone ring must match as its own closed subpath because the original
+crossing strokes divide its interior in the full trace.
 Set `SVGX_QUALIFICATION_TIMING=1` and `SVGX_QUALIFICATION_REPORT` to a
 new file path to record raw timings and quality results on your machine.
 

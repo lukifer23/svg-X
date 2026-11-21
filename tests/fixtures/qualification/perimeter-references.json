@@ -1,0 +1,61 @@
+[
+  {
+    "id": "bell-relay-alt",
+    "source": "https://www.loc.gov/item/magbell.29500163/",
+    "referenceWidth": 650,
+    "loops": {
+      "upper-terminal": [
+        [410, 112],
+        [432, 114],
+        [431, 133],
+        [411, 134]
+      ],
+      "lower-terminal": [
+        [405, 183],
+        [429, 184],
+        [426, 202],
+        [402, 202]
+      ]
+    },
+    "open": {
+      "channel-clearance": { "box": [412, 146, 432, 181], "point": [417, 170] }
+    },
+    "paper": [[457, 269, 487, 293]],
+    "ink": [
+      [284, 129],
+      [350, 129],
+      [381, 188],
+      [407, 162]
+    ]
+  },
+  {
+    "id": "edison-meter",
+    "source": "https://docsteach.org/document/patent-drawing-for-t-a-edisons-electric-meter/",
+    "referenceWidth": 650,
+    "loops": {
+      "upper-meter-chamber": [
+        [360, 225],
+        [432, 225],
+        [432, 302],
+        [410, 302],
+        [403, 313],
+        [386, 313],
+        [380, 302],
+        [360, 302]
+      ]
+    },
+    "open": {
+      "outer-wire-clearance": {
+        "box": [523, 334, 544, 357],
+        "point": [531, 346]
+      }
+    },
+    "paper": [[466, 218, 497, 249]],
+    "ink": [
+      [395, 225],
+      [431, 268],
+      [360, 266],
+      [430, 396]
+    ]
+  }
+]

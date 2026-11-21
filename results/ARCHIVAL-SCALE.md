@@ -64,3 +64,6 @@ side, and tested with their existing paper and ink.
 Run `npm run test:archival` for the Linux CI quality gate.
 [Baseline `3e8b158`](archival-scale-before.json) ·
 [Updated raw results](archival-scale-after.json)
+
+The [relay and receiver follow-up](ARCHIVAL-PERIMETERS.md) measures the
+subsequent lower-terminal repair and Photophone perimeter extraction.

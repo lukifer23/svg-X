@@ -84,6 +84,61 @@ test("counts a loop that runs through multiple junctions", () => {
   ).toEqual({ endpoints: 2, junctions: 2, cycles: 1 });
 });
 
+test("groups a circular outline without adding or losing edges at crossings", () => {
+  const width = 144;
+  const mask = new Uint8Array(width * width);
+  for (let sample = 0; sample < 1440; sample += 1) {
+    const angle = (sample * Math.PI) / 720;
+    const x = Math.round(72 + 40 * Math.cos(angle));
+    const y = Math.round(72 + 40 * Math.sin(angle));
+    mask[y * width + x] = 1;
+  }
+  mask.fill(1, 72 * width + 15, 72 * width + 130);
+  const original = walkSkeleton(mask, width, width, 0);
+  const grouped = walkSkeleton(
+    mask,
+    width,
+    width,
+    0,
+    false,
+    0,
+    0,
+    undefined,
+    true,
+  );
+  expect(grouped.stats).toEqual(original.stats);
+  expect(original.subpaths.filter(({ closed }) => closed)).toHaveLength(0);
+  expect(grouped.subpaths.filter(({ closed }) => closed)).toHaveLength(1);
+
+  const edges = ({ subpaths }: typeof original) =>
+    subpaths
+      .flatMap(({ commands }) => {
+        const drawn: string[] = [];
+        const start = commands[0];
+        if (start.type !== "M") throw new Error("Expected a path start");
+        let x = start.x;
+        let y = start.y;
+        for (const command of commands.slice(1)) {
+          if (command.type !== "L" && command.type !== "Z")
+            throw new Error("Expected a polygon edge");
+          const end = command.type === "Z" ? start : command;
+          const steps = Math.max(Math.abs(end.x - x), Math.abs(end.y - y));
+          for (let i = 0; i < steps; i += 1) {
+            const nx = x + Math.sign(end.x - x);
+            const ny = y + Math.sign(end.y - y);
+            const a = Math.floor(y) * width + Math.floor(x);
+            const b = Math.floor(ny) * width + Math.floor(nx);
+            drawn.push(`${Math.min(a, b)}:${Math.max(a, b)}`);
+            x = nx;
+            y = ny;
+          }
+        }
+        return drawn;
+      })
+      .sort();
+  expect(edges(grouped)).toEqual(edges(original));
+});
+
 test("keeps the mechanism artwork's loops when scan grain is added", () => {
   const measure = (name: string) => {
     const { image } = cases.find((entry) => entry.name === name)!;

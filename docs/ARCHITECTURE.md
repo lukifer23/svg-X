@@ -21,12 +21,21 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 - `scanLighting.ts`: opt-in centerline preprocessing. Interpolated paper estimates compensate for uneven lighting. Weak candidates need bilateral contrast and directional continuation. The wider ridge check also requires ink in the closer flanks. Short links can reconnect different components through existing raster ink. A separate one- or two-pixel closure pass checks endpoint contrast, directional or flank evidence, a shared ink component, and clearance from other components. Its anchors come from the mask before repair.
 - `fadedCurveRepair.ts`: uses scan contrast after thinning to test short cubic continuations between facing skeleton tips. Spatial buckets limit the search to nearby tips. Reciprocal matches and clearance checks reject ambiguous links and contacts with nearby strokes. Accepted links can close loops within a connected component.
 - `circularStrokeRecovery.ts`: fits circle candidates to tangents of existing curved fragments. A capped set of probes screens for ink around the perimeter. A cyclic search then follows a two-pixel radial corridor, weighs contrast against both flanks, and rejects prolonged weak runs. Accepted loops become separate closed subpaths and replace only exact tangential overlap with the skeleton.
+- `circularPerimeters.ts`: finds already-traced circular outlines in the
+  plane skeleton graph. Open tails are peeled from a discovery copy and
+  exterior face walks reveal the outline across junctions. The graph
+  walker emits the selected perimeter as one closed subpath and retains
+  the remaining strokes. This pass adds no skeleton edge.
 - Dense scan preprocessing chooses the 2,000-pixel calibration at a working
   longest side of 1,500 pixels or more. It uses a 3 × 3 binomial filter,
   wider flank offsets, and longer supported ridge runs on the native raster.
   Endpoint repair may use a tangent that ends early at a junction only for
   an eight-pixel or shorter span with ink in every sampled position. The
   reciprocal and stroke-clearance checks still apply.
+- A dense ink mass can obscure the paper sampling tile. The estimator
+  corrects a deep dip only where lighter neighbors bracket the tile.
+  Thinning visits foreground indices and applies deletions synchronously
+  in the same two subiterations.
 - `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
 
 Serialization and conversion types live in `vectorDocument.ts`, `serialize.ts`, and `vectorExport.ts`. UI code must not parse generated SVG to recover geometry.

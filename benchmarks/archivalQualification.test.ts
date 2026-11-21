@@ -14,9 +14,10 @@ import {
 import { centerlineOptions } from "../tests/fixtures/centerlineCorpus";
 import references from "../tests/fixtures/qualification/references.json";
 import freshReferences from "../tests/fixtures/qualification/fresh-references.json";
+import perimeterReferences from "../tests/fixtures/qualification/perimeter-references.json";
 
 const baselineUrl = new URL(
-  "../results/archival-scale-before.json",
+  "../results/archival-perimeter-before.json",
   import.meta.url,
 );
 const sha256 = (bytes: Uint8Array) =>
@@ -24,13 +25,19 @@ const sha256 = (bytes: Uint8Array) =>
 const recoveredAtFullSize: Readonly<Partial<Record<string, string[]>>> = {
   telephone: ["lower-box-face"],
   "multiple-telegraph": ["lower-transmitter-terminal", "receiver-block"],
+  "bell-telephone-relay": ["lower-terminal"],
+  "bell-relay-alt": ["lower-terminal"],
 };
 
 test("qualifies centerline against separately annotated archival drawings", async () => {
   const timing = process.env.SVGX_QUALIFICATION_TIMING === "1";
   const recording = process.env.SVGX_QUALIFICATION_REPORT;
   const reports = [];
-  for (const reference of [...references, ...freshReferences]) {
+  for (const reference of [
+    ...references,
+    ...freshReferences,
+    ...perimeterReferences,
+  ]) {
     const source = await readFile(
       new URL(
         `../tests/fixtures/qualification/${reference.id}.jpg`,
@@ -83,6 +90,40 @@ test("qualifies centerline against separately annotated archival drawings", asyn
         height,
         annotations,
       );
+      let isolatedRingIoU: number | undefined;
+      if (reference.id === "photophone") {
+        const roi = annotations.loops["receiver-outer-ring"];
+        const minX = Math.min(...roi.map(([x]) => x));
+        const maxX = Math.max(...roi.map(([x]) => x));
+        const minY = Math.min(...roi.map(([, y]) => y));
+        const maxY = Math.max(...roi.map(([, y]) => y));
+        const extentTolerance = 0.12 * Math.min(maxX - minX, maxY - minY);
+        isolatedRingIoU = 0;
+        for (const shape of document.shapes) {
+          for (const subpath of shape.subpaths) {
+            if (!subpath.closed) continue;
+            const points = subpath.commands.filter(
+              (command) => command.type !== "Z",
+            );
+            if (
+              !points.some(({ x }) => Math.abs(x - minX) <= extentTolerance) ||
+              !points.some(({ x }) => Math.abs(x - maxX) <= extentTolerance) ||
+              !points.some(({ y }) => Math.abs(y - minY) <= extentTolerance) ||
+              !points.some(({ y }) => Math.abs(y - maxY) <= extentTolerance)
+            )
+              continue;
+            const ringOnly = await rasterizeStroke({
+              ...document,
+              shapes: [{ ...shape, subpaths: [subpath] }],
+            });
+            const iou = measureArchivalReference(ringOnly, width, height, {
+              ...annotations,
+              paper: [],
+            }).loops["receiver-outer-ring"].iou;
+            isolatedRingIoU = Math.max(isolatedRingIoU, iou);
+          }
+        }
+      }
       const comparableStrokeWidth = Math.max(width, height) / 1000;
       const comparableStroke = await sharp(
         Buffer.from(
@@ -147,6 +188,7 @@ test("qualifies centerline against separately annotated archival drawings", asyn
         sourceSha256: sha256(source),
         inputSha256: sha256(pixels),
         ...geometry,
+        isolatedRingIoU,
         comparableLoops,
         open,
         inkHits,
@@ -198,6 +240,8 @@ test("qualifies centerline against separately annotated archival drawings", asyn
       ).toBeGreaterThanOrEqual(result.iou - 0.02);
     }
     if (current.limit === 2000) {
+      if (current.id === "photophone")
+        expect(current.isolatedRingIoU, label).toBeGreaterThanOrEqual(0.85);
       for (const feature of recoveredAtFullSize[current.id] ?? []) {
         expect(current.loops[feature].matched, `${label} ${feature}`).toBe(
           true,

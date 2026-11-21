@@ -1,3 +1,4 @@
+import { findCircularPerimeters } from "./circularPerimeters";
 import { recoverCircularStrokes } from "./circularStrokeRecovery";
 import { fitPointsToSubpath } from "./curveFit";
 import { repairFadedCurves } from "./fadedCurveRepair";
@@ -128,16 +129,13 @@ export const thinBinaryMask = (
       input.subarray(y * inputWidth, (y + 1) * inputWidth),
       (y + 1) * width + 1,
     );
-  const rows = new Int32Array(height);
-  const ends = new Int32Array(height);
+  // The scan may contain long blank runs between strokes. Visit only
+  // foreground pixels and apply each subiteration's deletions together.
+  const foreground: number[] = [];
   for (let y = 1; y < height - 1; y += 1) {
-    const base = y * width;
-    let first = base + 1;
-    let last = base + width - 2;
-    while (first <= last && !mask[first]) first += 1;
-    while (last > first && !mask[last]) last -= 1;
-    rows[y] = first;
-    ends[y] = last;
+    const row = y * width;
+    for (let x = 1; x < width - 1; x += 1)
+      if (mask[row + x]) foreground.push(row + x);
   }
   const remove: number[] = [];
   let changed = true;
@@ -145,33 +143,32 @@ export const thinBinaryMask = (
     changed = false;
     for (const pass of [1, 2]) {
       remove.length = 0;
-      for (let y = 1; y < height - 1; y += 1) {
-        const row = y * width;
-        for (let index = rows[y]; index <= ends[y]; index += 1) {
-          if (mask[index] === 0) continue;
-          const bits =
-            mask[index - width - 1] |
-            (mask[index - width] << 1) |
-            (mask[index - width + 1] << 2) |
-            (mask[index + 1] << 3) |
-            (mask[index + width + 1] << 4) |
-            (mask[index + width] << 5) |
-            (mask[index + width - 1] << 6) |
-            (mask[index - 1] << 7);
-          const rule = THIN_RULES[bits];
-          if (!(rule & pass)) continue;
-          if (
-            rule & 4 &&
-            (preserveShortTips === true ||
-              (preserveShortTips &&
-                preserveShortTips(
-                  (y - 1) * inputWidth + index - row - 1,
-                  rule >> 3,
-                )))
-          )
-            continue;
-          remove.push(index);
-        }
+      for (const index of foreground) {
+        if (mask[index] === 0) continue;
+        const bits =
+          mask[index - width - 1] |
+          (mask[index - width] << 1) |
+          (mask[index - width + 1] << 2) |
+          (mask[index + 1] << 3) |
+          (mask[index + width + 1] << 4) |
+          (mask[index + width] << 5) |
+          (mask[index + width - 1] << 6) |
+          (mask[index - 1] << 7);
+        const rule = THIN_RULES[bits];
+        if (!(rule & pass)) continue;
+        if (
+          rule & 4 &&
+          (preserveShortTips === true ||
+            (preserveShortTips &&
+              preserveShortTips(
+                (Math.floor(index / width) - 1) * inputWidth +
+                  (index % width) -
+                  1,
+                rule >> 3,
+              )))
+        )
+          continue;
+        remove.push(index);
       }
       if (remove.length > 0) {
         changed = true;
@@ -334,6 +331,7 @@ export const walkSkeleton = (
   curveError = tolerance,
   maximumSpurLength = 0,
   supportsTip?: TipSupport,
+  preserveCircularOutlines = false,
 ): { subpaths: VectorSubpath[]; stats: CenterlineGraphStats } => {
   const pixels: number[] = [];
   const graph = new Uint8Array(mask.length);
@@ -399,6 +397,44 @@ export const walkSkeleton = (
     x: (index % width) + 0.5,
     y: Math.floor(index / width) + 0.5,
   });
+  if (preserveCircularOutlines) {
+    for (const ring of findCircularPerimeters(
+      graph,
+      pixels,
+      width,
+      offsets,
+      DEGREE,
+    )) {
+      const directions = ring.map((pixel, index) =>
+        offsets.indexOf(ring[(index + 1) % ring.length] - pixel),
+      );
+      if (
+        ring.some(
+          (pixel, index) => !(remaining[pixel] & (1 << directions[index])),
+        )
+      )
+        continue;
+      const start = root(ring[0]);
+      for (const [index, pixel] of ring.entries()) {
+        const direction = directions[index];
+        remaining[pixel] &= ~(1 << direction);
+        remaining[pixel + offsets[direction]] &= ~(1 << ((direction + 4) % 8));
+        const branch = root(pixel);
+        if (DEGREE[graph[pixel]] > 2 && branch !== start)
+          parents.set(branch, start);
+      }
+      cycles += 1;
+      const geometry = simplifyRing(
+        ring.map(point),
+        fitCurves ? tolerance / 2 : tolerance,
+      );
+      subpaths.push(
+        fitCurves
+          ? fitPointsToSubpath(geometry, true, Math.max(0.01, curveError / 2))
+          : pointsToSubpath(geometry, true),
+      );
+    }
+  }
   const follow = (start: number) => {
     const points = [point(start)];
     let current = start;
@@ -504,6 +540,7 @@ export const traceCenterlines = (
     tolerance,
     Math.min(4, options.turdSize),
     supportsTip,
+    evidence !== undefined,
   );
   for (const ring of recoveredRings) {
     const geometry = simplifyRing(

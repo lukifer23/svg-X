@@ -5,6 +5,7 @@ export interface ScanInkEvidence {
 }
 
 const TILE_SIZE = 16;
+const PAPER_OCCLUSION_DROP = 52;
 const MINIMUM_RUN = 3;
 const WIDE_MINIMUM_RUN = 4;
 const AXES = [
@@ -60,6 +61,22 @@ const estimatePaper = (tones: Uint8Array, width: number, height: number) => {
       }
       paper[row * columns + column] = tone;
     }
+  }
+  if (Math.max(width, height) >= 1500) {
+    // A dense junction can occupy an entire tile. Correct a deep dip
+    // in the paper estimate only when lighter tiles bracket it.
+    const corrected = paper.slice();
+    for (let row = 1; row < rows - 1; row += 1) {
+      for (let col = 1; col < columns - 1; col += 1) {
+        const i = row * columns + col;
+        const floor = Math.max(
+          Math.min(paper[i - 1], paper[i + 1]),
+          Math.min(paper[i - columns], paper[i + columns]),
+        );
+        if (floor - paper[i] >= PAPER_OCCLUSION_DROP) corrected[i] = floor;
+      }
+    }
+    return { paper: corrected, columns, rows };
   }
   return { paper, columns, rows };
 };
