@@ -11,12 +11,23 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 const execute = promisify(execFile);
+const availablePort = async () => {
+  const probe = createServer();
+  probe.listen(0, "127.0.0.1");
+  await once(probe, "listening");
+  const { port } = probe.address();
+  await promisify(probe.close.bind(probe))();
+  return String(port);
+};
+
 // The portable wrapper forwards arguments but does not relay Electron's stderr.
 const launchPortable = async (options, profile) => {
   const child = spawn(
@@ -30,6 +41,14 @@ const launchPortable = async (options, profile) => {
   });
   const activePort = path.join(profile, "DevToolsActivePort");
   let browser;
+  const stopProcessTree = async () => {
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      await execute("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+        timeout: 10_000,
+      });
+      await exited;
+    }
+  };
   const close = async () => {
     try {
       if (browser?.isConnected()) {
@@ -38,47 +57,55 @@ const launchPortable = async (options, profile) => {
       }
       const result = await Promise.race([
         exited.then(() => "exited"),
-        delay(5000, "timeout", { ref: false }),
+        delay(10_000, "timeout", { ref: false }),
       ]);
       if (result === "timeout")
         throw new Error("Portable EXE did not exit after closing the app");
     } finally {
-      if (child.pid && child.exitCode === null && child.signalCode === null) {
-        await execute("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
-          timeout: 10_000,
-        });
-        await exited;
-      }
+      await stopProcessTree();
     }
   };
   try {
-    let debuggingPort;
+    let endpoint;
     await expect
       .poll(
         async () => {
-          debuggingPort = await readFile(activePort, "utf8")
-            .then((value) => Number.parseInt(value, 10))
+          endpoint = await readFile(activePort, "utf8")
+            .then((value) => {
+              const [port, socket] = value.trim().split(/\r?\n/);
+              if (
+                /^\d+$/.test(port) &&
+                socket?.startsWith("/devtools/browser/")
+              )
+                return `ws://127.0.0.1:${port}${socket}`;
+              return null;
+            })
             .catch((error) => {
               if (error.code !== "ENOENT") throw error;
               return null;
             });
-          return debuggingPort;
+          return Boolean(endpoint);
         },
         { timeout: 60_000, message: "Portable EXE opened a DevTools endpoint" },
       )
-      .toBeGreaterThan(0);
-    browser = await chromium.connectOverCDP(
-      `http://127.0.0.1:${debuggingPort}`,
-    );
+      .toBe(true);
+    console.log("Connecting to the portable app's loopback DevTools socket");
+    browser = await chromium.connectOverCDP(endpoint, {
+      timeout: 60_000,
+      noDefaults: true,
+    });
     return {
       firstWindow: async () => {
         const [context] = browser.contexts();
-        return context.pages()[0] ?? context.waitForEvent("page");
+        return (
+          context.pages()[0] ??
+          context.waitForEvent("page", { timeout: 30_000 })
+        );
       },
       close,
     };
   } catch (error) {
-    await close().catch((closeError) => console.error(closeError));
+    await stopProcessTree().catch((closeError) => console.error(closeError));
     throw error;
   }
 };
@@ -186,7 +213,7 @@ if (!executablePath)
   );
 console.log(`Testing packaged executable: ${executablePath}`);
 
-const port = String(3900 + Math.floor(Math.random() * 500));
+const port = await availablePort();
 const lanEnabled = process.env.SVGX_TEST_LAN === "1";
 const userDataDir = await mkdtemp(path.join(os.tmpdir(), "svg-x-e2e-"));
 const nativeBatch = async (window) => {
@@ -325,6 +352,7 @@ const launchOptions = {
   timeout: 60_000,
 };
 let application;
+let failed = false;
 try {
   application =
     process.platform === "win32" && process.env.SVGX_TEST_PORTABLE === "1"
@@ -522,11 +550,24 @@ try {
   await expect(
     window.locator('svg path[fill-rule="evenodd"]').first(),
   ).toBeVisible();
+} catch (error) {
+  failed = true;
+  throw error;
 } finally {
   try {
     await application?.close();
+  } catch (error) {
+    if (!failed) throw error;
+    console.error(error);
   } finally {
-    await rm(userDataDir, { recursive: true, force: true });
+    await rm(userDataDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+    }).catch((error) => {
+      if (!failed) throw error;
+      console.error(error);
+    });
   }
 }
 
