@@ -7,38 +7,25 @@ const express = require("express");
 const {
   isAllowedNavigation,
   isSafeExternalUrl,
-  resolveBatchFile,
   validateText,
 } = require("./desktop/security.cjs");
 const { collectNetworkUrls } = require("./desktop/network.cjs");
-const { writeUniqueOutput } = require("./desktop/files.cjs");
-const { decodeBmp } = require("./desktop/bmp.cjs");
-const { batchResizeOptions, decodeToRgba } = require("./desktop/decode.cjs");
+const {
+  createBatchRun,
+  IMAGE_EXTENSIONS,
+  MAX_OUTPUT_BYTES,
+} = require("./desktop/batch.cjs");
 
 const expressApp = express();
 const grants = new Map();
 let batchRun;
-const IMAGE_EXTENSIONS = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".bmp",
-  ".webp",
-  ".avif",
-  ".heic",
-  ".heif",
-  ".tif",
-  ".tiff",
-]);
+let quitPending = false;
 const EXPORT_FORMATS = new Map([
   ["svg", { extension: "svg", name: "SVG Files" }],
   ["eps", { extension: "eps", name: "EPS Files" }],
   ["dxf", { extension: "dxf", name: "DXF Files" }],
   ["json", { extension: "json", name: "JSON Path Files" }],
 ]);
-const MAX_INPUT_BYTES = 50 * 1024 * 1024;
-const MAX_OUTPUT_BYTES = 25 * 1024 * 1024;
 const PORT = Number(process.env.SVGX_PORT || process.env.PORT || 3001);
 const LAN_ENABLED = process.env.SVGX_LAN === "1";
 const HOST = LAN_ENABLED ? "::" : "127.0.0.1";
@@ -111,18 +98,9 @@ const requireBatch = (runId) => {
   return batchRun;
 };
 
-const decodeInput = async (inputPath, resizeOptions) => {
-  const extension = path.extname(inputPath).toLowerCase();
-  if (!IMAGE_EXTENSIONS.has(extension))
-    throw new Error(`Unsupported image format: ${extension}`);
-  if (extension === ".bmp") {
-    const bmp = decodeBmp(await fs.promises.readFile(inputPath));
-    return decodeToRgba(
-      { raw: { pixels: bmp.pixels, width: bmp.width, height: bmp.height } },
-      resizeOptions,
-    );
-  }
-  return decodeToRgba({ path: inputPath }, resizeOptions);
+const finishBatch = async (run) => {
+  await run.finish();
+  if (batchRun === run) batchRun = undefined;
 };
 
 const setupIpc = () => {
@@ -157,58 +135,37 @@ const setupIpc = () => {
 
   ipcMain.handle("begin-batch", (event, { inputGrantId, outputGrantId }) => {
     requireRenderer(event);
+    if (quitPending) throw new Error("SVG-X is closing");
     if (batchRun) throw new Error("A batch is already running");
     const input = resolveGrant(inputGrantId, "input");
     const output = resolveGrant(outputGrantId, "output");
-    const id = crypto.randomUUID();
-    batchRun = { id, input, output, controller: new AbortController() };
-    return id;
+    batchRun = createBatchRun(input.root, output.root);
+    return batchRun.id;
   });
 
   ipcMain.handle("cancel-batch", (event, id) => {
     requireRenderer(event);
-    requireBatch(id).controller.abort();
+    requireBatch(id).cancel();
   });
 
   ipcMain.handle("finish-batch", (event, id) => {
     requireRenderer(event);
-    requireBatch(id).controller.abort();
-    batchRun = undefined;
+    return finishBatch(requireBatch(id));
   });
 
   ipcMain.handle(
     "read-batch-input",
-    async (event, { runId, fileId, resize, highestQuality }) => {
+    (event, { runId, fileId, resize, highestQuality }) => {
       requireRenderer(event);
-      const {
-        input: { root },
-        controller: { signal },
-      } = requireBatch(runId);
-      signal.throwIfAborted();
-      const input = await resolveBatchFile(root, fileId);
-      if (input.size > MAX_INPUT_BYTES)
-        throw new Error("Input exceeds the 50 MB limit");
-      signal.throwIfAborted();
-      const result = await decodeInput(
-        input.path,
-        batchResizeOptions(resize, highestQuality),
-      );
-      signal.throwIfAborted();
-      return result;
+      return requireBatch(runId).read({ fileId, resize, highestQuality });
     },
   );
 
   ipcMain.handle(
     "write-batch-output",
-    async (event, { runId, baseName, content }) => {
+    (event, { runId, baseName, content }) => {
       requireRenderer(event);
-      const {
-        output: { root },
-        controller: { signal },
-      } = requireBatch(runId);
-      signal.throwIfAborted();
-      validateText(content, MAX_OUTPUT_BYTES);
-      return writeUniqueOutput(root, baseName, "svg", content, signal);
+      return requireBatch(runId).write({ baseName, content });
     },
   );
 
@@ -322,8 +279,7 @@ const createWindow = async () => {
   mainWindow.on("closed", () => {
     mainWindow = null;
     grants.clear();
-    batchRun?.controller.abort();
-    batchRun = undefined;
+    if (batchRun) void finishBatch(batchRun);
   });
 };
 
@@ -348,6 +304,14 @@ app.whenReady().then(async () => {
     dialog.showErrorBox("SVG-X failed to start", error.message);
     app.quit();
   }
+});
+
+app.on("before-quit", (event) => {
+  if (!batchRun) return;
+  event.preventDefault();
+  if (quitPending) return;
+  quitPending = true;
+  void finishBatch(batchRun).then(() => app.quit());
 });
 
 app.on("window-all-closed", () => {

@@ -12,6 +12,12 @@ SVG-X has three execution boundaries: the React renderer, bundled conversion wor
 
 The versioned worker messages carry a job ID. A result is accepted only for the active ID. Aborting terminates and replaces the active worker, rejects queued work, and prevents stale completion from updating the UI.
 
+## Native batch lifecycle
+
+`desktop/batch.cjs` owns one abort signal and tracks every accepted read or write. The main process retains the run until its pending operations settle, including during a normal window close or quit. BMP file reads honor the signal. A Sharp decode already submitted drains in the native library, and cancellation discards its result before copying the RGBA buffer for IPC.
+
+Each SVG is staged in its output directory. Cancellation is checked before each exclusive publication attempt. A submitted hard link or exclusive-copy fallback can finish after cancellation. The returned filename records that successful write, and run completion waits for staging cleanup. Existing names always take precedence, including those created by other processes.
+
 ## Mode ownership
 
 - `bwTrace.ts`: Potrace adapter and compatibility preprocessing.

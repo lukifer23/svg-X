@@ -1,6 +1,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
+const { channel } = require("node:diagnostics_channel");
+
+const outputStaged = channel("svg-x:batch:output-staged");
+const publicationSubmitted = channel("svg-x:batch:publication-submitted");
 
 const normalizeOutputBase = (baseName) => {
   const normalized =
@@ -37,6 +41,7 @@ const writeUniqueOutput = async (
     } finally {
       await handle.close();
     }
+    if (outputStaged.hasSubscribers) outputStaged.publish({ staged });
     let useCopy = false;
     for (let suffix = 0; suffix < 100_000; suffix += 1) {
       const name = `${safeBase}${suffix === 0 ? "" : `-${suffix}`}.${safeExtension}`;
@@ -45,7 +50,10 @@ const writeUniqueOutput = async (
         signal?.throwIfAborted();
         if (!useCopy) {
           try {
-            await fs.promises.link(staged, target);
+            const publishing = fs.promises.link(staged, target);
+            if (publicationSubmitted.hasSubscribers)
+              publicationSubmitted.publish({ target });
+            await publishing;
           } catch (error) {
             if (
               !["ENOTSUP", "EOPNOTSUPP", "ENOSYS", "EPERM"].includes(error.code)
@@ -56,11 +64,14 @@ const writeUniqueOutput = async (
         }
         if (useCopy) {
           signal?.throwIfAborted();
-          await fs.promises.copyFile(
+          const publishing = fs.promises.copyFile(
             staged,
             target,
             fs.constants.COPYFILE_EXCL,
           );
+          if (publicationSubmitted.hasSubscribers)
+            publicationSubmitted.publish({ target });
+          await publishing;
         }
         return { success: true, name };
       } catch (error) {

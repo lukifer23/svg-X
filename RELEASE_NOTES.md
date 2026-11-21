@@ -27,6 +27,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Applied EXIF orientation on both decode paths so camera and phone photos vectorize upright in the browser and the desktop app.
 - Switched interactive uploads from a base64 data URL to an object URL, memoized the SVG preview derivations, and debounced settings persistence.
 - Added a stage benchmark harness (`npm run bench:pipeline`) with serialized-output hashes, plus tests for EXIF orientation, degenerate inputs, and band-parallel exactness.
+- Kept native batch sessions alive until pending decode and output cleanup settles, including on application quit. Added regression tests for cancellation at actual Sharp submission, SVG staging, and exclusive publication.
 
 ## Historical releases
 

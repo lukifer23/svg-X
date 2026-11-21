@@ -33,7 +33,7 @@ describe("atomic output reservation", () => {
     expect(normalizeOutputBase("a".repeat(500))).toHaveLength(240);
   });
 
-  test("aborting a staged write leaves the existing file and no partial output", async () => {
+  test("aborting at write start leaves the existing file and no partial output", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "svg-x-abort-"));
     directories.push(root);
     await writeFile(path.join(root, "art.svg"), "original");

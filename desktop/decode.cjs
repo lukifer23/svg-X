@@ -1,5 +1,7 @@
+const { channel } = require("node:diagnostics_channel");
 const sharp = require("sharp");
 
+const decodeSubmitted = channel("svg-x:batch:decode-submitted");
 // Inputs are capped at 100 million decoded pixels by the decoder itself.
 const MAX_INPUT_PIXELS = 100_000_000;
 
@@ -36,7 +38,8 @@ const batchResizeOptions = (resize, highestQuality) => {
  * already-decoded buffers (BMP). RAW sources carry no EXIF, so rotate() is a
  * no-op for them.
  */
-const decodeToRgba = async (source, resizeOptions) => {
+const decodeToRgba = async (source, resizeOptions, signal) => {
+  signal?.throwIfAborted();
   const pipeline = source.raw
     ? sharp(source.raw.pixels, {
         raw: {
@@ -51,10 +54,14 @@ const decodeToRgba = async (source, resizeOptions) => {
       });
   let oriented = pipeline.rotate();
   if (resizeOptions) oriented = oriented.resize(resizeOptions);
-  const { data, info } = await oriented
+  const decoding = oriented
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
+  if (signal && decodeSubmitted.hasSubscribers)
+    decodeSubmitted.publish({ signal });
+  const { data, info } = await decoding;
+  signal?.throwIfAborted();
   const pixels = data.buffer.slice(
     data.byteOffset,
     data.byteOffset + data.byteLength,

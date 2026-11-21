@@ -4,6 +4,8 @@
 
 The deterministic corpus covers topology, holes, saddle cases, transparency, color labels, centerline endpoints/junctions/cycles, cubic error bounds, export commands, settings migration, exact origin validation, IPv4/IPv6 discovery, atomic filename collisions, and guaranteed packaged input formats. It also covers EXIF orientation on the desktop decoder, degenerate inputs (1×1, all-transparent, single-color, two-color), and exact equivalence between the single-threaded and band-parallel quantizers.
 
+Native batch tests use the production run and real Sharp and filesystem operations. They cancel at three observed boundaries: after submitting an archival JPEG decode, after closing a fully written staging file, and after submitting an exclusive publication under a collision suffix. They check that the run drains, an unpublished file leaves no output, and a successful publication retains its exact bytes alongside the pre-existing file.
+
 `npm run bench:pipeline` profiles every color stage on representative fixtures, verifies that each fixture's serialized-SVG SHA-256 is unchanged, and writes `results/pipeline-<label>.json`. The human summary and its methodology live in `results/PERFORMANCE.md`. `src/core/parallelQuantize.test.ts` proves the band-parallel quantizer produces bit-identical labels, palette, and SVG across two to eight bands.
 
 Current absolute acceptance gates include:
