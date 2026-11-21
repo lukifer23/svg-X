@@ -1,5 +1,5 @@
 import { _electron as electron, chromium, expect } from "@playwright/test";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   access,
@@ -17,6 +17,72 @@ import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 
 const execute = promisify(execFile);
+// The portable wrapper forwards arguments but does not relay Electron's stderr.
+const launchPortable = async (options, profile) => {
+  const child = spawn(
+    options.executablePath,
+    ["--remote-debugging-port=0", ...options.args],
+    { env: options.env, stdio: "ignore" },
+  );
+  const exited = new Promise((resolve) => {
+    child.once("error", resolve);
+    child.once("exit", resolve);
+  });
+  const activePort = path.join(profile, "DevToolsActivePort");
+  let browser;
+  const close = async () => {
+    try {
+      if (browser?.isConnected()) {
+        const session = await browser.newBrowserCDPSession();
+        await session.send("Browser.close").catch(() => {});
+      }
+      const result = await Promise.race([
+        exited.then(() => "exited"),
+        delay(5000, "timeout", { ref: false }),
+      ]);
+      if (result === "timeout")
+        throw new Error("Portable EXE did not exit after closing the app");
+    } finally {
+      if (child.pid && child.exitCode === null && child.signalCode === null) {
+        await execute("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+          timeout: 10_000,
+        });
+        await exited;
+      }
+    }
+  };
+  try {
+    let debuggingPort;
+    await expect
+      .poll(
+        async () => {
+          debuggingPort = await readFile(activePort, "utf8")
+            .then((value) => Number.parseInt(value, 10))
+            .catch((error) => {
+              if (error.code !== "ENOENT") throw error;
+              return null;
+            });
+          return debuggingPort;
+        },
+        { timeout: 60_000, message: "Portable EXE opened a DevTools endpoint" },
+      )
+      .toBeGreaterThan(0);
+    browser = await chromium.connectOverCDP(
+      `http://127.0.0.1:${debuggingPort}`,
+    );
+    return {
+      firstWindow: async () => {
+        const [context] = browser.contexts();
+        return context.pages()[0] ?? context.waitForEvent("page");
+      },
+      close,
+    };
+  } catch (error) {
+    await close().catch((closeError) => console.error(closeError));
+    throw error;
+  }
+};
+
 const exportFixtures = [
   ["bw", "B&W", "wright-patent-scan.png"],
   ["color", "Color", "color-bicycle.png"],
@@ -90,6 +156,9 @@ const chooseDirectory = async (directory, title) => {
 };
 
 const packageRoot = process.env.SVGX_PACKAGE_ROOT || "release";
+const expectedVersion = JSON.parse(
+  await readFile(new URL("../package.json", import.meta.url), "utf8"),
+).version;
 const candidates =
   process.platform === "win32"
     ? [`${packageRoot}/win-unpacked/SVG-X.exe`]
@@ -100,7 +169,9 @@ const candidates =
         ]
       : [`${packageRoot}/linux-unpacked/svg-x`];
 let executablePath;
-for (const candidate of candidates) {
+for (const candidate of process.env.SVGX_PACKAGE_EXE
+  ? [process.env.SVGX_PACKAGE_EXE]
+  : candidates) {
   try {
     await access(candidate);
     executablePath = path.resolve(candidate);
@@ -110,7 +181,10 @@ for (const candidate of candidates) {
   }
 }
 if (!executablePath)
-  throw new Error(`Packaged executable not found in: ${candidates.join(", ")}`);
+  throw new Error(
+    `Packaged executable not found: ${process.env.SVGX_PACKAGE_EXE || candidates.join(", ")}`,
+  );
+console.log(`Testing packaged executable: ${executablePath}`);
 
 const port = String(3900 + Math.floor(Math.random() * 500));
 const lanEnabled = process.env.SVGX_TEST_LAN === "1";
@@ -244,12 +318,18 @@ const launchArgs = [`--user-data-dir=${userDataDir}`];
 if (process.platform === "linux") launchArgs.push("--no-sandbox");
 if (process.env.SVGX_GTK_PICKER === "1")
   launchArgs.push("--gtk-version=3", "--xdg-portal-required-version=999");
-const application = await electron.launch({
+const launchOptions = {
   executablePath,
   env: { ...process.env, SVGX_PORT: port, SVGX_LAN: lanEnabled ? "1" : "0" },
   args: launchArgs,
-});
+  timeout: 60_000,
+};
+let application;
 try {
+  application =
+    process.platform === "win32" && process.env.SVGX_TEST_PORTABLE === "1"
+      ? await launchPortable(launchOptions, userDataDir)
+      : await electron.launch(launchOptions);
   const window = await application.firstWindow();
   await window.waitForLoadState("domcontentloaded");
   if ((await window.title()) !== "SVG-X - Image to SVG Converter")
@@ -257,9 +337,9 @@ try {
   const desktopVersion = await window.evaluate(() =>
     window.electronAPI?.getAppVersion?.(),
   );
-  if (desktopVersion !== "1.4.0")
+  if (desktopVersion !== expectedVersion)
     throw new Error(
-      `Packaged preload bridge was unavailable: ${String(desktopVersion)}`,
+      `Expected packaged version ${expectedVersion}, received ${String(desktopVersion)}`,
     );
   const healthResponse = await fetch(`http://127.0.0.1:${port}/api/health`);
   const requiredHeaders = [
@@ -372,7 +452,9 @@ try {
   await window
     .getByRole("dialog", { name: "Batch conversion" })
     .waitFor({ state: "visible" });
-  if (process.env.SVGX_NATIVE_BATCH === "1") {
+  if (process.env.SVGX_NATIVE_BATCH === "1" && !application.evaluate) {
+    await nativeBatch(window);
+  } else if (process.env.SVGX_NATIVE_BATCH === "1") {
     let sampling = true;
     let peakWorkingSet = 0;
     let samples = 0;
@@ -417,6 +499,9 @@ try {
   }
   await window.keyboard.press("Escape");
   await batchTrigger.waitFor({ state: "visible" });
+  await window.getByRole("button", { name: "Open settings panel" }).click();
+  await window.getByRole("radio", { name: /Color/ }).click();
+  await window.getByRole("button", { name: "Close settings panel" }).click();
   await window
     .locator('input[type="file"]')
     .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
@@ -432,11 +517,15 @@ try {
     const errorText = await window.locator("body").innerText();
     throw new Error(`Packaged conversion failed:\n${errorText}`);
   }
-  if ((await window.locator("svg path").count()) < 1)
-    throw new Error("Packaged conversion produced no vector paths");
+  await expect(
+    window.locator('svg path[fill-rule="evenodd"]').first(),
+  ).toBeVisible();
 } finally {
-  await application.close();
-  await rm(userDataDir, { recursive: true, force: true });
+  try {
+    await application?.close();
+  } finally {
+    await rm(userDataDir, { recursive: true, force: true });
+  }
 }
 
 console.log(`Packaged SVG-X smoke passed on ${process.platform}`);

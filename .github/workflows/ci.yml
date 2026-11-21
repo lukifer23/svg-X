@@ -38,7 +38,7 @@ jobs:
           npm run test:export-consumers
 
   package:
-    name: Unsigned package (${{ matrix.os }})
+    name: Unsigned distribution (${{ matrix.os }})
     needs: validate
     strategy:
       fail-fast: false
@@ -55,24 +55,34 @@ jobs:
           cache: npm
       - run: npm install --global npm@12.0.2
       - run: npm ci
-      - run: npm run package:dir
-      - name: Install native picker driver
+      - run: npm run electron:build
+      - name: Install Linux distribution test dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xdotool
+        run: sudo apt-get update && sudo apt-get install -y xdotool libfuse2t64
       - name: Install Chromium for packaged LAN parity
         if: runner.os == 'Linux'
         run: npx --no-install playwright install --with-deps chromium
-      - name: Launch packaged application smoke test
+      - name: Validate Linux distribution files
+        if: runner.os == 'Linux'
+        env:
+          SVGX_NATIVE_BATCH: "1"
+          SVGX_GTK_PICKER: "1"
+          SVGX_TEST_LAN: "1"
+        run: xvfb-run --auto-servernum bash scripts/test-distribution.sh
+      - name: Validate macOS distribution files
+        if: runner.os == 'macOS'
         shell: bash
+        run: bash scripts/test-distribution.sh
+      - name: Validate Windows portable executable
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [ "${{ runner.os }}" = "Linux" ]; then
-            SVGX_NATIVE_BATCH=1 SVGX_GTK_PICKER=1 SVGX_TEST_LAN=1 DEBUG=pw:browser* ELECTRON_ENABLE_LOGGING=1 xvfb-run --auto-servernum npm run test:e2e:package
-          else
-            npm run test:e2e:package
-          fi
-      - name: Verify unpacked application exists
-        shell: bash
-        run: test -n "$(find release -maxdepth 3 -type f | head -n 1)"
+          $portable = @(Get-ChildItem release -File -Filter '*.exe')
+          if ($portable.Count -ne 1) { throw 'Expected one portable EXE in release/' }
+          Get-FileHash -Algorithm SHA256 -LiteralPath $portable[0].FullName
+          $env:SVGX_PACKAGE_EXE = $portable[0].FullName
+          $env:SVGX_TEST_PORTABLE = '1'
+          npm run test:e2e:package
 
   browser-e2e:
     name: Browser E2E

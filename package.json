@@ -14,6 +14,8 @@
   },
   "main": "main.cjs",
   "description": "Local-first B&W, color-region, and centerline vectorizer with SVG, EPS, DXF, and JSON export",
+  "homepage": "https://github.com/lukifer23/svg-X",
+  "desktopName": "svg-x.desktop",
   "author": "Luke S",
   "scripts": {
     "dev": "vite",
@@ -41,7 +43,7 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:3001 && electron .\"",
     "electron:direct": "electron .",
-    "electron:build": "vite build && electron-builder build --publish never",
+    "electron:build": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder build --publish never",
     "package:dir": "vite build && electron-builder --dir --publish never",
     "package:portable": "vite build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win portable --x64 --publish never"
   },
@@ -129,7 +131,11 @@
         "deb"
       ],
       "category": "Graphics",
+      "syncDesktopName": true,
       "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "maintainer": "SVG-X <56565060+lukifer23@users.noreply.github.com>"
     }
   },
   "allowScripts": {

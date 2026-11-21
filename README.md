@@ -163,7 +163,7 @@ Deterministic in-memory fixtures test exact color topology, canonical deduplicat
 | `npm run bench:pipeline`   | Per-stage pipeline profile and exactness hashes  |
 | `npm run test:e2e:web`     | Chromium, Firefox, and WebKit user flows         |
 | `npm run package:dir`      | Unsigned unpacked package for the current OS     |
-| `npm run test:e2e:package` | Launch and convert in the packaged app           |
+| `npm run test:e2e:package` | Launch and convert with a packaged executable    |
 | `npm run build`            | Production web bundle                            |
 | `npm run ci:check`         | Frozen local release gate plus dependency audit  |
 | `npm run audit:deps`       | Moderate-or-higher dependency vulnerability gate |
@@ -184,7 +184,11 @@ npm run package:dir
 npm run package:portable
 ```
 
-No recovery release has been published. Local and hosted unsigned package smoke tests are not claims that code signing, notarization, clean-machine installation, or a downloadable release has passed.
+The [distribution smoke tests](docs/TESTING.md#unsigned-distribution-files)
+exercise the Windows portable EXE, Linux AppImage and DEB, and macOS DMG and
+ZIP. Use GitHub Issues for support with Linux packages. The Debian maintainer
+field uses the project account's GitHub no-reply address as package metadata.
+Signing, notarization, and clean-device trust checks are separate release gates.
 
 ## Known limitations
 

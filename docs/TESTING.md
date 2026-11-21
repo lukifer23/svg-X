@@ -67,8 +67,9 @@ crossing strokes divide its interior in the full trace.
 Set `SVGX_QUALIFICATION_TIMING=1` and `SVGX_QUALIFICATION_REPORT` to a
 new file path to record raw timings and quality results on your machine.
 
-The Linux package job runs the real folder-to-folder batch scenario
-under Xvfb. To run it yourself, install `xdotool`, then run
+The Linux distribution job runs the real folder-to-folder batch scenario on
+the DEB-installed app under Xvfb. To run it on an unpacked build, install
+`xdotool`, then run
 `SVGX_NATIVE_BATCH=1 SVGX_GTK_PICKER=1 xvfb-run -a npm run test:e2e:package`
 after packaging. The test selects real directories in GTK and covers
 mixed formats, a truncated PNG, cancel and resume, collision handling,
@@ -89,7 +90,36 @@ desktop to exercise the real directory pickers. Select each temporary path
 printed by the harness. The smoke then cancels after some outputs complete,
 resumes pending work, validates every generated SVG, and checks that the
 pre-existing SVG and outputs completed before cancellation retain their
-original bytes. The default unattended smoke still runs on all CI platforms.
+original bytes.
+
+## Unsigned distribution files
+
+Build with `npm run electron:build` on the target OS. It writes distribution
+files to `release/` with publishing disabled. Start with an empty output
+directory and close any running SVG-X instance before testing.
+
+- **Windows x64** launches the actual portable EXE. On PowerShell set
+  `$env:SVGX_PACKAGE_EXE = (Resolve-Path .\release\SVG-X-1.4.0-x64.exe).Path`,
+  set `$env:SVGX_TEST_PORTABLE = '1'`, then run `npm run test:e2e:package`.
+  Use the filename from your build. The smoke connects to the packaged window
+  through a loopback DevTools port and waits for the launcher to exit.
+- **macOS** runs `bash scripts/test-distribution.sh`. It mounts the DMG
+  read-only, copies the app out, detaches the disk image, and launches the
+  copy. It then extracts the ZIP and launches that copy separately. CI covers
+  the architecture of its macOS runner.
+- **Ubuntu x64** runs `xvfb-run -a bash scripts/test-distribution.sh`.
+  Install the appropriate FUSE 2 compatibility library for your Ubuntu
+  version (`libfuse2` on 22.04, `libfuse2t64` on 24.04). The test runs the
+  AppImage through its FUSE runtime, installs the DEB with APT, verifies the
+  installed desktop launcher and conversion, purges the package, and checks
+  that the executable and launcher were removed. Use a disposable Linux
+  machine without an existing SVG-X installation. CI also runs the native
+  batch and same-host LAN checks from the installed DEB.
+
+CI logs SHA-256 hashes for all five files. Its GUI smoke verifies app startup,
+preload version, and real Color mode conversion. Signing, macOS notarization,
+user-facing trust prompts, and upgrade from a historical installer still
+require release qualification.
 
 ## Packaged LAN verification
 
