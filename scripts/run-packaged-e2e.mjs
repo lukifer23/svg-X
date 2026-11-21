@@ -497,8 +497,10 @@ try {
       `Native batch peak sampled aggregate working set: ${(peakWorkingSet / 1024).toFixed(1)} MiB (${samples} samples).`,
     );
   }
-  await window.keyboard.press("Escape");
-  await batchTrigger.waitFor({ state: "visible" });
+  await window.getByRole("button", { name: "Close batch conversion" }).click();
+  await expect(
+    window.getByRole("dialog", { name: "Batch conversion" }),
+  ).toBeHidden();
   await window.getByRole("button", { name: "Open settings panel" }).click();
   await window.getByRole("radio", { name: /Color/ }).click();
   await window.getByRole("button", { name: "Close settings panel" }).click();
