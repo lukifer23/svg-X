@@ -1,8 +1,21 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const fixture = path.resolve("tests/fixtures/review/color-bicycle.png");
+
+const renderedPreview = async (page: Page) => {
+  const preview = page.getByRole("img", { name: "Converted SVG preview" });
+  await expect(preview).toBeVisible();
+  return preview.evaluate(async (image: HTMLImageElement) => {
+    await image.decode();
+    if (!image.naturalWidth || !image.naturalHeight)
+      throw new Error("SVG preview did not decode");
+    return (await fetch(image.currentSrc)).text();
+  });
+};
 
 test("uploads, converts, changes mode, and exports real geometry", async ({
   page,
@@ -12,15 +25,49 @@ test("uploads, converts, changes mode, and exports real geometry", async ({
   await page.getByRole("button", { name: /Drop zone/ }).click();
   await (await chooser).setFiles(fixture);
   await expect(page.getByText("Conversion complete!")).toBeVisible();
-  await expect(page.locator("svg path").first()).toBeVisible();
+  expect(await renderedPreview(page)).toContain("<path");
 
-  await page.getByRole("button", { name: "Open settings panel" }).click();
-  await page.getByRole("radio", { name: /Color/ }).click();
-  await page.getByRole("button", { name: "Apply current settings" }).click();
+  const modes = page.getByRole("group", { name: "Conversion mode" });
+  await modes.getByRole("button", { name: "Color", exact: true }).click();
   await expect(page.getByText("Conversion complete!")).toBeVisible();
-  await expect(
-    page.locator('svg path[fill-rule="evenodd"]').first(),
-  ).toBeVisible();
+  await expect(modes.getByRole("button", { name: "Color" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const polygon = await renderedPreview(page);
+  expect(polygon).toContain('fill-rule="evenodd"');
+  expect(polygon).not.toMatch(/<path[^>]*\bd="[^"]*[Cc]/);
+
+  await page
+    .getByRole("combobox", { name: "Color path style" })
+    .selectOption("bezier");
+  await expect(page.getByText("Conversion complete!")).toBeVisible();
+  const svg = await renderedPreview(page);
+  expect(svg).toContain('fill-rule="evenodd"');
+  expect(svg).toMatch(/<path[^>]*\bd="[^"]*[Cc]/);
+  for (const variant of [polygon, svg]) {
+    const distinctFills = await page.evaluate((markup) => {
+      const parsed = new DOMParser().parseFromString(markup, "image/svg+xml");
+      return new Set(
+        [...parsed.querySelectorAll("path[fill]")].map((path) =>
+          path.getAttribute("fill"),
+        ),
+      ).size;
+    }, variant);
+    expect(distinctFills).toBeGreaterThanOrEqual(4);
+  }
+
+  const sourceTrigger = page.getByRole("button", { name: "View SVG source" });
+  await sourceTrigger.focus();
+  await sourceTrigger.press("Enter");
+  const sourceDialog = page.getByRole("dialog", { name: "SVG Source" });
+  const closeSource = sourceDialog.getByRole("button", { name: /Close SVG/ });
+  await expect(closeSource).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(sourceDialog.getByLabel("SVG markup")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(sourceDialog).toBeHidden();
+  await expect(sourceTrigger).toBeFocused();
 
   const logsTrigger = page.getByRole("button", {
     name: "View Processing Logs",
@@ -47,9 +94,23 @@ test("uploads, converts, changes mode, and exports real geometry", async ({
 
   const svgDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download SVG" }).click();
-  expect((await svgDownload).suggestedFilename()).toMatch(/\.svg$/);
+  const file = await svgDownload;
+  expect(file.suggestedFilename()).toMatch(/\.svg$/);
+  expect(await readFile(await file.path(), "utf8")).toBe(svg);
 
-  await page.getByRole("button", { name: "More export formats" }).click();
+  const exportTrigger = page.getByRole("button", {
+    name: "More export formats",
+  });
+  await exportTrigger.focus();
+  await exportTrigger.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "SVG", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(exportTrigger).toBeFocused();
+  await expect(exportTrigger).toHaveAttribute("aria-expanded", "false");
+  await exportTrigger.click();
   const jsonDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: /JSON/ }).click();
   expect((await jsonDownload).suggestedFilename()).toMatch(/\.json$/);
@@ -78,8 +139,9 @@ test("traces archived linework as stroked curves through the centerline controls
       path.resolve("tests/fixtures/review/wright-patent-scan.png"),
     );
   await expect(page.getByText("Conversion complete!")).toBeVisible();
-  const strokes = page.locator('svg path[fill="none"][stroke-linecap="round"]');
-  await expect(strokes).toHaveAttribute("d", /[Cc]/);
+  const svg = await renderedPreview(page);
+  expect(svg).toContain('stroke-linecap="round"');
+  expect(svg).toMatch(/<path[^>]*\bd="[^"]*[Cc]/);
 });
 
 test("batch and interactive color workers produce the same photo SVG", async ({
@@ -176,5 +238,31 @@ test("cancels active production work and recovers for the next conversion", asyn
   await expect(page.getByText("Conversion complete!")).toBeVisible({
     timeout: 60_000,
   });
-  await expect(page.locator("svg path").first()).toBeVisible();
+  expect(await renderedPreview(page)).toContain("<path");
+});
+
+test("discarding an in-flight upload restores the clean upload screen", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Open settings panel" }).click();
+  await page.getByRole("radio", { name: /Color/ }).click();
+  await page.getByRole("button", { name: "Close settings panel" }).click();
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(
+      path.resolve("tests/fixtures/review/realistic-still-life.png"),
+    );
+  await expect(
+    page.getByRole("button", { name: "Cancel Processing" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Upload New Image" })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await expect(page.getByRole("button", { name: /Drop zone/ })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "View Processing Logs" }),
+  ).toBeHidden();
+  await expect(page.getByText("Conversion cancelled.")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Download SVG" })).toBeHidden();
 });

@@ -64,15 +64,17 @@ interface XY {
   x: number;
   y: number;
 }
-const pointToLineDistance = (point: XY, start: XY, end: XY): number => {
+const pointToChordDistance = (point: XY, start: XY, end: XY): number => {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  if (dx === 0 && dy === 0)
-    return Math.hypot(point.x - start.x, point.y - start.y);
-  return (
-    Math.abs(dy * point.x - dx * point.y + end.x * start.y - end.y * start.x) /
-    Math.hypot(dx, dy)
-  );
+  const px = point.x - start.x;
+  const py = point.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return Math.hypot(px, py);
+  const projection = (px * dx + py * dy) / lengthSquared;
+  if (projection <= 0) return Math.hypot(px, py);
+  if (projection >= 1) return Math.hypot(point.x - end.x, point.y - end.y);
+  return Math.abs(dy * px - dx * py) / Math.sqrt(lengthSquared);
 };
 
 const splitCubic = (
@@ -111,8 +113,8 @@ export const flattenCubicAdaptive = (
 ): XY[] => {
   const end = { x: command.x, y: command.y };
   const flatness = Math.max(
-    pointToLineDistance({ x: command.x1, y: command.y1 }, start, end),
-    pointToLineDistance({ x: command.x2, y: command.y2 }, start, end),
+    pointToChordDistance({ x: command.x1, y: command.y1 }, start, end),
+    pointToChordDistance({ x: command.x2, y: command.y2 }, start, end),
   );
   if (flatness <= tolerance || depth >= 16) return [end];
   const [split, left, right] = splitCubic(start, command);

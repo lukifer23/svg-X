@@ -64,6 +64,16 @@ describe("VectorDocument exports", () => {
     expect(fine[fine.length - 1]).toEqual({ x: 10, y: 0 });
   });
 
+  test("retains collinear overshoot on both sides of a DXF chord", () => {
+    const vertices = flattenCubicAdaptive(
+      { x: 0, y: 0 },
+      { type: "C", x1: 40, y1: 0, x2: -30, y2: 0, x: 10, y: 0 },
+    );
+    expect(Math.max(...vertices.map(({ x }) => x))).toBeGreaterThan(12);
+    expect(Math.min(...vertices.map(({ x }) => x))).toBeLessThan(-2);
+    expect(vertices[vertices.length - 1]).toEqual({ x: 10, y: 0 });
+  });
+
   test("composites EPS opacity deterministically over white", () => {
     const eps = serializeEps({
       ...document,

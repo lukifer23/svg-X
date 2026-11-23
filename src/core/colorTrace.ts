@@ -306,8 +306,9 @@ const splitWuBox = (box: WuBox, moments: WuMoments): [WuBox, WuBox] | null => {
         wuVolume(right, moments.weight) <= 0
       )
         continue;
+      // The parent variance is fixed. Minimize the error left in the children.
       const score = wuVariance(left, moments) + wuVariance(right, moments);
-      if (!best || score > best.score) best = { axis, cut, score };
+      if (!best || score < best.score) best = { axis, cut, score };
     }
   }
   if (!best) return null;
@@ -332,12 +333,16 @@ export const wuVarianceSeeds = (
     const candidates = boxes
       .map((box, index) => ({ index, variance: wuVariance(box, moments) }))
       .sort((left, right) => right.variance - left.variance);
-    const boxIndex = candidates[0]?.index ?? -1;
-    if (boxIndex < 0 || candidates[0].variance <= 0) break;
-    const split = splitWuBox(boxes[boxIndex], moments);
-    if (!split) break;
-    const [left, right] = split;
-    boxes.splice(boxIndex, 1, left, right);
+    let didSplit = false;
+    for (const { index, variance } of candidates) {
+      if (variance <= 0) break;
+      const split = splitWuBox(boxes[index], moments);
+      if (!split) continue;
+      boxes.splice(index, 1, ...split);
+      didSplit = true;
+      break;
+    }
+    if (!didSplit) break;
   }
   return boxes.map((box) => {
     const count = wuVolume(box, moments.weight) || 1;
@@ -744,12 +749,25 @@ export const mergeComponentsToBudget = (
 const rgb = (color: PaletteColor): string =>
   `rgb(${Math.round(color.r)},${Math.round(color.g)},${Math.round(color.blue)})`;
 
+const canonicalPaint = (shape: VectorShape): string =>
+  `${shape.fill}|${shape.stroke}|${shape.strokeWidth}|${shape.opacity}|${shape.fillRule}`;
+
 export const canonicalShape = (shape: VectorShape): string =>
-  `${shape.fill}|${shape.stroke}|${shape.strokeWidth}|${shape.opacity}|${shape.fillRule}|${shape.subpaths.map((path) => `${path.closed}:${path.commands.map((command) => JSON.stringify(command)).join(",")}`).join(";")}`;
+  `${canonicalPaint(shape)}|${shape.subpaths.map((path) => `${path.closed}:${path.commands.map((command) => JSON.stringify(command)).join(",")}`).join(";")}`;
 
 export const deduplicateShapes = (shapes: VectorShape[]): VectorShape[] => {
+  const seenPaint = new Set<string>();
+  const repeatedPaint = new Set<string>();
+  for (const shape of shapes) {
+    const paint = canonicalPaint(shape);
+    if (seenPaint.has(paint)) repeatedPaint.add(paint);
+    else seenPaint.add(paint);
+  }
+  if (repeatedPaint.size === 0) return shapes.slice();
+
   const buckets = new Map<number, string[]>();
   return shapes.filter((shape) => {
+    if (!repeatedPaint.has(canonicalPaint(shape))) return true;
     const value = canonicalShape(shape);
     let hash = 2166136261;
     for (let index = 0; index < value.length; index += 1)

@@ -38,29 +38,33 @@ The default local URL is `http://localhost:3001`. Batch input, Sharp-backed AVIF
 
 ## Conversion modes
 
+Choose **B&W**, **Color**, or **Centerline** from the main screen. For Color,
+switch between **Polygon** and **Fitted Bézier** there. Both styles use the
+same palette. Settings offers the palette size, fill strategy, and path budget.
+
 ### B&W
 
 The renderer decodes the source once, composites transparency over white, applies deterministic scaling, and transfers RGBA pixels to a module worker. Potrace produces compound filled paths with an even-odd fill rule. Threshold, turn policy, speckle suppression, corner behavior, and curve optimization remain configurable.
 
 ### Color
 
-Color mode does not trace nested luminance masks. It:
+Color mode traces regions of an ordered palette.
 
-1. Builds Wu cumulative-moment palette seeds and refines them in OKLab.
+1. Builds Wu cumulative-moment palette seeds by minimizing variance within each split, then refines them in OKLab.
 2. Assigns each raster pixel to exactly one palette label.
 3. Reassigns small connected components before extracting oriented boundaries from the pixel grid.
 4. Groups all rings for a paint into an even-odd compound shape.
 5. Simplifies and optionally fits each shared boundary once. Adjacent regions use the same coordinates in opposite directions, with fixed junctions and image corners.
 
-Geometry is deduplicated only when canonical commands, paint, stroke, and opacity are all equal. A hash is only an index; canonical equality is still checked.
+Geometry is deduplicated only when canonical commands, paint, stroke, and opacity are all equal. Hash matches are checked for canonical equality.
+
+Color defaults to eight colors and polygon paths. Fitted Bézier is opt-in because it can increase file size on detailed artwork. The path setting is a complexity target. Adjacent islands merge by perceptual proximity, and disconnected artwork is retained. See the [color fidelity measurements](results/COLOR-FIDELITY.md).
 
 ### Centerline
 
 Centerline mode thresholds the raster, cleans small weak marks, thins with Zhang–Suen rules, and walks the skeleton as a graph. Speckle Suppression keeps small high-contrast strokes and uses raster width to protect narrow, strong tips while trimming short spurs. Set it to zero to disable cleanup when keeping faint details matters most. Optional Bézier fitting shares a subpixel error budget with simplification.
 
 Turn on **Recover faded scan lines** for shaded or washed-out line drawings. It estimates local paper tone, looks for directional stroke support, and can reconnect short breaks when ink remains across the gap. At 1,500 working pixels or more on the longest side, it lightly smooths grain and checks wider stroke flanks on the full-resolution grid. It can also close a faded round stroke or keep an existing circular outline together where other strokes cross it. Leave it off for ordinary artwork and compare both modes on textured paper. See the [relay and receiver benchmark](results/ARCHIVAL-PERIMETERS.md), [full-resolution benchmark](results/ARCHIVAL-SCALE.md), and [Velocipede rim benchmark](results/VELOCIPEDE-RIM.md).
-
-Its default eight-color polygon output prioritizes sharpness and fidelity; bounded Bezier fitting is an explicit opt-in because it can increase file size on detailed artwork. The path setting is a complexity target: adjacent islands are merged by perceptual proximity, while disconnected artwork is never silently discarded.
 
 ## Authoritative vector model
 
@@ -115,6 +119,10 @@ The same-origin endpoints are:
 - `/api/network-info`
 
 Without `SVGX_LAN=1`, network URLs are not advertised. Opt-in LAN mode binds dual-stack IPv6 where the platform permits it and advertises IPv4 and bracketed IPv6 browser URLs. Discovery skips scoped and link-local IPv6 addresses. The packaged server falls back to IPv4 on hosts without IPv6 socket support. Set `SVGX_HOST=0.0.0.0` for the Vite development server on an IPv4-only host. Override the port with `SVGX_PORT`. The app surfaces port conflicts at startup.
+
+Desktop development uses the selected port for the renderer and the next port
+for the local network service. The browser-only `npm run dev` command does
+not start that service.
 
 For a packaged build, set the same variable before launching the app and open an advertised network URL on the intended LAN device. The [LAN verification guide](docs/TESTING.md#packaged-lan-verification) covers same-host export parity and the second-device check. Browser clients use local downloads. Native batch and filesystem operations require the desktop window.
 
@@ -193,7 +201,7 @@ artifact verification. Clean-device trust checks are a separate release gate.
 
 ## Known limitations
 
-- DXF uses sampled polylines rather than native splines.
+- DXF exports curves as sampled polylines. Sampling keeps significant turns that extend beyond the chord endpoints.
 - Color geometry follows the shared pixel grid. Neighboring shapes have coincident boundaries. SVG renderers that antialias each fill separately can still show faint coverage artifacts at some scales.
 - Color count is bounded to protect output complexity; photographic input is an approximation, not lossless vectorization.
 - White alpha compositing is currently fixed for compatibility.

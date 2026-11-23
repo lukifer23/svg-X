@@ -12,6 +12,9 @@ Electron uses context isolation, renderer sandboxing, no Node integration, top-f
 
 The browser entry point carries a restrictive Content Security Policy. The packaged same-origin server also sends CSP, opener/resource isolation, no-referrer, no-sniff, and permission-policy headers. Module workers and local blob/data image previews are explicitly allowed; objects, forms, framing, and third-party scripts are not.
 
+The conversion preview displays the generated SVG through an image element
+with a local blob URL. Source view displays the same markup as text.
+
 Native export formats are allowlisted (`svg`, `eps`, `dxf`, and `json`). Unknown values are rejected rather than silently treated as SVG.
 
 ## LAN mode

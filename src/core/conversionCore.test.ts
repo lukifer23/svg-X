@@ -49,6 +49,30 @@ const rgba = (
 };
 
 describe("color region topology", () => {
+  test("Wu seeds select the split that leaves the least within-group variance", () => {
+    const grays = [16, 24, 200, 208];
+    const pixels = rgba(grays.length, 1, (x) => {
+      const value = grays[x];
+      return [value, value, value, 255];
+    });
+    expect(
+      wuVarianceSeeds(pixels, 2).map(({ r, count }) => [r, count]),
+    ).toEqual([
+      [20, 2],
+      [204, 2],
+    ]);
+  });
+
+  test("an unsplittable high-variance Wu bin cannot block other splits", () => {
+    const pixels = rgba(4098, 1, (x) => {
+      const value = x < 2 ? 16 + x * 8 : x % 2 ? 247 : 240;
+      return [value, value, value, 255];
+    });
+    expect(wuVarianceSeeds(pixels, 3).map(({ r }) => r)).toEqual([
+      16, 24, 243.5,
+    ]);
+  });
+
   test("keeps exact palette assignments across RGB cache collisions and palette changes", () => {
     // Grays 255 and 39 share a cache slot for this input size.
     const shades = [0, 255, 39, ...Array.from({ length: 23 }, (_, i) => i + 1)];

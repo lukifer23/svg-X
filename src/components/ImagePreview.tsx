@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { Image as ImageIcon, Code, X } from "lucide-react";
-import type { ConversionDiagnostics } from "../core/vectorDocument";
+import type {
+  ConversionDiagnostics,
+  VectorDocument,
+} from "../core/vectorDocument";
+import ModalFrame from "./ModalFrame";
 
 interface ImagePreviewProps {
   image: string;
   svg: string | null;
   status: string;
   progressSteps: Record<string, string>;
+  dimensions?: Pick<VectorDocument, "width" | "height"> | null;
   diagnostics?: ConversionDiagnostics | null;
   isMobile?: boolean;
 }
@@ -28,118 +33,78 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 };
 
-/** Parse width × height from an SVG's viewBox or width/height attributes.
- *  Handles both space-separated ("0 0 500 500") and comma-separated ("0,0,500,500") viewBox values. */
-function parseSvgDimensions(svgStr: string): { w: number; h: number } | null {
-  const vbMatch = svgStr.match(/viewBox="([^"]*)"/);
-  if (vbMatch) {
-    const parts = vbMatch[1]
-      .trim()
-      .split(/[\s,]+/)
-      .map(Number);
-    if (parts.length >= 4 && !parts.some(isNaN)) {
-      return { w: Math.round(parts[2]), h: Math.round(parts[3]) };
-    }
-  }
-  const wMatch = svgStr.match(/\bwidth="(\d+(?:\.\d+)?)"/);
-  const hMatch = svgStr.match(/\bheight="(\d+(?:\.\d+)?)"/);
-  if (wMatch && hMatch)
-    return {
-      w: Math.round(parseFloat(wMatch[1])),
-      h: Math.round(parseFloat(hMatch[1])),
-    };
-  return null;
-}
-
-/**
- * Basic SVG sanitization: strips <script> elements and on* event attributes.
- * Not a full XSS sanitizer — just defense-in-depth for palette-derived content.
- */
-function sanitizeSvg(svgStr: string): string {
-  return svgStr
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/\bon\w+\s*=/gi, "data-removed=");
-}
-
 const ImagePreview: React.FC<ImagePreviewProps> = ({
   image,
   svg,
   status,
   progressSteps,
+  dimensions,
   diagnostics,
   isMobile = false,
 }) => {
   const [imgDimensions, setImgDimensions] = useState<{
-    w: number;
-    h: number;
+    source: string;
+    width: number;
+    height: number;
   } | null>(null);
   const [showSource, setShowSource] = useState(false);
   const progressPercent = STATUS_FLOOR[status] ?? 0;
-  const progressDetails = "";
-
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () =>
-      setImgDimensions({ w: img.naturalWidth, h: img.naturalHeight });
-    img.src = image;
-  }, [image]);
-
+  const closeSource = useCallback(() => setShowSource(false), []);
   const isProcessing =
-    status !== "idle" && status !== "done" && status !== "error";
+    status !== "idle" &&
+    status !== "done" &&
+    status !== "error" &&
+    status !== "cancelled";
   const statusLabel = progressSteps[status] ?? status;
-
-  // Deriving these scans the whole SVG string; keep them off the render path
-  // for every unrelated state change (progress ticks, toasts, resizes).
-  const { svgForDisplay, svgSize, svgDimensions } = useMemo(() => {
-    if (!svg)
-      return {
-        svgForDisplay: null,
-        svgSize: null,
-        svgDimensions: null,
-      };
-    return {
-      svgForDisplay: sanitizeSvg(svg).replace(
-        /^(<svg\b)/,
-        '$1 preserveAspectRatio="xMidYMid meet"',
-      ),
-      svgSize: formatBytes(new Blob([svg]).size),
-      svgDimensions: parseSvgDimensions(svg),
-    };
-  }, [svg]);
+  const svgBlob = useMemo(
+    () => (svg ? new Blob([svg], { type: "image/svg+xml" }) : null),
+    [svg],
+  );
+  const svgSize = svgBlob ? formatBytes(svgBlob.size) : null;
+  const attachPreview = useCallback(
+    (element: HTMLImageElement | null) => {
+      if (!element || !svgBlob) return;
+      const url = URL.createObjectURL(svgBlob);
+      element.src = url;
+      return () => URL.revokeObjectURL(url);
+    },
+    [svgBlob],
+  );
 
   return (
     <>
       {showSource && svg && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="SVG Source"
+        <ModalFrame
+          label="SVG Source"
+          onClose={closeSource}
+          panelClassName="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col"
         >
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-3 border-b">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Code className="w-4 h-4 text-blue-600" />
-                SVG Source
-                {svgSize && (
-                  <span className="text-xs text-gray-400 font-normal font-mono">
-                    {svgSize}
-                  </span>
-                )}
-              </h3>
-              <button
-                onClick={() => setShowSource(false)}
-                className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-                aria-label="Close SVG source view"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <pre className="flex-1 overflow-auto p-4 text-xs font-mono text-gray-700 bg-gray-50 rounded-b-lg whitespace-pre-wrap break-all">
-              {svg}
-            </pre>
+          <div className="flex items-center justify-between p-3 border-b">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <Code className="w-4 h-4 text-blue-600" />
+              SVG Source
+              {svgSize && (
+                <span className="text-xs text-gray-400 font-normal font-mono">
+                  {svgSize}
+                </span>
+              )}
+            </h3>
+            <button
+              onClick={closeSource}
+              className="min-h-11 min-w-11 grid place-items-center rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
+              aria-label="Close SVG source view"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </div>
+          <pre
+            tabIndex={0}
+            aria-label="SVG markup"
+            className="flex-1 overflow-auto p-4 text-xs font-mono text-gray-700 bg-gray-50 rounded-b-lg whitespace-pre-wrap break-all"
+          >
+            {svg}
+          </pre>
+        </ModalFrame>
       )}
 
       <div className="panel p-3 sm:p-6 animate-slide-in-bottom">
@@ -163,17 +128,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                   {statusLabel}
                 </span>
               </div>
-              {(progressDetails || progressPercent > 0) && (
-                <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
-                  {progressDetails && (
-                    <span className="truncate">{progressDetails}</span>
-                  )}
-                  {progressPercent > 0 && (
-                    <span className="font-mono font-medium text-blue-600 flex-shrink-0">
-                      {progressPercent}%
-                    </span>
-                  )}
-                </div>
+              {progressPercent > 0 && (
+                <p className="mt-1 text-xs font-mono font-medium text-blue-600">
+                  {progressPercent}%
+                </p>
               )}
               <div className="mt-2 sm:mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
@@ -189,9 +147,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <p className="text-xs sm:text-sm text-gray-600 font-medium">
                 Original Image
               </p>
-              {imgDimensions && (
+              {imgDimensions?.source === image && (
                 <span className="text-xs text-gray-400 font-mono">
-                  {imgDimensions.w} × {imgDimensions.h}
+                  {imgDimensions.width} × {imgDimensions.height}
                 </span>
               )}
             </div>
@@ -199,6 +157,13 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <img
                 src={image}
                 alt="Original"
+                onLoad={({ currentTarget }) =>
+                  setImgDimensions({
+                    source: image,
+                    width: currentTarget.naturalWidth,
+                    height: currentTarget.naturalHeight,
+                  })
+                }
                 className="w-full h-auto object-contain max-h-[200px] sm:max-h-[300px] transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -211,12 +176,14 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
           >
             <div className="flex items-baseline justify-between mb-1 sm:mb-2">
               <p className="text-xs sm:text-sm text-gray-600 font-medium">
-                SVG Output
+                {svg && status !== "done"
+                  ? "Previous SVG Output"
+                  : "SVG Output"}
               </p>
               <div className="flex items-center gap-2">
-                {svgDimensions && status === "done" && (
+                {dimensions && status === "done" && (
                   <span className="text-xs text-gray-400 font-mono">
-                    {svgDimensions.w} × {svgDimensions.h}
+                    {dimensions.width} × {dimensions.height}
                   </span>
                 )}
                 {svgSize && status === "done" && (
@@ -237,11 +204,12 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                 )}
               </div>
             </div>
-            {svgForDisplay ? (
+            {svgBlob ? (
               <div className="bg-white border border-gray-200 rounded-lg p-2 sm:p-4 w-full h-[200px] sm:h-[300px] flex items-center justify-center shadow-soft hover:shadow-md transition-all duration-300 overflow-hidden">
-                <div
-                  dangerouslySetInnerHTML={{ __html: svgForDisplay }}
-                  className="max-w-full max-h-full w-full h-full flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:max-w-full [&>svg]:max-h-full"
+                <img
+                  ref={attachPreview}
+                  alt="Converted SVG preview"
+                  className="w-full h-full object-contain"
                 />
               </div>
             ) : (
@@ -251,7 +219,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                     ? "Upload an image to see the SVG output"
                     : status === "error"
                       ? "Conversion failed — see error above"
-                      : "Processing..."}
+                      : status === "cancelled"
+                        ? "Ready to re-process"
+                        : "Processing..."}
                 </span>
               </div>
             )}
@@ -273,9 +243,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                 ? "Conversion completed with fidelity warnings"
                 : "Conversion complete!"}
             </p>
-            <p className="mt-1 text-xs">
-              Your SVG is ready to download{svgSize ? ` (${svgSize})` : ""}.
-            </p>
+            <p className="mt-1 text-xs">Your SVG is ready to download.</p>
             {diagnostics?.warnings.map((warning) => (
               <p className="mt-1 text-xs" key={warning}>
                 {warning}

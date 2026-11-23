@@ -31,7 +31,14 @@ type ConversionStatus =
   | "colorProcessing"
   | "optimizing"
   | "done"
+  | "cancelled"
   | "error";
+
+const tracingModes = [
+  { value: "bw", label: "B&W" },
+  { value: "color", label: "Color" },
+  { value: "centerline", label: "Centerline" },
+] as const;
 
 interface LogEntry {
   id: string;
@@ -40,13 +47,6 @@ interface LogEntry {
   isError: boolean;
   timestamp: string;
 }
-
-const handleConversionError = (err: unknown): string => {
-  const errorMsg = err instanceof Error ? err.message : String(err);
-  return err instanceof DOMException && err.name === "AbortError"
-    ? "Conversion cancelled."
-    : errorMsg;
-};
 
 function App() {
   const [image, setImage] = useState<string | null>(null);
@@ -78,7 +78,6 @@ function App() {
   const electronWarningTimer = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const activeRequestId = useRef(0);
   const activeAbortController = useRef<AbortController | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const processingLogsTriggerRef = useRef<HTMLButtonElement>(null);
@@ -102,6 +101,9 @@ function App() {
 
   useEffect(
     () => () => {
+      const pending = activeAbortController.current;
+      activeAbortController.current = null;
+      pending?.abort();
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
     },
     [],
@@ -146,43 +148,75 @@ function App() {
     setIsComplexMode(false);
   }, []);
 
-  const applyParams = useCallback(
-    async (params: TracingParams) => {
-      if (!image) return;
-      const requestId = ++activeRequestId.current;
-      activeAbortController.current?.abort();
-      const abortController = new AbortController();
-      activeAbortController.current = abortController;
+  const runConversion = useCallback(
+    async (source: string, params: TracingParams) => {
+      const previous = activeAbortController.current;
+      const controller = new AbortController();
+      activeAbortController.current = controller;
+      previous?.abort();
+      const isCurrent = () => activeAbortController.current === controller;
       setProcessingLogs([]);
+      setError("");
+      setStatus("analyzing");
       try {
-        setStatus("analyzing");
-        setError("");
-        // Network simplification is now applied inside processImage automatically
         const result = await processImageDetailed(
-          image,
+          source,
           params,
-          (newStatus) => setStatus(newStatus as ConversionStatus),
-          handleLogEntry,
-          abortController.signal,
+          (phase) => {
+            if (isCurrent() && !controller.signal.aborted)
+              setStatus(phase as ConversionStatus);
+          },
+          (...entry) => {
+            if (isCurrent() && !controller.signal.aborted)
+              handleLogEntry(...entry);
+          },
+          controller.signal,
         );
-        if (requestId !== activeRequestId.current) return;
+        if (!isCurrent()) return;
+        controller.signal.throwIfAborted();
         setSvg(result.svg);
         setVectorDocument(result.document);
         setDiagnostics(result.diagnostics);
         setStatus("done");
       } catch (err) {
-        if (requestId !== activeRequestId.current) return;
-        setError(handleConversionError(err));
+        if (!isCurrent()) return;
+        if (
+          controller.signal.aborted ||
+          (err instanceof DOMException && err.name === "AbortError")
+        ) {
+          setStatus("cancelled");
+          return;
+        }
+        setError(err instanceof Error ? err.message : String(err));
         setStatus("error");
+      } finally {
+        if (isCurrent()) activeAbortController.current = null;
       }
     },
-    [image, handleLogEntry],
+    [handleLogEntry],
+  );
+
+  const applyParams = useCallback(
+    (params: TracingParams) => {
+      if (image) return runConversion(image, params);
+    },
+    [image, runConversion],
   );
 
   const applyCurrentParams = useCallback(
     () => applyParams(potraceParams),
     [applyParams, potraceParams],
   );
+  const selectMode = (mode: TracingParams["mode"]) => {
+    const params = { ...potraceParams, mode };
+    setPotraceParams(params);
+    void applyParams(params);
+  };
+  const selectColorPathStyle = (colorCurveFit: boolean) => {
+    const params = { ...potraceParams, colorCurveFit };
+    setPotraceParams(params);
+    void applyParams(params);
+  };
   const closeSettings = useCallback(() => setShowSettings(false), []);
   const closeProcessingLogs = useCallback(() => {
     setShowLogs(false);
@@ -197,11 +231,7 @@ function App() {
   }, [potraceParams, applyParams]);
 
   const handleImageSelect = useCallback(
-    async (imageData: string, file: File) => {
-      const requestId = ++activeRequestId.current;
-      activeAbortController.current?.abort();
-      const abortController = new AbortController();
-      activeAbortController.current = abortController;
+    (imageData: string, file: File) => {
       const previousUrl = objectUrlRef.current;
       objectUrlRef.current = imageData.startsWith("blob:") ? imageData : null;
       if (previousUrl && previousUrl !== imageData)
@@ -211,30 +241,27 @@ function App() {
       setSvg(null);
       setVectorDocument(null);
       setDiagnostics(null);
-      setError("");
-      setProcessingLogs([]);
-      try {
-        setStatus("analyzing");
-        const result = await processImageDetailed(
-          imageData,
-          potraceParams,
-          (newStatus) => setStatus(newStatus as ConversionStatus),
-          handleLogEntry,
-          abortController.signal,
-        );
-        if (requestId !== activeRequestId.current) return;
-        setSvg(result.svg);
-        setVectorDocument(result.document);
-        setDiagnostics(result.diagnostics);
-        setStatus("done");
-      } catch (err) {
-        if (requestId !== activeRequestId.current) return;
-        setError(handleConversionError(err));
-        setStatus("error");
-      }
+      return runConversion(imageData, potraceParams);
     },
-    [potraceParams, handleLogEntry],
+    [potraceParams, runConversion],
   );
+
+  const clearImage = () => {
+    const pending = activeAbortController.current;
+    activeAbortController.current = null;
+    pending?.abort();
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+    setImage(null);
+    setSvg(null);
+    setVectorDocument(null);
+    setDiagnostics(null);
+    setProcessingLogs([]);
+    setStatus("idle");
+    setError("");
+  };
 
   const processImageForBatch = useCallback(
     async (
@@ -291,8 +318,8 @@ function App() {
         </div>
       )}
 
-      <header className="max-w-5xl mx-auto mb-4 sm:mb-8 animate-fade-in">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
+      <header className="max-w-5xl mx-auto mb-4 sm:mb-8">
+        <div className="flex flex-wrap justify-between items-center gap-2 sm:gap-4">
           <div>
             <div className="flex items-baseline gap-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-gradient">
@@ -307,6 +334,39 @@ function App() {
             <p className="text-sm sm:text-base text-gray-600 mt-1">
               Convert images to SVG with ease
             </p>
+          </div>
+
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            <div
+              role="group"
+              aria-label="Conversion mode"
+              className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-gray-200 bg-white p-1"
+            >
+              {tracingModes.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={potraceParams.mode === value}
+                  onClick={() => selectMode(value)}
+                  className="min-h-11 rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-indigo-50 aria-pressed:bg-indigo-100 aria-pressed:text-indigo-900"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {potraceParams.mode === "color" && (
+              <select
+                aria-label="Color path style"
+                className="min-h-11 rounded-lg border border-gray-300 bg-white px-2 text-sm text-gray-800"
+                value={potraceParams.colorCurveFit ? "bezier" : "polygon"}
+                onChange={(event) =>
+                  selectColorPathStyle(event.target.value === "bezier")
+                }
+              >
+                <option value="polygon">Polygon</option>
+                <option value="bezier">Fitted Bézier</option>
+              </select>
+            )}
           </div>
 
           <div className="flex gap-2 items-center">
@@ -345,8 +405,26 @@ function App() {
             status={status}
             progressSteps={PROGRESS_STEPS}
             diagnostics={diagnostics}
+            dimensions={vectorDocument}
             isMobile={isMobileView}
           />
+        )}
+
+        {(status === "done" || status === "cancelled" || status === "error") &&
+          svg &&
+          vectorDocument && (
+            <DownloadButton
+              svg={svg}
+              document={vectorDocument}
+              filename={fileName}
+              isMobile={isMobileView}
+            />
+          )}
+
+        {status === "cancelled" && (
+          <p role="status" className="mt-4 text-center text-sm text-gray-700">
+            Conversion cancelled.
+          </p>
         )}
 
         {error && (
@@ -402,19 +480,7 @@ function App() {
               </button>
             )}
             <button
-              onClick={() => {
-                activeAbortController.current?.abort();
-                if (objectUrlRef.current) {
-                  URL.revokeObjectURL(objectUrlRef.current);
-                  objectUrlRef.current = null;
-                }
-                setImage(null);
-                setSvg(null);
-                setVectorDocument(null);
-                setDiagnostics(null);
-                setStatus("idle");
-                setError("");
-              }}
+              onClick={clearImage}
               className="btn btn-secondary text-xs sm:text-sm"
             >
               Upload New Image
@@ -453,15 +519,6 @@ function App() {
           onApplyComplex={applyComplexSettings}
           isMobile={isMobileView}
           isComplexMode={isComplexMode}
-        />
-      )}
-
-      {svg && vectorDocument && (
-        <DownloadButton
-          svg={svg}
-          document={vectorDocument}
-          filename={fileName}
-          isMobile={isMobileView}
         />
       )}
 

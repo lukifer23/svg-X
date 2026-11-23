@@ -1,5 +1,12 @@
 # Photo color tracing performance
 
+These comparisons track performance while holding output fixed. The later Wu
+split correction intentionally changes dominant-palette output. Its
+accuracy and speed measurements are in [Color fidelity](COLOR-FIDELITY.md).
+Use a matching historical revision for the exact-output comparisons below.
+Omit `SVGX_PHOTO_BASELINE` to establish a fresh timing and fidelity reference
+on the current revision.
+
 ## Inputs and measurement
 
 The corpus pairs the existing generated still-life fixture with two

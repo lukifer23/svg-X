@@ -12,15 +12,16 @@ interface NetworkInfoProps {
 }
 
 const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
-  // Get the current port from window location
-  const currentPort = window.location.port || "3000";
+  const browserOnlyDevelopment =
+    import.meta.env.DEV && import.meta.env.VITE_SVGX_DESKTOP_DEV !== "1";
+  const currentOrigin = window.location.origin;
 
   const [networkInfo, setNetworkInfo] = useState<{
     localUrl: string;
     networkUrls: string[];
     lanEnabled: boolean;
   }>({
-    localUrl: `http://localhost:${currentPort}`,
+    localUrl: currentOrigin,
     networkUrls: [],
     lanEnabled: false,
   });
@@ -35,7 +36,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
   }, []);
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || browserOnlyDevelopment) return;
     async function fetchNetworkInfo() {
       try {
         const info = await getNetworkUrls();
@@ -43,7 +44,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
         setServiceUnavailable(false);
       } catch {
         setNetworkInfo({
-          localUrl: `http://localhost:${currentPort}`,
+          localUrl: currentOrigin,
           networkUrls: [],
           lanEnabled: false,
         });
@@ -52,7 +53,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
     }
 
     fetchNetworkInfo();
-  }, [currentPort, expanded]);
+  }, [browserOnlyDevelopment, currentOrigin, expanded]);
 
   const copyToClipboard = (url: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -67,7 +68,7 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
       <button
         ref={triggerRef}
         onClick={() => setExpanded(true)}
-        className="fixed top-4 right-4 z-50 min-h-11 min-w-11 p-3 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        className="fixed top-4 right-4 z-30 min-h-11 min-w-11 p-3 rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
         title="Network Access"
         aria-label="Open network access information"
       >
@@ -106,9 +107,11 @@ const NetworkInfo: React.FC<NetworkInfoProps> = ({ isMobile = false }) => {
         >
           {networkInfo.lanEnabled
             ? "Access this app from other devices on your network:"
-            : serviceUnavailable
+            : browserOnlyDevelopment
               ? "The desktop network service is unavailable in browser-only development mode."
-              : "LAN access is off. Set SVGX_LAN=1 before launch to opt in."}
+              : serviceUnavailable
+                ? "Network information is unavailable. Reopen this dialog to retry."
+                : "LAN access is off. Set SVGX_LAN=1 before launch to opt in."}
         </div>
         {[networkInfo.localUrl, ...networkInfo.networkUrls].map(
           (url, index) => (

@@ -5,6 +5,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const port = Number(process.env.SVGX_PORT || 3001);
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -28,17 +30,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: Number(process.env.SVGX_PORT || 3001),
+    port,
     host:
       process.env.SVGX_HOST ||
       (process.env.SVGX_LAN === "1" ? "::" : "127.0.0.1"),
     open: process.env.CI !== "1",
-    proxy: {
-      // In dev, proxy /api requests to the Electron Express sidecar on port 3002
-      "/api": {
-        target: "http://localhost:3002",
-        changeOrigin: true,
-      },
-    },
+    proxy:
+      process.env.VITE_SVGX_DESKTOP_DEV === "1"
+        ? { "/api": { target: `http://127.0.0.1:${port + 1}` } }
+        : undefined,
   },
 });

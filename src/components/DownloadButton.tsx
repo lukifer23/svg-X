@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useId, useRef } from "react";
 import { Download, Copy, Check, ChevronDown } from "lucide-react";
 import {
   serializeDxf,
@@ -52,26 +52,22 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
   isMobile = false,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [tooltipVisible, setTooltipVisible] = useState(false);
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveErrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevSvgRef = useRef<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (svg && !prevSvgRef.current) {
-      setTooltipVisible(true);
-      if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-      tooltipTimer.current = setTimeout(() => setTooltipVisible(false), 4000);
-    }
-    prevSvgRef.current = svg;
-    return () => {
-      if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
       if (saveErrorTimer.current) clearTimeout(saveErrorTimer.current);
-    };
-  }, [svg]);
+    },
+    [],
+  );
 
   // Close format menu on outside click
   useEffect(() => {
@@ -107,7 +103,10 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
 
   const handleDownload = async (format: ExportFormat = "svg") => {
     if (!svg) return;
-    setFormatMenuOpen(false);
+    if (formatMenuOpen) {
+      setFormatMenuOpen(false);
+      menuTrigger.current?.focus();
+    }
 
     if (window.electronAPI?.saveExport) {
       try {
@@ -136,9 +135,12 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
     try {
       await navigator.clipboard.writeText(svg);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard API unavailable
+      showSaveError(
+        "Could not copy to the clipboard. Use Download SVG to save the file.",
+      );
     }
   };
 
@@ -156,21 +158,21 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         </div>
       )}
 
-      {!isMobile && tooltipVisible && (
-        <div
-          className="absolute bottom-full mb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg text-sm animate-bounce-in pointer-events-none"
-          style={{ left: "50%", transform: "translateX(-50%)" }}
-          aria-live="polite"
-        >
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 bg-indigo-600" />
-          <p className="text-center font-medium whitespace-nowrap">
-            Your SVG is ready for download!
-          </p>
-        </div>
-      )}
-
-      {/* Primary download button + format dropdown */}
-      <div className="relative flex items-stretch" ref={menuRef}>
+      <div
+        className="relative flex items-stretch"
+        ref={menuRef}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || !formatMenuOpen) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setFormatMenuOpen(false);
+          menuTrigger.current?.focus();
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget))
+            setFormatMenuOpen(false);
+        }}
+      >
         <button
           onClick={() => handleDownload("svg")}
           disabled={!svg}
@@ -188,6 +190,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
         </button>
 
         <button
+          ref={menuTrigger}
           onClick={() => setFormatMenuOpen((v) => !v)}
           disabled={!svg}
           className={`min-h-11 min-w-11 flex items-center justify-center px-2 sm:px-3 py-2 sm:py-3 rounded-r-full shadow-soft border-l border-white/30 transition-all duration-300 ${
@@ -196,7 +199,7 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
           }`}
           aria-label="More export formats"
-          aria-haspopup="true"
+          aria-controls={menuId}
           aria-expanded={formatMenuOpen}
         >
           <ChevronDown
@@ -204,24 +207,23 @@ const DownloadButton: React.FC<DownloadButtonProps> = ({
           />
         </button>
 
-        {formatMenuOpen && (
-          <div className="absolute bottom-full mb-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden min-w-[160px] z-30">
-            {(Object.entries(FORMAT_INFO) as [ExportFormat, FormatInfo][]).map(
-              ([fmt, info]) => (
-                <button
-                  key={fmt}
-                  onClick={() => handleDownload(fmt)}
-                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 w-10 text-center">
-                    {info.ext.toUpperCase()}
-                  </span>
-                  {info.label}
-                </button>
-              ),
-            )}
-          </div>
-        )}
+        <div
+          hidden={!formatMenuOpen}
+          id={menuId}
+          className="absolute bottom-full mb-2 right-0 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden min-w-[160px] z-30"
+        >
+          {(Object.entries(FORMAT_INFO) as [ExportFormat, FormatInfo][]).map(
+            ([fmt, info]) => (
+              <button
+                key={fmt}
+                onClick={() => handleDownload(fmt)}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2"
+              >
+                {info.label}
+              </button>
+            ),
+          )}
+        </div>
       </div>
 
       <button

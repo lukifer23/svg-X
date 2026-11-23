@@ -38,6 +38,9 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Reused cubic evaluation weights and reduced repeated distance calculations during validation. A paired benchmark on the same three images showed 9–10% less fitted tracing time with identical full-precision geometry, SVG, and rendered pixels.
 - Cached least-squares weights for short runs of one-pixel boundary edges. Fitted tracing took 10–15% less time on the same three images, with identical full-precision geometry, SVG, and rendered pixels.
 - Grouped exact RGB matches during photo quantization. The same three images spent 10–31% less time quantizing, with identical palettes, pixel labels, and vector output.
+- Corrected Wu palette splits to minimize the variance left in each pair of child boxes. At the same eight-color setting, mean color error fell on the bicycle illustration, still-life, and both public-domain photographs.
+- Added main-screen B&W, Color, and Centerline controls and direct Polygon and Fitted Bézier selection in Color mode. Moved exports under the preview, fixed SVG Source keyboard focus, and kept discarded conversions from updating the upload screen.
+- Preserved endpoint overshoot when flattening curves for DXF and fixed opt-in desktop development LAN discovery on custom ports.
 
 ## Historical releases
 

@@ -547,9 +547,13 @@ try {
     const errorText = await window.locator("body").innerText();
     throw new Error(`Packaged conversion failed:\n${errorText}`);
   }
-  await expect(
-    window.locator('svg path[fill-rule="evenodd"]').first(),
-  ).toBeVisible();
+  const preview = window.getByRole("img", { name: "Converted SVG preview" });
+  await expect(preview).toBeVisible();
+  const svg = await preview.evaluate(async (image) => {
+    await image.decode();
+    return (await fetch(image.currentSrc)).text();
+  });
+  expect(svg).toContain('fill-rule="evenodd"');
 } catch (error) {
   failed = true;
   throw error;
