@@ -113,3 +113,35 @@ production worker schedules before timing and compares six batches in each
 schedule, alternating which one runs first. Heap sampling includes pooled
 worker startup. CI logs the individual samples and retains its prior
 throughput and heap limits.
+
+## Cubic evaluation and validation
+
+A fresh baseline at `d9e3250` attributed 11–12% of fitted assembly samples
+to cubic evaluation and another 7–8% to the sampled curve-to-polyline check.
+Residual evaluation recalculated powers already computed by the least-squares
+solver. Validation recalculated the weights at the same 17 parameter values
+for each accepted candidate and repeatedly called `Math.hypot` during the
+segment search.
+
+Residuals now reuse weights computed during the solve, with the original
+arithmetic order preserved in both passes. The 17 validation samples reuse
+precomputed weights. The segment search compares squared distances and uses
+the original `Math.hypot` comparison near the tolerance boundary. The sample
+positions, envelope, error limit, and splitting rules stay the same.
+
+| Input | Fitted assembly before → after | Fitted color trace before → after | Trace time saved |
+| --- | ---: | ---: | ---: |
+| Generated still-life | 512.6 → 436.6 ms | 726.2 → 655.2 ms | 9.8% |
+| USDA fresh produce | 399.7 → 336.2 ms | 579.5 → 523.7 ms | 9.6% |
+| USFWS hummingbird | 211.1 → 190.1 ms | 349.7 → 318.0 ms | 9.1% |
+
+The [before](photo-color-d9e3250-cubic-before.json) and
+[after](photo-color-cubic-after.json) reports contain the paired Windows
+measurements. All six comparisons matched in unrounded `VectorDocument`
+geometry, SVG bytes, rendered RGBA bytes, and path count. A separate
+differential run matched all 8,192 direct fitter comparisons with the
+baseline, covering open and closed chains, repeated points, several
+coordinate scales, and tolerances from 0.05 to 1.25 pixels.
+
+To reproduce the comparison with the command above, set
+`SVGX_PHOTO_BASELINE` to `photo-color-d9e3250-cubic-before.json`.

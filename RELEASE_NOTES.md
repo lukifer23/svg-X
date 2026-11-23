@@ -35,6 +35,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Replaced per-palette contour scans and edge objects with a shared pixel-side mask. Verified identical polygon and fitted SVG and rasterized output on the still-life fixture and two photographs.
 - Let single-worker color jobs finish quantization in one request, reducing renderer round trips while preserving the batch pipeline.
 - Reduced fitted photo conversion time by reusing chord lengths and fitting ranges of the original chain. Polygon and fitted geometry matched the reference outputs on three images.
+- Reused cubic evaluation weights and reduced repeated distance calculations during validation. A paired benchmark on the same three images showed 9–10% less fitted tracing time with identical full-precision geometry, SVG, and rendered pixels.
 
 ## Historical releases
 

@@ -27,8 +27,6 @@ const scale = (point: Point, amount: number): Point => ({
   x: point.x * amount,
   y: point.y * amount,
 });
-const dot = (left: Point, right: Point): number =>
-  left.x * right.x + left.y * right.y;
 const normalize = (point: Point): Point => {
   const length = Math.hypot(point.x, point.y);
   return length > Number.EPSILON
@@ -36,17 +34,25 @@ const normalize = (point: Point): Point => {
     : { x: 0, y: 0 };
 };
 
-export const evaluateCubic = (curve: Cubic, t: number): Point => {
+const cubicWeights = (t: number): [number, number, number, number] => {
   const u = 1 - t;
-  const b0 = u ** 3;
-  const b1 = 3 * u ** 2 * t;
-  const b2 = 3 * u * t ** 2;
-  const b3 = t ** 3;
-  return {
-    x: b0 * curve.p0.x + b1 * curve.p1.x + b2 * curve.p2.x + b3 * curve.p3.x,
-    y: b0 * curve.p0.y + b1 * curve.p1.y + b2 * curve.p2.y + b3 * curve.p3.y,
-  };
+  return [u ** 3, 3 * u ** 2 * t, 3 * u * t ** 2, t ** 3];
 };
+
+const evaluateWeightedCubic = (
+  curve: Cubic,
+  [b0, b1, b2, b3]: ReturnType<typeof cubicWeights>,
+): Point => ({
+  x: b0 * curve.p0.x + b1 * curve.p1.x + b2 * curve.p2.x + b3 * curve.p3.x,
+  y: b0 * curve.p0.y + b1 * curve.p1.y + b2 * curve.p2.y + b3 * curve.p3.y,
+});
+
+export const evaluateCubic = (curve: Cubic, t: number): Point =>
+  evaluateWeightedCubic(curve, cubicWeights(t));
+
+const validationWeights = Array.from({ length: 17 }, (_, sample) =>
+  cubicWeights(sample / 16),
+);
 
 const parameterize = (
   lengths: Float64Array,
@@ -82,6 +88,7 @@ const lineCubic = (start: Point, end: Point): Cubic => {
 const generateCubic = (
   points: Point[],
   parameters: Float64Array,
+  residualWeights: Float64Array,
   length: number,
   { start: first, end: last, leftTangent, rightTangent }: FitRange,
 ): Cubic => {
@@ -95,10 +102,18 @@ const generateCubic = (
   for (let index = first; index <= last; index += 1) {
     const t = parameters[index];
     const u = 1 - t;
+    const u2 = u ** 2;
+    const t2 = t ** 2;
     const b0 = u ** 3;
-    const b1 = 3 * t * u ** 2;
-    const b2 = 3 * t ** 2 * u;
+    const b1 = 3 * t * u2;
+    const b2 = 3 * t2 * u;
     const b3 = t ** 3;
+    const weightIndex = index * 4;
+    residualWeights[weightIndex] = b0;
+    // The residual uses a different multiplication order for these weights.
+    residualWeights[weightIndex + 1] = 3 * u2 * t;
+    residualWeights[weightIndex + 2] = 3 * u * t2;
+    residualWeights[weightIndex + 3] = b3;
     const a0x = leftTangent.x * b1;
     const a0y = leftTangent.y * b1;
     const a1x = rightTangent.x * b2;
@@ -149,6 +164,11 @@ const curveStaysNearPolyline = (
   maximumError: number,
 ): boolean => {
   const margin = Math.max(0.05, maximumError);
+  const squaredMargin = margin * margin;
+  // Fall back to the original hypot comparison close to the threshold so
+  // rounding in the squared calculation cannot change a fit decision.
+  const lowerBound = squaredMargin * (1 - 1e-12);
+  const upperBound = squaredMargin * (1 + 1e-12);
   let minimumX = Infinity;
   let maximumX = -Infinity;
   let minimumY = Infinity;
@@ -160,8 +180,8 @@ const curveStaysNearPolyline = (
     minimumY = Math.min(minimumY, y);
     maximumY = Math.max(maximumY, y);
   }
-  for (let sample = 0; sample <= 16; sample += 1) {
-    const point = evaluateCubic(curve, sample / 16);
+  for (const weights of validationWeights) {
+    const point = evaluateWeightedCubic(curve, weights);
     if (
       point.x < minimumX - margin ||
       point.x > maximumX + margin ||
@@ -187,10 +207,15 @@ const curveStaysNearPolyline = (
                   denominator,
               ),
             );
-      closest = Math.hypot(
-        point.x - (start.x + parameter * deltaX),
-        point.y - (start.y + parameter * deltaY),
-      );
+      const offsetX = point.x - (start.x + parameter * deltaX);
+      const offsetY = point.y - (start.y + parameter * deltaY);
+      const squaredDistance = offsetX * offsetX + offsetY * offsetY;
+      closest =
+        squaredDistance < lowerBound
+          ? 0
+          : squaredDistance > upperBound
+            ? Infinity
+            : Math.hypot(offsetX, offsetY);
       if (closest <= margin) break;
     }
     if (closest > margin) return false;
@@ -201,15 +226,23 @@ const curveStaysNearPolyline = (
 const maximumError = (
   points: Point[],
   curve: Cubic,
-  parameters: Float64Array,
+  weights: Float64Array,
   { start, end }: FitRange,
 ): { squared: number; split: number } => {
   let squared = 0;
   let split = start + Math.floor((end - start + 1) / 2);
+  const { p0, p1, p2, p3 } = curve;
   for (let index = start + 1; index < end; index += 1) {
-    const sample = evaluateCubic(curve, parameters[index]);
-    const delta = subtract(sample, points[index]);
-    const candidate = dot(delta, delta);
+    const weightIndex = index * 4;
+    const b0 = weights[weightIndex];
+    const b1 = weights[weightIndex + 1];
+    const b2 = weights[weightIndex + 2];
+    const b3 = weights[weightIndex + 3];
+    const deltaX =
+      b0 * p0.x + b1 * p1.x + b2 * p2.x + b3 * p3.x - points[index].x;
+    const deltaY =
+      b0 * p0.y + b1 * p1.y + b2 * p2.y + b3 * p3.y - points[index].y;
+    const candidate = deltaX * deltaX + deltaY * deltaY;
     if (candidate > squared) {
       squared = candidate;
       split = index;
@@ -247,6 +280,7 @@ const fitRanges = (
       points[index].y - points[index - 1].y,
     );
   const parameters = new Float64Array(points.length);
+  const residualWeights = new Float64Array(points.length * 4);
   const permittedError = Math.sqrt(maximumSquaredError);
   const pending = [initial];
   while (pending.length > 0) {
@@ -257,8 +291,14 @@ const fitRanges = (
       continue;
     }
     const length = parameterize(lengths, parameters, range);
-    const curve = generateCubic(points, parameters, length, range);
-    const error = maximumError(points, curve, parameters, range);
+    const curve = generateCubic(
+      points,
+      parameters,
+      residualWeights,
+      length,
+      range,
+    );
+    const error = maximumError(points, curve, residualWeights, range);
     const withinError = error.squared <= maximumSquaredError;
     if (
       withinError &&
