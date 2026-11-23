@@ -107,3 +107,9 @@ To reproduce this comparison, set `SVGX_PHOTO_BASELINE` to
 `SVGX_PHOTO_HASH_ONLY=1` runs the fidelity checks without timing.
 Set `SVGX_PHOTO_PROFILE_DIR` to an existing directory to record V8 profiles
 outside the timed runs.
+
+The separate Chromium batch gate uses polygon output. It warms both
+production worker schedules before timing and compares six batches in each
+schedule, alternating which one runs first. Heap sampling includes pooled
+worker startup. CI logs the individual samples and retains its prior
+throughput and heap limits.

@@ -46,9 +46,8 @@ test("eight-image production worker batch improves throughput without runaway me
       const module = await import("/src/utils/imageProcessor.ts");
       // Keep the fixture above MIN_PARALLEL_PIXELS while bounding this gate on
       // shared CI runners. The benchmark still performs a real eight-image
-      // sequential batch and a real eight-image pooled batch three times, then
-      // compares medians so a single scheduler fluctuation cannot pass or fail
-      // the acceptance gate.
+      // sequential batch and a real eight-image pooled batch, then compares
+      // medians so a single scheduler fluctuation cannot decide the gate.
       const size = 512;
       const createInput = () => {
         const pixels = new Uint8ClampedArray(size * size * 4);
@@ -78,6 +77,15 @@ test("eight-image production worker batch improves throughput without runaway me
       const prepare = () => ({ ...fixture, pixels: fixture.pixels.slice(0) });
       const convert = (input: ReturnType<typeof prepare>) =>
         module.processImageBatch(input, params, undefined);
+      const measureBatch = async (pooled: boolean) => {
+        // Prepare inputs before timing so fixture allocation does not compete
+        // with worker scheduling.
+        const inputs = Array.from({ length: 8 }, prepare);
+        const start = performance.now();
+        if (pooled) await Promise.all(inputs.map(convert));
+        else for (const input of inputs) await convert(input);
+        return performance.now() - start;
+      };
       await convert(prepare());
       const beforeHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })
@@ -89,25 +97,27 @@ test("eight-image production worker batch improves throughput without runaway me
         ).memory?.usedJSHeapSize;
         if (current) peakHeap = Math.max(peakHeap, current);
       }, 25);
+      // Warm both schedules, including every worker used by the pooled run.
+      // Keep measuring heap across warm-up so worker startup is covered.
+      await measureBatch(false);
+      await measureBatch(true);
       const sequentialSamples: number[] = [];
       const concurrentSamples: number[] = [];
-      for (let sample = 0; sample < 3; sample += 1) {
-        // Prepare inputs before timing. Fixture construction runs on the
-        // renderer and otherwise competes with worker scheduling.
-        const sequentialInputs = Array.from({ length: 8 }, prepare);
-        const sequentialStart = performance.now();
-        for (const input of sequentialInputs) await convert(input);
-        sequentialSamples.push(performance.now() - sequentialStart);
-
-        const concurrentInputs = Array.from({ length: 8 }, prepare);
-        const concurrentStart = performance.now();
-        await Promise.all(concurrentInputs.map(convert));
-        concurrentSamples.push(performance.now() - concurrentStart);
+      for (let sample = 0; sample < 6; sample += 1) {
+        // Balance measurement order across both schedules.
+        if (sample % 2 === 0) {
+          sequentialSamples.push(await measureBatch(false));
+          concurrentSamples.push(await measureBatch(true));
+        } else {
+          concurrentSamples.push(await measureBatch(true));
+          sequentialSamples.push(await measureBatch(false));
+        }
       }
-      const median = (samples: number[]) =>
-        [...samples].sort((left, right) => left - right)[
-          Math.floor(samples.length / 2)
-        ];
+      const median = (samples: number[]) => {
+        const sorted = [...samples].sort((left, right) => left - right);
+        const middle = sorted.length / 2;
+        return (sorted[middle - 1] + sorted[middle]) / 2;
+      };
       const sequentialMs = median(sequentialSamples);
       const concurrentMs = median(concurrentSamples);
       const afterHeap =
@@ -128,6 +138,13 @@ test("eight-image production worker batch improves throughput without runaway me
 
   console.log(
     `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput against ${minimumSpeedup.toFixed(2)}x floor, ${(result.peakHeapGrowth / 1024 / 1024).toFixed(1)} MiB peak / ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB settled heap growth on ${result.hardwareConcurrency} logical CPUs`,
+  );
+  console.log(
+    "batch samples (ms)",
+    JSON.stringify({
+      sequential: result.sequentialSamples,
+      pooled: result.concurrentSamples,
+    }),
   );
   expect(result.peakHeapGrowth).toBeLessThan(256 * 1024 * 1024);
   expect(result.heapGrowth).toBeLessThan(256 * 1024 * 1024);
