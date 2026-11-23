@@ -145,3 +145,36 @@ coordinate scales, and tolerances from 0.05 to 1.25 pixels.
 
 To reproduce the comparison with the command above, set
 `SVGX_PHOTO_BASELINE` to `photo-color-d9e3250-cubic-before.json`.
+
+## Least-squares weights
+
+V8 profiles of the same images at `a8dddf3` put 11.5–12.6% of
+fitted assembly samples in the cubic solve. The solver rebuilt Bernstein
+weights for every candidate, including split ranges with the same normalized
+chord lengths. Color contours walk consecutive horizontal or vertical
+one-pixel steps. For a range of that kind, cumulative chord lengths are exact
+integers, so the normalized parameters are determined by the edge count.
+
+The fitter caches weights lazily for spans of 2–64 unit chords. Longer
+unit-chord spans calculate the same parameters in a scratch buffer.
+Chains with nonuniform spacing retain cumulative chord-length
+parameterization. Both passes preserve their multiplication and summation
+order. The per-worker cache holds about 100 KiB of weight data when full.
+
+| Input | Fitted assembly before → after | Fitted color trace before → after | Trace time saved |
+| --- | ---: | ---: | ---: |
+| Generated still-life | 428.1 → 338.5 ms | 683.5 → 580.2 ms | 15.1% |
+| USDA fresh produce | 342.5 → 270.7 ms | 525.5 → 449.4 ms | 14.5% |
+| USFWS hummingbird | 186.9 → 144.4 ms | 317.4 → 285.2 ms | 10.1% |
+
+Across the three profiles, the solver and weight-building code went from
+378 to 181 self samples over three warmed assemblies per image. All
+six polygon and fitted outputs matched in unrounded vector geometry,
+SVG bytes, rendered RGBA bytes, and path count. Another 8,192 direct
+baseline comparisons matched exactly on open and closed chains with
+unit, mixed, and nonuniform spacing, including spans beyond the cache limit.
+
+The [before](photo-color-a8dddf3-solve-before.json) and
+[after](photo-color-solve-after.json) reports contain the paired measurements.
+To reproduce the comparison above, set `SVGX_PHOTO_BASELINE` to
+`photo-color-a8dddf3-solve-before.json`.

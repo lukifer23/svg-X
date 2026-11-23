@@ -54,6 +54,34 @@ const validationWeights = Array.from({ length: 17 }, (_, sample) =>
   cubicWeights(sample / 16),
 );
 
+// Four evaluation weights followed by the middle two solver weights, which
+// use a different multiplication order. Keep the grid cache bounded per worker.
+const weightsPerPoint = 6;
+const maximumCachedEdges = 64;
+const unitChordWeights: (Float64Array | undefined)[] = [];
+
+const fillWeights = (
+  weights: Float64Array,
+  edges: number,
+  parameters: Float64Array | null,
+  first: number,
+): Float64Array => {
+  for (let index = 0; index <= edges; index += 1) {
+    const t = parameters ? parameters[first + index] : index / edges;
+    const u = 1 - t;
+    const u2 = u ** 2;
+    const t2 = t ** 2;
+    const offset = index * weightsPerPoint;
+    weights[offset] = u ** 3;
+    weights[offset + 1] = 3 * u2 * t;
+    weights[offset + 2] = 3 * u * t2;
+    weights[offset + 3] = t ** 3;
+    weights[offset + 4] = 3 * t * u2;
+    weights[offset + 5] = 3 * t2 * u;
+  }
+  return weights;
+};
+
 const parameterize = (
   lengths: Float64Array,
   parameters: Float64Array,
@@ -87,8 +115,7 @@ const lineCubic = (start: Point, end: Point): Cubic => {
 
 const generateCubic = (
   points: Point[],
-  parameters: Float64Array,
-  residualWeights: Float64Array,
+  weights: Float64Array,
   length: number,
   { start: first, end: last, leftTangent, rightTangent }: FitRange,
 ): Cubic => {
@@ -99,21 +126,15 @@ const generateCubic = (
   let c11 = 0;
   let x0 = 0;
   let x1 = 0;
-  for (let index = first; index <= last; index += 1) {
-    const t = parameters[index];
-    const u = 1 - t;
-    const u2 = u ** 2;
-    const t2 = t ** 2;
-    const b0 = u ** 3;
-    const b1 = 3 * t * u2;
-    const b2 = 3 * t2 * u;
-    const b3 = t ** 3;
-    const weightIndex = index * 4;
-    residualWeights[weightIndex] = b0;
-    // The residual uses a different multiplication order for these weights.
-    residualWeights[weightIndex + 1] = 3 * u2 * t;
-    residualWeights[weightIndex + 2] = 3 * u * t2;
-    residualWeights[weightIndex + 3] = b3;
+  for (
+    let index = first, offset = 0;
+    index <= last;
+    index += 1, offset += weightsPerPoint
+  ) {
+    const b0 = weights[offset];
+    const b1 = weights[offset + 4];
+    const b2 = weights[offset + 5];
+    const b3 = weights[offset + 3];
     const a0x = leftTangent.x * b1;
     const a0y = leftTangent.y * b1;
     const a1x = rightTangent.x * b2;
@@ -233,7 +254,7 @@ const maximumError = (
   let split = start + Math.floor((end - start + 1) / 2);
   const { p0, p1, p2, p3 } = curve;
   for (let index = start + 1; index < end; index += 1) {
-    const weightIndex = index * 4;
+    const weightIndex = (index - start) * weightsPerPoint;
     const b0 = weights[weightIndex];
     const b1 = weights[weightIndex + 1];
     const b2 = weights[weightIndex + 2];
@@ -273,14 +294,24 @@ const fitRanges = (
     appendCubic(commands, lineCubic(points[0], points[1]));
     return;
   }
-  const lengths = new Float64Array(points.length);
-  for (let index = 1; index < points.length; index += 1)
-    lengths[index] = Math.hypot(
-      points[index].x - points[index - 1].x,
-      points[index].y - points[index - 1].y,
-    );
-  const parameters = new Float64Array(points.length);
-  const residualWeights = new Float64Array(points.length * 4);
+  const unitChords = points.every((point, index) => {
+    if (index === 0) return true;
+    const dx = Math.abs(point.x - points[index - 1].x);
+    const dy = Math.abs(point.y - points[index - 1].y);
+    return (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+  });
+  const lengths = unitChords
+    ? null
+    : Float64Array.from(points, (point, index) =>
+        index === 0
+          ? 0
+          : Math.hypot(
+              point.x - points[index - 1].x,
+              point.y - points[index - 1].y,
+            ),
+      );
+  const parameters = lengths && new Float64Array(points.length);
+  let workingWeights: Float64Array | undefined;
   const permittedError = Math.sqrt(maximumSquaredError);
   const pending = [initial];
   while (pending.length > 0) {
@@ -290,15 +321,29 @@ const fitRanges = (
       appendCubic(commands, lineCubic(points[start], points[end]));
       continue;
     }
-    const length = parameterize(lengths, parameters, range);
-    const curve = generateCubic(
-      points,
-      parameters,
-      residualWeights,
-      length,
-      range,
-    );
-    const error = maximumError(points, curve, residualWeights, range);
+    const edges = end - start;
+    // For unit chords the cumulative lengths are exact integers, so each
+    // parameter is identical to the general fitter's index / total length.
+    const length =
+      lengths && parameters ? parameterize(lengths, parameters, range) : edges;
+    const weights =
+      unitChords && edges <= maximumCachedEdges
+        ? (unitChordWeights[edges] ??= fillWeights(
+            new Float64Array((edges + 1) * weightsPerPoint),
+            edges,
+            null,
+            0,
+          ))
+        : fillWeights(
+            (workingWeights ??= new Float64Array(
+              points.length * weightsPerPoint,
+            )),
+            edges,
+            parameters,
+            start,
+          );
+    const curve = generateCubic(points, weights, length, range);
+    const error = maximumError(points, curve, weights, range);
     const withinError = error.squared <= maximumSquaredError;
     if (
       withinError &&
