@@ -1,0 +1,121 @@
+{
+  "label": "rgb-cache-before",
+  "generatedAt": "2026-11-23T18:09:12.619Z",
+  "node": "v24.19.0",
+  "platform": "win32-x64",
+  "options": {
+    "mode": "color",
+    "threshold": 128,
+    "turdSize": 2,
+    "turnPolicy": "minority",
+    "alphaMax": 1,
+    "optCurve": false,
+    "optTolerance": 0.2,
+    "blackOnWhite": true,
+    "invert": false,
+    "foregroundColor": "#000000",
+    "backgroundColor": "transparent",
+    "colorSteps": 8,
+    "fillStrategy": "dominant",
+    "strokeWidth": 2,
+    "maxPaths": 2000
+  },
+  "reports": [
+    {
+      "name": "synthetic-1000",
+      "width": 1000,
+      "height": 1000,
+      "megapixels": 1,
+      "paletteSize": 8,
+      "components": 4017,
+      "outputPaths": 1945,
+      "outputHash": "9b3f00cf6ee776ef2dcd3f10fe32c3f2522affb791c513ae1ec167cd7c094548",
+      "heapDeltaMB": 11.680938720703125,
+      "stages": {
+        "paletteSeeds": 6.640600000000177,
+        "precomputePixelLabs": 30.648200000000088,
+        "refinePalette": 79.81550000000016,
+        "labelPixels": 17.629899999999907,
+        "mergeComponentsToBudget": 22.769200000000183,
+        "traceBoundaries": 50.55029999999988
+      },
+      "quantizationMs": 128.09360000000015,
+      "quantizationShare": 0.5310946361737061,
+      "totalColorMs": 241.1878999999999,
+      "totalBwMs": 93.4384,
+      "totalCenterlineMs": 144.20899999999983
+    },
+    {
+      "name": "color-bicycle",
+      "width": 1254,
+      "height": 1254,
+      "megapixels": 1.572516,
+      "paletteSize": 8,
+      "components": 43210,
+      "outputPaths": 2334,
+      "outputHash": "f7a6a73098b31a9e722bbe84d39c146d9c52e01836df74eca52259b3ab086c71",
+      "heapDeltaMB": 0,
+      "stages": {
+        "paletteSeeds": 6.495100000000093,
+        "precomputePixelLabs": 36.09690000000046,
+        "refinePalette": 71.22719999999936,
+        "labelPixels": 16.631600000000617,
+        "mergeComponentsToBudget": 56.16640000000007,
+        "traceBoundaries": 135.21689999999944
+      },
+      "quantizationMs": 123.95570000000043,
+      "quantizationShare": 0.24629070862099112,
+      "totalColorMs": 503.29020000000037,
+      "totalBwMs": 192.32290000000103,
+      "totalCenterlineMs": 160.53820000000087
+    },
+    {
+      "name": "realistic-still-life",
+      "width": 1254,
+      "height": 1254,
+      "megapixels": 1.572516,
+      "paletteSize": 8,
+      "components": 52189,
+      "outputPaths": 2219,
+      "outputHash": "5edd87501048f218125de32f39d0581869161042c2ae1efc3f6c06304568f288",
+      "heapDeltaMB": 52.72998809814453,
+      "stages": {
+        "paletteSeeds": 10.83100000000195,
+        "precomputePixelLabs": 48.063500000000204,
+        "refinePalette": 130.94570000000022,
+        "labelPixels": 30.164600000000064,
+        "mergeComponentsToBudget": 82.755799999999,
+        "traceBoundaries": 150.14670000000115
+      },
+      "quantizationMs": 209.17380000000048,
+      "quantizationShare": 0.3363078006975565,
+      "totalColorMs": 621.9713000000011,
+      "totalBwMs": 165.566899999998,
+      "totalCenterlineMs": 864.3163999999997
+    },
+    {
+      "name": "centerline-mechanism",
+      "width": 1254,
+      "height": 1254,
+      "megapixels": 1.572516,
+      "paletteSize": 8,
+      "components": 28831,
+      "outputPaths": 1675,
+      "outputHash": "6f2da5f2c15c3c24d30206eb9498420db849c6d8ec67f796912afbd71283d814",
+      "heapDeltaMB": 53.866188049316406,
+      "stages": {
+        "paletteSeeds": 9.523700000001554,
+        "precomputePixelLabs": 47.677599999999074,
+        "refinePalette": 122.261599999998,
+        "labelPixels": 27.47820000000138,
+        "mergeComponentsToBudget": 60.539199999999255,
+        "traceBoundaries": 79.87259999999878
+      },
+      "quantizationMs": 197.41739999999845,
+      "quantizationShare": 0.5245559005344687,
+      "totalColorMs": 376.35150000000067,
+      "totalBwMs": 74.9932000000008,
+      "totalCenterlineMs": 29.737600000000384
+    }
+  ]
+}

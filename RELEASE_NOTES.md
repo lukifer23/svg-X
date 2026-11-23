@@ -31,6 +31,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Omitted scoped and link-local IPv6 browser URLs from LAN discovery. The same-host packaged LAN smoke now compares SVG, EPS, DXF, and JSON in all three conversion modes and prints hashes for second-device verification.
 - Fixed DEB maintainer metadata and Linux desktop launcher association. Added unsigned distribution smoke tests for the Windows portable EXE, macOS DMG and ZIP, and Linux AppImage and DEB.
 - Added a manual, unpublished desktop signing rehearsal for Windows Authenticode and macOS Developer ID signing, notarization, and stapling. It uses separately provisioned signing environments.
+- Reused exact RGB-to-OKLab results in the color pipeline. A short sample keeps low-reuse images on the direct conversion loop. The benchmark fixtures retained byte-identical SVG.
 
 ## Historical releases
 

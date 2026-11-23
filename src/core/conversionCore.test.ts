@@ -4,6 +4,8 @@ import {
   deduplicateShapes,
   mergeComponentsToBudget,
   paletteSeeds,
+  precomputePixelLabs,
+  rgbToOklab,
   traceColorDocument,
   wuVarianceSeeds,
 } from "./colorTrace";
@@ -45,6 +47,35 @@ const rgba = (
 };
 
 describe("color region topology", () => {
+  test.each([
+    ["repeated colors and cache collisions", true],
+    ["low color reuse", false],
+  ])("matches scalar OKLab with %s", (_description, repeated) => {
+    const pixels = new Uint8ClampedArray(8192 * 4 + 1).subarray(1);
+    for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
+      const color = repeated && pixel % 2 === 0 ? 0 : pixel;
+      pixels.set(
+        [color & 255, color >> 8, (color * 13) & 255, pixel % 256],
+        pixel * 4,
+      );
+    }
+    const labs = precomputePixelLabs(pixels);
+    for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
+      const offset = pixel * 4;
+      const expected = rgbToOklab(
+        pixels[offset],
+        pixels[offset + 1],
+        pixels[offset + 2],
+      );
+      if (
+        !Object.is(labs.l[pixel], Math.fround(expected.l)) ||
+        !Object.is(labs.a[pixel], Math.fround(expected.a)) ||
+        !Object.is(labs.b[pixel], Math.fround(expected.b))
+      )
+        throw new Error(`OKLab mismatch at pixel ${pixel}`);
+    }
+  });
+
   test("retains sixteen distinct flat regions when a larger palette is selected", () => {
     const pixels = rgba(32, 8, (x) => {
       const index = x >> 1;

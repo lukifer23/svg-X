@@ -146,6 +146,36 @@ Interactive conversions may use multiple bands; batch conversions use one band
 worker per image so the bounded pool scales across files on virtual and physical
 CPUs instead of oversubscribing each image.
 
+## Exact RGB reuse in OKLab conversion
+
+The color pipeline previously ran three cube roots for every pixel, including
+repeated RGB values in flat fills and along ink strokes. A direct-mapped
+cache holds at most 4,096 keys and pixel indices per conversion or worker band
+(32 KiB). Hits require an exact RGB match and reuse the Float32 result already
+written to the output. The sampler checks four 512-pixel windows across larger
+inputs and chooses the direct conversion loop when fewer than one in eight
+sampled colors hits the cache. Alpha still participates in the later labeling
+and quantization rules.
+
+Windows measurements used Node 24.19.0 and the existing minimum of five warm
+samples per stage. Every serialized SVG matched byte for byte.
+
+| Input | OKLab before → after | Total color trace before → after |
+| --- | ---: | ---: |
+| Synthetic color bands | 30.65 → 7.32 ms | 241.19 → 227.14 ms |
+| Color bicycle | 36.10 → 25.17 ms | 503.29 → 462.49 ms |
+| Still-life photo | 48.06 → 44.60 ms | 621.97 → 611.62 ms |
+| Mechanism illustration | 47.68 → 12.70 ms | 376.35 → 357.89 ms |
+
+In a separate 1.5-million-pixel low-reuse stress input, the median OKLab
+time was 47.19 ms before and 46.36 ms after. The Float32 output hash matched.
+[Before](pipeline-rgb-cache-before.json) · [After](pipeline-rgb-cache-after.json)
+
+The same Windows machine ran the Chromium eight-image benchmark in separate
+sessions. Sequential and pooled medians went from 494.6 and 238.0 ms before
+to 339.9 and 202.5 ms after. The faster sequential baseline brings the pool
+speedup to 1.68×, above the 1.50× floor. Sampled peak heap growth was 61.7 MiB.
+
 ## Remaining performance work
 
 - Tune `MIN_PARALLEL_PIXELS` and the band-size constant against a broader range

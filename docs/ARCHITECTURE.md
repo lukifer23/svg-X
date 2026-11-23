@@ -52,7 +52,7 @@ The default pool size is `max(1, min(4, hardwareConcurrency - 1))`. Batch input 
 
 ## Color pipeline hot paths
 
-The color converter seeds a palette, precomputes OKLab, refines the palette four times, labels pixels, merges components, and traces each palette label. A shared-chain fit uses the same endpoints and reversed cubic controls in adjacent rings. Component cleanup happens before this step so holes and neighboring outlines agree. Color SVG optimization preserves path coordinates. The per-pixel color math uses a 256-entry sRGB-to-linear lookup table and flat typed arrays. Boundary tracing uses integer lattice keys and keeps no per-component pixel lists. See `results/PERFORMANCE.md` for historical benchmarks.
+The color converter seeds a palette, precomputes OKLab, refines the palette four times, labels pixels, merges components, and traces each palette label. A shared-chain fit uses the same endpoints and reversed cubic controls in adjacent rings. Component cleanup happens before this step so holes and neighboring outlines agree. Color SVG optimization preserves path coordinates. Per-pixel color conversion uses a 256-entry sRGB-to-linear table and flat typed arrays. A bounded cache reuses the original Float32 results for exact RGB matches. A short sample selects the direct conversion loop when the image has little color reuse. Boundary tracing uses integer lattice keys and keeps no per-component pixel lists. See `results/PERFORMANCE.md` for benchmarks.
 
 Decode applies EXIF orientation on both paths — the desktop decoder calls Sharp `rotate()` and the browser decoder passes `imageOrientation: "from-image"` to `createImageBitmap` — so the same file vectorizes the same way in every transport.
 

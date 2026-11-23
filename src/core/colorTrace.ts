@@ -69,30 +69,109 @@ export const rgbToOklab = (r: number, g: number, b: number): LabColor => {
 const distance = (left: LabColor, right: LabColor): number =>
   (left.l - right.l) ** 2 + (left.a - right.a) ** 2 + (left.b - right.b) ** 2;
 
+const rgbKey = (red: number, green: number, blue: number): number =>
+  ((red << 16) | (green << 8) | blue) + 1;
+
+const cacheSlot = (key: number, shift: number): number =>
+  Math.imul(key, 0x9e3779b1) >>> shift;
+
+const hasColorReuse = (
+  pixels: Uint8ClampedArray,
+  keys: Uint32Array,
+  shift: number,
+): boolean => {
+  const length = pixels.length / 4;
+  if (length <= 2048) return true;
+  let hits = 0;
+  // Sample contiguous windows across the image to detect spatial reuse.
+  for (let window = 0; window < 4; window += 1) {
+    const start = Math.floor((window * (length - 512)) / 3) * 4;
+    for (let offset = start; offset < start + 2048; offset += 4) {
+      const key = rgbKey(
+        pixels[offset],
+        pixels[offset + 1],
+        pixels[offset + 2],
+      );
+      const slot = cacheSlot(key, shift);
+      if (keys[slot] === key) hits += 1;
+      keys[slot] = key;
+    }
+  }
+  keys.fill(0);
+  return hits >= 256;
+};
+
+const writePixelLab = (
+  { l, a, b }: PixelLabs,
+  pixel: number,
+  lr: number,
+  lg: number,
+  lb: number,
+): void => {
+  const lRoot = Math.cbrt(
+    0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb,
+  );
+  const mRoot = Math.cbrt(
+    0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb,
+  );
+  const sRoot = Math.cbrt(
+    0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb,
+  );
+  l[pixel] = 0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot;
+  a[pixel] = 1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot;
+  b[pixel] = 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot;
+};
+
 export const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
   const length = pixels.length / 4;
   const l = new Float32Array(length);
   const a = new Float32Array(length);
   const b = new Float32Array(length);
+  const labs = { l, a, b };
+  // Reuse exact RGB conversions across pixels with different alpha values.
+  // The cache holds source indices so hits reuse the original Float32 results.
+  const bits = Math.max(4, Math.min(12, 31 - Math.clz32(length)));
+  const keys = new Uint32Array(1 << bits);
+  const shift = 32 - bits;
+  if (!hasColorReuse(pixels, keys, shift)) {
+    for (let pixel = 0; pixel < length; pixel += 1) {
+      const offset = pixel * 4;
+      writePixelLab(
+        labs,
+        pixel,
+        SRGB_LINEAR[pixels[offset]],
+        SRGB_LINEAR[pixels[offset + 1]],
+        SRGB_LINEAR[pixels[offset + 2]],
+      );
+    }
+    return labs;
+  }
+  const indices = new Uint32Array(keys.length);
   for (let pixel = 0; pixel < length; pixel += 1) {
     const offset = pixel * 4;
-    const lr = SRGB_LINEAR[pixels[offset]];
-    const lg = SRGB_LINEAR[pixels[offset + 1]];
-    const lb = SRGB_LINEAR[pixels[offset + 2]];
-    const coneL = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
-    const coneM = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
-    const coneS = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
-    const lRoot = Math.cbrt(coneL);
-    const mRoot = Math.cbrt(coneM);
-    const sRoot = Math.cbrt(coneS);
-    l[pixel] =
-      0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot;
-    a[pixel] =
-      1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot;
-    b[pixel] =
-      0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot;
+    const red = pixels[offset];
+    const green = pixels[offset + 1];
+    const blue = pixels[offset + 2];
+    const key = rgbKey(red, green, blue);
+    const slot = cacheSlot(key, shift);
+    if (keys[slot] === key) {
+      const previous = indices[slot];
+      l[pixel] = l[previous];
+      a[pixel] = a[previous];
+      b[pixel] = b[previous];
+      continue;
+    }
+    keys[slot] = key;
+    indices[slot] = pixel;
+    writePixelLab(
+      labs,
+      pixel,
+      SRGB_LINEAR[red],
+      SRGB_LINEAR[green],
+      SRGB_LINEAR[blue],
+    );
   }
-  return { l, a, b };
+  return labs;
 };
 
 const histogram = (pixels: Uint8ClampedArray): HistogramColor[] => {
