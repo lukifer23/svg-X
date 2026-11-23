@@ -5,20 +5,36 @@ export interface Point {
   y: number;
 }
 
-const distanceToSegment = (point: Point, start: Point, end: Point): number => {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  if (dx === 0 && dy === 0)
-    return Math.hypot(point.x - start.x, point.y - start.y);
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point.x - start.x) * dx + (point.y - start.y) * dy) /
-        (dx * dx + dy * dy),
-    ),
-  );
-  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+// A squared bound rejects only candidates well below the current limit.
+// Retain the original distance for accepted candidates and near ties.
+const squaredLowerBound = (limit: number): number => {
+  const squared = limit * limit;
+  return limit > 0 && squared >= 2 ** -1022 && Number.isFinite(squared)
+    ? squared * (1 - 1e-12)
+    : 0;
+};
+
+const distanceAboveBound = (
+  point: Point,
+  start: Point,
+  dx: number,
+  dy: number,
+  lengthSquared: number,
+  lowerBound: number,
+): number => {
+  let offsetX = point.x - start.x;
+  let offsetY = point.y - start.y;
+  if (dx !== 0 || dy !== 0) {
+    const t = Math.max(
+      0,
+      Math.min(1, (offsetX * dx + offsetY * dy) / lengthSquared),
+    );
+    offsetX = point.x - (start.x + t * dx);
+    offsetY = point.y - (start.y + t * dy);
+  }
+  return offsetX * offsetX + offsetY * offsetY < lowerBound
+    ? 0
+    : Math.hypot(offsetX, offsetY);
 };
 
 export const exceedsChordTolerance = (
@@ -27,8 +43,23 @@ export const exceedsChordTolerance = (
 ): boolean => {
   const start = points[0];
   const end = points[points.length - 1];
+  if (!start || !end) return false;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const lowerBound = squaredLowerBound(tolerance);
   for (let index = 1; index < points.length - 1; index += 1)
-    if (distanceToSegment(points[index], start, end) > tolerance) return true;
+    if (
+      distanceAboveBound(
+        points[index],
+        start,
+        dx,
+        dy,
+        lengthSquared,
+        lowerBound,
+      ) > tolerance
+    )
+      return true;
   return false;
 };
 
@@ -39,12 +70,25 @@ export const simplifyOpen = (points: Point[], tolerance: number): Point[] => {
   let start = 0;
   while (pendingEnds.length > 0) {
     const end = pendingEnds[pendingEnds.length - 1];
+    const origin = points[start];
+    const dx = points[end].x - origin.x;
+    const dy = points[end].y - origin.y;
+    const lengthSquared = dx * dx + dy * dy;
     let furthest = tolerance;
+    let lowerBound = squaredLowerBound(furthest);
     let split = -1;
     for (let i = start + 1; i < end; i += 1) {
-      const distance = distanceToSegment(points[i], points[start], points[end]);
+      const distance = distanceAboveBound(
+        points[i],
+        origin,
+        dx,
+        dy,
+        lengthSquared,
+        lowerBound,
+      );
       if (distance > furthest) {
         furthest = distance;
+        lowerBound = squaredLowerBound(distance);
         split = i;
       }
     }

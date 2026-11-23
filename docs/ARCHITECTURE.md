@@ -60,6 +60,13 @@ equal merge scores. Merging reuses palette distances and resolved neighbor
 roots, then applies one final label per component. See the
 [connected-component measurements](../results/COLOR-FIDELITY.md#connected-components-follow-up).
 
+The contour walk accumulates signed ring area as it steps across unit
+edges. Shared-boundary assembly caches junctions and reuses the fitted
+commands in both directions. The simplifier rejects clearly closer points
+with squared distances and uses the original distance for split decisions
+near the cutoff. See the
+[dense photo measurements](../results/COLOR-FIDELITY.md#dense-photo-boundary-assembly).
+
 Decode applies EXIF orientation on both paths — the desktop decoder calls Sharp `rotate()` and the browser decoder passes `imageOrientation: "from-image"` to `createImageBitmap` — so the same file vectorizes the same way in every transport.
 
 ### Parallel quantization

@@ -128,8 +128,12 @@ test("profiles photo conversion and checks serialized and rasterized output", as
         assembly: measure(assemble),
         conversion: measure(conversion),
       });
-      if (optCurve && process.env.SVGX_PHOTO_PROFILE_DIR)
-        await profile(process.env.SVGX_PHOTO_PROFILE_DIR, file, assemble);
+      if (process.env.SVGX_PHOTO_PROFILE_DIR)
+        await profile(
+          process.env.SVGX_PHOTO_PROFILE_DIR,
+          optCurve ? file : `${file}.polygon`,
+          assemble,
+        );
     }
     reports.push({
       file,

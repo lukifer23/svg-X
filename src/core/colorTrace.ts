@@ -1,4 +1,3 @@
-import { ringArea } from "./geometry";
 import { traceColorBoundaries } from "./colorBoundaries";
 import { createSharedBoundaryFitter } from "./sharedColorBoundaries";
 import {
@@ -891,12 +890,9 @@ export const assembleColorDocument = (
     .sort((left, right) => right.color.count - left.color.count);
   const shapes: VectorShape[] = [];
   indexed.forEach(({ color, index }) => {
-    const rings = boundaries[index]
-      .map((points) => ({
-        points,
-        area: Math.abs(ringArea(points)),
-      }))
-      .sort((left, right) => right.area - left.area);
+    const rings = boundaries[index].sort(
+      (left, right) => Math.abs(right.area) - Math.abs(left.area),
+    );
     if (rings.length === 0) return;
     shapes.push({
       id: `color-${index}`,

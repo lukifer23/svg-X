@@ -42,6 +42,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Added main-screen B&W, Color, and Centerline controls and direct Polygon and Fitted Bézier selection in Color mode. Moved exports under the preview, fixed SVG Source keyboard focus, and kept discarded conversions from updating the upload screen.
 - Preserved endpoint overshoot when flattening curves for DXF and fixed opt-in desktop development LAN discovery on custom ports.
 - Sped up color component discovery and merging while preserving merge order, SVG size, and rendered output on the four-image fidelity corpus.
+- Reused contour area, junction information, and shared boundary work. The USDA produce photo's polygon trace took 8.6% less time with identical SVG bytes and rendered pixels.
 
 ## Historical releases
 

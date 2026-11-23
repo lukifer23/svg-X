@@ -28,6 +28,29 @@ const cubicSegments = (subpath: ReturnType<typeof fitPointsToSubpath>) => {
 };
 
 describe("error-bounded cubic fitting", () => {
+  test("preserves the first tied split and resolves distances near the tolerance", () => {
+    const points = [
+      { x: 0, y: 0 },
+      { x: 1, y: 3 },
+      { x: 2, y: 3 },
+      { x: 3, y: 0 },
+    ];
+    expect(simplifyOpen(points, 3)).toEqual([points[0], points[3]]);
+    expect(simplifyOpen(points, 3 - 2 * Number.EPSILON)).toEqual([
+      points[0],
+      points[1],
+      points[3],
+    ]);
+  });
+
+  test("falls back to the original distance when squaring underflows", () => {
+    const origin = { x: 0, y: 0 };
+    const corner = { x: 1.5e-162, y: 1.5e-162 };
+    const closedChord = [origin, corner, origin];
+    expect(exceedsChordTolerance(closedChord, 1.7e-162)).toBe(true);
+    expect(simplifyOpen(closedChord, 1.7e-162)).toEqual(closedChord);
+  });
+
   test("selects curves only when the simplifier would split the original chord", () => {
     const tolerance = 0.25;
     const line = [

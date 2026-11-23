@@ -7,13 +7,18 @@ const CELL_X = [0, -1, -1, 0];
 const CELL_Y = [0, 0, -1, -1];
 const TURN_ORDER = [1, 0, 3, 2];
 
+interface ColorRing {
+  points: Point[];
+  area: number;
+}
+
 export const traceColorBoundaries = (
   labels: Uint8Array,
   width: number,
   height: number,
   paletteSize: number,
-): Point[][][] => {
-  const rings: Point[][][] = Array.from({ length: paletteSize }, () => []);
+): ColorRing[][] => {
+  const rings: ColorRing[][] = Array.from({ length: paletteSize }, () => []);
   // Store the four directed sides in one byte per pixel. Clear a bit as its
   // side is walked. Adjacent colors each own their side of a shared boundary.
   const remaining = new Uint8Array(labels.length);
@@ -41,6 +46,7 @@ export const traceColorBoundaries = (
       const startY = (seed - rowX) / width - CELL_Y[direction];
       const label = labels[seed];
       const ring: Point[] = [];
+      let twiceArea = 0;
       let pixel = seed;
       let x = startX;
       let y = startY;
@@ -48,8 +54,12 @@ export const traceColorBoundaries = (
       while (pixel >= 0) {
         remaining[pixel] &= ~(1 << direction);
         ring.push({ x, y });
-        x += STEP_X[direction];
-        y += STEP_Y[direction];
+        const dx = STEP_X[direction];
+        const dy = STEP_Y[direction];
+        // Shoelace contribution for this unit edge, before stepping.
+        twiceArea += x * dy - y * dx;
+        x += dx;
+        y += dy;
         pixel = -1;
         // At diagonal contacts, turn right first to keep the same pixel-side
         // pairing as the original directed-edge walk.
@@ -72,7 +82,7 @@ export const traceColorBoundaries = (
       }
 
       if (ring.length >= 4 && x === startX && y === startY)
-        rings[label].push(ring);
+        rings[label].push({ points: ring, area: twiceArea / 2 });
     }
   }
   return rings;

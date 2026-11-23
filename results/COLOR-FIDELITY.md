@@ -86,3 +86,46 @@ and `SVGX_PHOTO_BASELINE=photo-color-cb09ca6-components-before.json`.
 The [baseline](photo-color-cb09ca6-components-before.json) and
 [updated run](photo-color-components-final.json) contain sizes and hashes.
 Setting `SVGX_PHOTO_PROFILE_DIR` also writes per-image merge profiles.
+
+## Dense photo boundary assembly
+
+On the USDA photo, quantization still accounted for roughly half of
+the polygon trace. The assembly profile also showed repeated point-to-chord
+distance work. The boundary code rebuilt point arrays before checking for
+cached shared commands, recomputed junctions on both sides of shared edges,
+and scanned every completed ring to compute its area.
+
+Area is now accumulated during the pixel-edge walk. A compact junction cache
+avoids repeated neighborhood checks. Shared chains are materialized only on
+cache misses, and single lattice edges emit their existing endpoints directly.
+Simplification computes the chord once per candidate span and uses a squared
+bound to skip points safely below the current maximum. It uses the original
+distance to resolve potential splits and near ties.
+
+| Input | Polygon assembly before → after | Polygon trace before → after | Fitted trace before → after |
+| --- | ---: | ---: | ---: |
+| Bicycle illustration | 130.7 → 107.2 ms | 209.4 → 194.9 ms | 249.0 → 235.3 ms |
+| Generated still-life | 154.0 → 125.4 ms | 281.9 → 255.2 ms | 317.4 → 300.7 ms |
+| USDA fresh produce | 161.2 → 140.5 ms | 289.1 → 264.1 ms | 326.4 → 318.8 ms |
+| USFWS hummingbird | 46.0 → 40.1 ms | 105.9 → 98.9 ms | 133.9 → 128.9 ms |
+
+Baseline `d99a025` and the update ran in alternating order, with ten
+paired samples per stage after three warm-ups per implementation on the same
+working rasters and settings. The table reports these paired medians.
+The standalone profile runs sample polygon assembly, fitted assembly,
+quantization, and merging separately. [Paired timing samples](photo-color-produce-paired.json)
+
+All eight outputs retain the exact palettes, initial and merged labels,
+full-precision vector geometry, SVG bytes, rendered pixels, and file sizes
+listed above. The USDA SVG remains 1,660,150 bytes for Polygon and
+4,560,964 bytes for Fitted Bézier before optional SVGO. A differential test
+matched both path styles and signed ring areas on all 19,683 three-by-three
+label maps. Another test matched simplification and chord decisions on 4,096
+varied chains at four tolerances.
+
+For the photo harness set `SVGX_PHOTO_WORKING_SIZE=1` and
+`SVGX_PHOTO_BASELINE=photo-color-d99a025-produce-before.json`. The
+[baseline](photo-color-d99a025-produce-before.json) and
+[updated run](photo-color-produce-final.json) contain the fidelity hashes
+and standalone stage timings. Setting `SVGX_PHOTO_PROFILE_DIR` also
+writes a separate `*.polygon.cpuprofile` for each image.
