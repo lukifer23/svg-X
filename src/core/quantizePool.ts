@@ -1,5 +1,6 @@
 import type { BandQuantizer } from "./bandQuantize";
-import type { PaletteColor } from "./colorTrace";
+import type { ColorQuantization, PaletteColor } from "./colorTrace";
+import type { WorkerConversionOptions } from "./vectorDocument";
 
 interface Pending {
   resolve: (message: QuantizeResponse) => void;
@@ -22,10 +23,11 @@ interface Waiter {
 }
 
 interface QuantizeResponse {
-  type: "ready" | "sums" | "labels" | "error";
+  type: "ready" | "sums" | "labels" | "quantized" | "error";
   id: number;
   sums?: Float64Array;
   labels?: Uint8Array;
+  palette?: PaletteColor[];
   error?: string;
 }
 
@@ -243,6 +245,29 @@ export class QuantizeWorkerPool {
   ): Promise<PooledBand> {
     const [slot] = await this.acquire(1, signal);
     return this.initializeBand(slot, pixels, signal);
+  }
+
+  async quantizeImage(
+    pixels: Uint8ClampedArray,
+    options: WorkerConversionOptions,
+    signal?: AbortSignal,
+  ): Promise<ColorQuantization> {
+    const [slot] = await this.acquire(1, signal);
+    try {
+      // Retain the caller's buffer for the single-vector-worker fallback.
+      const input = new Uint8Array(pixels).buffer;
+      const result = await this.request(
+        slot,
+        { type: "quantize", id: ++this.sequence, pixels: input, options },
+        [input],
+        signal,
+      );
+      if (result.type !== "quantized" || !result.labels || !result.palette)
+        throw new Error("Quantize worker did not return image labels");
+      return { labels: result.labels, palette: result.palette };
+    } finally {
+      this.release(slot);
+    }
   }
 
   /**

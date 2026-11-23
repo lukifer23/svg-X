@@ -33,12 +33,13 @@ export const quantizeColorInParallel = async (
   signal?: AbortSignal,
   workerLimit = maxWorkers(),
 ): Promise<ColorQuantization> => {
-  const seeds = colorSeeds(pixels, options);
-  const ranges = planBands(
-    height,
-    chooseBandCount(width * height, workerLimit),
-  );
+  const count = chooseBandCount(width * height, workerLimit);
   const pool = getQuantizeWorkerPool();
+  // A single worker can finish the complete reduction without sending
+  // intermediate palettes and sums back through the renderer.
+  if (count === 1) return pool.quantizeImage(pixels, options, signal);
+  const seeds = colorSeeds(pixels, options);
+  const ranges = planBands(height, count);
   const bands: PooledBand[] = [];
   try {
     const slices: Uint8ClampedArray[] = [];

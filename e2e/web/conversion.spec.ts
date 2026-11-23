@@ -82,6 +82,49 @@ test("traces archived linework as stroked curves through the centerline controls
   await expect(strokes).toHaveAttribute("d", /[Cc]/);
 });
 
+test("batch and interactive color workers produce the same photo SVG", async ({
+  page,
+}) => {
+  await page.goto("/", { waitUntil: "networkidle" });
+  const result = await page.evaluate(async () => {
+    const { DEFAULT_PARAMS, processImageBatch, processImageDetailed } =
+      await import("/src/utils/imageProcessor.ts");
+    const response = await fetch(
+      "/tests/fixtures/review/usda-fresh-produce.jpg",
+    );
+    if (!response.ok) throw new Error("Could not load the produce photo");
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement("canvas");
+    canvas.width = 640;
+    canvas.height = 400;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas 2D is unavailable");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const { data, width, height } = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    const input = () => ({ pixels: data.slice().buffer, width, height });
+    const params = {
+      ...DEFAULT_PARAMS,
+      mode: "color" as const,
+      colorCurveFit: true,
+      svgoOptimize: false,
+    };
+    const interactive = await processImageDetailed(input(), params, () => {});
+    const batch = await processImageBatch(input(), params);
+    return {
+      identical: batch === interactive.svg,
+      paths: interactive.metrics.outputPaths,
+    };
+  });
+  expect(result.identical).toBe(true);
+  expect(result.paths).toBeGreaterThan(0);
+});
+
 test("supports keyboard-safe network dialog and has no serious axe findings", async ({
   page,
 }) => {

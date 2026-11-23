@@ -51,8 +51,12 @@ The production Chromium gate initially timed fixture generation alongside
 conversion. Its hosted ratios were 1.21× and 1.19× against 1.25×. Preparing
 the same inputs outside the timers isolates production conversion. With
 that harness, a paired local run measured 247.4 → 225.1 ms sequential and
-112.7 → 97.2 ms pooled. The current build reached 2.32× against the
-unchanged 1.50× local floor.
+112.7 → 97.2 ms pooled after the contour change. The hosted gate was still
+sensitive to worker coordination. The batch quantization worker now seeds,
+refines, and labels in one request. This removes intermediate messages
+through the renderer while preserving overlap between quantization and
+contour assembly. The follow-up local run measured 218.0 ms sequential and
+75.9 ms pooled (2.87× against the unchanged 1.50× floor).
 
 ## Reproduce
 
