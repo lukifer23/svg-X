@@ -8,6 +8,11 @@ Native batch tests use the production run and real Sharp and filesystem operatio
 
 `npm run bench:pipeline` profiles every color stage on representative fixtures, verifies that each fixture's serialized-SVG SHA-256 is unchanged, and writes `results/pipeline-<label>.json`. The human summary and its methodology live in `results/PERFORMANCE.md`. `src/core/parallelQuantize.test.ts` proves the band-parallel quantizer produces bit-identical labels, palette, and SVG across two to eight bands.
 
+The [photo color benchmark](../results/PHOTO-COLOR.md) measures the still-life
+fixture and two public-domain photographs with polygon and fitted output.
+It checks the input, serialized SVG, rasterized RGBA, and path counts against
+the baseline when `SVGX_PHOTO_BASELINE` is set.
+
 Current absolute acceptance gates include:
 
 - flat-color SSIM at least 0.95 and mean Delta E 2000 at most 2;

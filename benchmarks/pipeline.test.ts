@@ -8,9 +8,9 @@ import {
   paletteSeeds,
   precomputePixelLabs,
   refinePalette,
-  traceBoundaries,
   traceColorDocument,
 } from "../src/core/colorTrace";
+import { traceColorBoundaries } from "../src/core/colorBoundaries";
 import { traceCenterlines } from "../src/core/centerline";
 import { traceBlackAndWhite } from "../src/core/bwTrace";
 import { serializeVectorDocument } from "../src/core/serialize";
@@ -68,8 +68,7 @@ const profileCase = (name: string, rgba: Rgba) => {
       ),
     ),
     traceBoundaries: time(() => {
-      for (let index = 0; index < palette.length; index += 1)
-        traceBoundaries(merged.labels, width, height, index);
+      traceColorBoundaries(merged.labels, width, height, palette.length);
     }),
   };
   const quantization =

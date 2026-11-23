@@ -33,6 +33,8 @@ not overwrite each other.
   the min-of-five timing helper.
 - `pipeline.test.ts` — per-stage timings, memory delta, and the serialized-SVG
   SHA-256 used as the exactness guard.
+- `photoColor.test.ts` — photo-specific stage medians for polygon and fitted
+  output, with input and output hashes. See the [photo results](../results/PHOTO-COLOR.md).
 - `total.test.ts` — total color-trace time and hash only; deliberately imports
   just `traceColorDocument` so it runs on a pristine checkout.
 - `parallel.test.ts` + `parallel-worker.mjs` + `bundle.mjs` — the Node

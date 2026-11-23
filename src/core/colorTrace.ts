@@ -1,4 +1,5 @@
-import { ringArea, type Point } from "./geometry";
+import { ringArea } from "./geometry";
+import { traceColorBoundaries } from "./colorBoundaries";
 import { createSharedBoundaryFitter } from "./sharedColorBoundaries";
 import {
   MAX_PALETTE_COLORS,
@@ -24,13 +25,6 @@ export interface PixelLabs {
   b: Float32Array;
 }
 type HistogramColor = PaletteColor;
-interface Edge {
-  start: Point;
-  end: Point;
-  direction: number;
-  used: boolean;
-}
-
 interface LabelComponent {
   id: number;
   label: number;
@@ -722,71 +716,6 @@ export const mergeComponentsToBudget = (
   };
 };
 
-export const traceBoundaries = (
-  labels: Uint8Array,
-  width: number,
-  height: number,
-  label: number,
-): Point[][] => {
-  const edges: Edge[] = [];
-  const outgoing = new Map<number, number[]>();
-  const stride = width + 1;
-  const keyOf = (x: number, y: number): number => y * stride + x;
-  const add = (start: Point, end: Point, direction: number) => {
-    const index = edges.push({ start, end, direction, used: false }) - 1;
-    const key = keyOf(start.x, start.y);
-    const list = outgoing.get(key);
-    if (list) list.push(index);
-    else outgoing.set(key, [index]);
-  };
-  const at = (x: number, y: number): number =>
-    x < 0 || y < 0 || x >= width || y >= height ? -1 : labels[y * width + x];
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      if (at(x, y) !== label) continue;
-      if (at(x, y - 1) !== label) add({ x, y }, { x: x + 1, y }, 0);
-      if (at(x + 1, y) !== label)
-        add({ x: x + 1, y }, { x: x + 1, y: y + 1 }, 1);
-      if (at(x, y + 1) !== label)
-        add({ x: x + 1, y: y + 1 }, { x, y: y + 1 }, 2);
-      if (at(x - 1, y) !== label) add({ x, y: y + 1 }, { x, y }, 3);
-    }
-  }
-  const rings: Point[][] = [];
-  edges.forEach((edge) => {
-    if (edge.used) return;
-    const ring: Point[] = [];
-    let current = edge;
-    const startKey = keyOf(edge.start.x, edge.start.y);
-    while (!current.used) {
-      current.used = true;
-      ring.push(current.start);
-      const candidates = outgoing.get(keyOf(current.end.x, current.end.y));
-      let best = -1;
-      let bestPriority = 4;
-      if (candidates) {
-        for (let index = 0; index < candidates.length; index += 1) {
-          const candidate = edges[candidates[index]];
-          if (candidate.used) continue;
-          const turn = (candidate.direction - current.direction + 4) % 4;
-          const priority = turn === 1 ? 0 : turn === 0 ? 1 : turn === 3 ? 2 : 3;
-          if (priority < bestPriority) {
-            bestPriority = priority;
-            best = candidates[index];
-          }
-        }
-      }
-      if (best < 0) break;
-      current = edges[best];
-      if (keyOf(current.start.x, current.start.y) === startKey && current.used)
-        break;
-    }
-    if (ring.length >= 4 && keyOf(current.end.x, current.end.y) === startKey)
-      rings.push(ring);
-  });
-  return rings;
-};
-
 const rgb = (color: PaletteColor): string =>
   `rgb(${Math.round(color.r)},${Math.round(color.g)},${Math.round(color.blue)})`;
 
@@ -863,6 +792,12 @@ export const assembleColorDocument = (
     Math.max(1, options.turdSize),
   );
   const labels = componentMerge.labels;
+  const boundaries = traceColorBoundaries(
+    labels,
+    width,
+    height,
+    palette.length,
+  );
   const fitBoundary = createSharedBoundaryFitter(
     labels,
     width,
@@ -875,7 +810,7 @@ export const assembleColorDocument = (
     .sort((left, right) => right.color.count - left.color.count);
   const shapes: VectorShape[] = [];
   indexed.forEach(({ color, index }) => {
-    const rings = traceBoundaries(labels, width, height, index)
+    const rings = boundaries[index]
       .map((points) => ({
         points,
         area: Math.abs(ringArea(points)),
