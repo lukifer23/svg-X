@@ -60,6 +60,13 @@ test("profiles photo conversion and checks serialized and rasterized output", as
     const quantize = () =>
       quantizeColor(pixels, colorSeeds(pixels, benchOptions));
     const { labels, palette } = quantize();
+    const quantization = measure(quantize);
+    if (process.env.SVGX_PHOTO_PROFILE_DIR)
+      await profile(
+        process.env.SVGX_PHOTO_PROFILE_DIR,
+        `${file}.quantize`,
+        quantize,
+      );
     const merge = () =>
       mergeComponentsToBudget(
         labels,
@@ -103,7 +110,9 @@ test("profiles photo conversion and checks serialized and rasterized output", as
       width,
       height,
       inputSha256: sha256(pixels),
-      quantization: measure(quantize),
+      labelsSha256: sha256(labels),
+      paletteSha256: sha256(JSON.stringify(palette)),
+      quantization,
       componentMerge: measure(merge),
       boundaries,
       cases,
@@ -133,9 +142,14 @@ test("profiles photo conversion and checks serialized and rasterized output", as
       ({ cases }: (typeof report.reports)[number]) =>
         cases.every(({ geometrySha256 }) => geometrySha256),
     );
+    const compareQuantization = baseline.reports.every(
+      ({ labelsSha256, paletteSha256 }: (typeof report.reports)[number]) =>
+        labelsSha256 && paletteSha256,
+    );
     const fidelity = ({ reports }: typeof report) =>
-      reports.map(({ inputSha256, cases }) => ({
+      reports.map(({ inputSha256, labelsSha256, paletteSha256, cases }) => ({
         inputSha256,
+        ...(compareQuantization ? { labelsSha256, paletteSha256 } : {}),
         output: cases.map(
           ({ optCurve, paths, svgSha256, rasterSha256, geometrySha256 }) => ({
             optCurve,

@@ -16,8 +16,9 @@ assembly, and total in-process color tracing separately. Image decode, SVG
 serialization, and rasterization are outside the timed region. Each stage
 reports the median of seven measurements after three warm-ups. Multiple
 stages are timed independently, so their medians do not add up to the total.
-Every run records the input RGBA, serialized SVG, and librsvg-rendered RGBA
-hashes, plus output path count, for both polygon and fitted output.
+The harness records hashes for input RGBA, the ordered palette, and pixel
+labels. It also records the full-precision vector document, SVG, and
+librsvg-rendered RGBA hashes, plus path count, for polygon and fitted output.
 
 ## Changes
 
@@ -178,3 +179,37 @@ The [before](photo-color-a8dddf3-solve-before.json) and
 [after](photo-color-solve-after.json) reports contain the paired measurements.
 To reproduce the comparison above, set `SVGX_PHOTO_BASELINE` to
 `photo-color-a8dddf3-solve-before.json`.
+
+## Exact RGB groups in photo quantization
+
+V8 profiles at `1a000e7` attributed 69–73% of quantization samples to
+refinement and final label assignment. Each pass searched all palette entries
+again for every opaque pixel, including identical RGB values. A trial cache
+that repeated the RGB lookup during every pass slowed quantization on two
+inputs.
+
+The quantizer now groups exact RGB matches during OKLab precomputation.
+A representative contributes integer RGB sums and counts for its group in
+each refinement pass. Final labeling assigns each group's label to its
+members. The full RGB key is checked on a cache hit. Alpha below 8
+still produces label 255 and contributes nothing to palette sums. Integer
+aggregation preserves the palette across worker band boundaries.
+
+The grouping table has at most 65,536 slots and uses one additional
+32-bit entry per pixel when enabled. Low-reuse inputs use direct OKLab
+conversion and per-pixel assignment. The distance formula and tie order
+are the same on both paths.
+
+| Input | Quantization before → after | Polygon trace before → after | Fitted trace before → after |
+| --- | ---: | ---: | ---: |
+| Generated still-life | 217.5 → 196.5 ms | 445.9 → 413.9 ms | 615.9 → 583.0 ms |
+| USDA fresh produce | 194.2 → 159.9 ms | 422.3 → 367.9 ms | 512.4 → 508.0 ms |
+| USFWS hummingbird | 139.8 → 96.1 ms | 258.3 → 181.7 ms | 312.2 → 226.7 ms |
+
+All ordered palette and pixel-label hashes matched exactly. All six polygon
+and fitted outputs matched in full-precision geometry, SVG, rendered RGBA,
+and path count. The [before](photo-color-1a000e7-quant-before.json) and
+[after](photo-color-quant-unified.json) reports contain the paired
+measurements. To reproduce, set `SVGX_PHOTO_BASELINE` to
+`photo-color-1a000e7-quant-before.json`. With `SVGX_PHOTO_PROFILE_DIR` set,
+the harness also writes a separate `*.quantize.cpuprofile` for each image.

@@ -37,6 +37,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Reduced fitted photo conversion time by reusing chord lengths and fitting ranges of the original chain. Polygon and fitted geometry matched the reference outputs on three images.
 - Reused cubic evaluation weights and reduced repeated distance calculations during validation. A paired benchmark on the same three images showed 9–10% less fitted tracing time with identical full-precision geometry, SVG, and rendered pixels.
 - Cached least-squares weights for short runs of one-pixel boundary edges. Fitted tracing took 10–15% less time on the same three images, with identical full-precision geometry, SVG, and rendered pixels.
+- Grouped exact RGB matches during photo quantization. The same three images spent 10–31% less time quantizing, with identical palettes, pixel labels, and vector output.
 
 ## Historical releases
 

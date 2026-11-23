@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { traceBlackAndWhite } from "./bwTrace";
 import {
+  accumulatePaletteSums,
   deduplicateShapes,
+  labelPixels,
   mergeComponentsToBudget,
   paletteSeeds,
   precomputePixelLabs,
@@ -47,11 +49,52 @@ const rgba = (
 };
 
 describe("color region topology", () => {
+  test("keeps exact palette assignments across RGB cache collisions and palette changes", () => {
+    // Grays 255 and 39 share a cache slot for this input size.
+    const shades = [0, 255, 39, ...Array.from({ length: 23 }, (_, i) => i + 1)];
+    const pixels = rgba(shades.length * 2, 1, (x) => {
+      const shade = shades[x % shades.length];
+      return [shade, shade, shade, x === 0 ? 7 : 8];
+    });
+    const labs = precomputePixelLabs(pixels);
+    const palette = [0, 255].map((value) => ({
+      ...rgbToOklab(value, value, value),
+      r: value,
+      g: value,
+      blue: value,
+      count: 1,
+    }));
+    const first = [255, 1, ...Array<number>(24).fill(0)];
+    const second = [0, 1, ...Array<number>(24).fill(0)];
+    expect([...labelPixels(pixels, labs, palette)]).toEqual([
+      ...first,
+      ...second,
+    ]);
+    const reversed = [...palette].reverse();
+    expect([...labelPixels(pixels, labs, reversed)]).toEqual(
+      [...first, ...second].map((label) => (label === 255 ? 255 : 1 - label)),
+    );
+    // The same distance for both candidates must pick the first index.
+    const tied = [palette[0], palette[0]];
+    const sums = new Float64Array(8);
+    accumulatePaletteSums(pixels, labs, tied, sums);
+    expect([...sums]).toEqual([
+      1140,
+      1140,
+      1140,
+      pixels.length / 4 - 1,
+      0,
+      0,
+      0,
+      0,
+    ]);
+  });
+
   test.each([
     ["repeated colors and cache collisions", true],
     ["low color reuse", false],
   ])("matches scalar OKLab with %s", (_description, repeated) => {
-    const pixels = new Uint8ClampedArray(8192 * 4 + 1).subarray(1);
+    const pixels = new Uint8ClampedArray(32768 * 4 + 1).subarray(1);
     for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
       const color = repeated && pixel % 2 === 0 ? 0 : pixel;
       pixels.set(
@@ -60,6 +103,7 @@ describe("color region topology", () => {
       );
     }
     const labs = precomputePixelLabs(pixels);
+    expect(Boolean(labs.occurrences)).toBe(repeated);
     for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
       const offset = pixel * 4;
       const expected = rgbToOklab(

@@ -23,6 +23,7 @@ export interface PixelLabs {
   l: Float32Array;
   a: Float32Array;
   b: Float32Array;
+  occurrences?: Int32Array;
 }
 type HistogramColor = PaletteColor;
 interface LabelComponent {
@@ -75,12 +76,13 @@ const hasColorReuse = (
   shift: number,
 ): boolean => {
   const length = pixels.length / 4;
-  if (length <= 2048) return true;
+  const windowSize = 4096;
+  if (length <= 4 * windowSize) return true;
   let hits = 0;
   // Sample contiguous windows across the image to detect spatial reuse.
   for (let window = 0; window < 4; window += 1) {
-    const start = Math.floor((window * (length - 512)) / 3) * 4;
-    for (let offset = start; offset < start + 2048; offset += 4) {
+    const start = Math.floor((window * (length - windowSize)) / 3) * 4;
+    for (let offset = start; offset < start + windowSize * 4; offset += 4) {
       const key = rgbKey(
         pixels[offset],
         pixels[offset + 1],
@@ -92,7 +94,7 @@ const hasColorReuse = (
     }
   }
   keys.fill(0);
-  return hits >= 256;
+  return hits >= windowSize / 2;
 };
 
 const writePixelLab = (
@@ -121,10 +123,8 @@ export const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
   const l = new Float32Array(length);
   const a = new Float32Array(length);
   const b = new Float32Array(length);
-  const labs = { l, a, b };
-  // Reuse exact RGB conversions across pixels with different alpha values.
-  // The cache holds source indices so hits reuse the original Float32 results.
-  const bits = Math.max(4, Math.min(12, 31 - Math.clz32(length)));
+  const labs: PixelLabs = { l, a, b };
+  const bits = Math.max(4, Math.min(16, 31 - Math.clz32(length)));
   const keys = new Uint32Array(1 << bits);
   const shift = 32 - bits;
   if (!hasColorReuse(pixels, keys, shift)) {
@@ -141,6 +141,10 @@ export const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
     return labs;
   }
   const indices = new Uint32Array(keys.length);
+  // A positive entry is the opaque count for the representative pixel.
+  // A negative entry points back to it. Zero marks transparency.
+  const occurrences = new Int32Array(length);
+  labs.occurrences = occurrences;
   for (let pixel = 0; pixel < length; pixel += 1) {
     const offset = pixel * 4;
     const red = pixels[offset];
@@ -148,15 +152,27 @@ export const precomputePixelLabs = (pixels: Uint8ClampedArray): PixelLabs => {
     const blue = pixels[offset + 2];
     const key = rgbKey(red, green, blue);
     const slot = cacheSlot(key, shift);
+    const opaque = pixels[offset + 3] >= 8;
     if (keys[slot] === key) {
       const previous = indices[slot];
       l[pixel] = l[previous];
       a[pixel] = a[previous];
       b[pixel] = b[previous];
+      if (opaque) {
+        if (occurrences[previous] > 0) {
+          occurrences[previous] += 1;
+          occurrences[pixel] = -1 - previous;
+        } else {
+          // Reuse Lab from a transparent pixel, and start the opaque group here.
+          indices[slot] = pixel;
+          occurrences[pixel] = 1;
+        }
+      }
       continue;
     }
     keys[slot] = key;
     indices[slot] = pixel;
+    if (opaque) occurrences[pixel] = 1;
     writePixelLab(
       labs,
       pixel,
@@ -413,6 +429,7 @@ export const accumulatePaletteSums = (
   const labL = labs.l;
   const labA = labs.a;
   const labB = labs.b;
+  const occurrences = labs.occurrences;
   const k = palette.length;
   const count = pixels.length / 4;
   const palL = new Float64Array(k);
@@ -426,7 +443,10 @@ export const accumulatePaletteSums = (
   }
   for (let pixel = 0; pixel < count; pixel += 1) {
     const index = pixel * 4;
-    if (pixels[index + 3] < 8) continue;
+    const weight = occurrences
+      ? occurrences[pixel]
+      : Number(pixels[index + 3] >= 8);
+    if (weight <= 0) continue;
     const pl = labL[pixel];
     const pa = labA[pixel];
     const pb = labB[pixel];
@@ -442,10 +462,10 @@ export const accumulatePaletteSums = (
         closest = candidate;
       }
     }
-    sums[closest * 4] += pixels[index];
-    sums[closest * 4 + 1] += pixels[index + 1];
-    sums[closest * 4 + 2] += pixels[index + 2];
-    sums[closest * 4 + 3] += 1;
+    sums[closest * 4] += pixels[index] * weight;
+    sums[closest * 4 + 1] += pixels[index + 1] * weight;
+    sums[closest * 4 + 2] += pixels[index + 2] * weight;
+    sums[closest * 4 + 3] += weight;
   }
 };
 
@@ -495,6 +515,7 @@ export const labelPixels = (
   const labL = labs.l;
   const labA = labs.a;
   const labB = labs.b;
+  const occurrences = labs.occurrences;
   const k = palette.length;
   const labels = new Uint8Array(pixels.length / 4);
   const palL = new Float64Array(k);
@@ -510,6 +531,10 @@ export const labelPixels = (
     const index = pixel * 4;
     if (pixels[index + 3] < 8) {
       labels[pixel] = 255;
+      continue;
+    }
+    if (occurrences && occurrences[pixel] < 0) {
+      labels[pixel] = labels[-1 - occurrences[pixel]];
       continue;
     }
     const pl = labL[pixel];
