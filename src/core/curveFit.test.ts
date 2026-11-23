@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { evaluateCubic, fitPointsToSubpath } from "./curveFit";
-import type { Point } from "./geometry";
+import { exceedsChordTolerance, simplifyOpen, type Point } from "./geometry";
 
 const cubicSegments = (subpath: ReturnType<typeof fitPointsToSubpath>) => {
   const segments: Array<{
@@ -28,6 +28,24 @@ const cubicSegments = (subpath: ReturnType<typeof fitPointsToSubpath>) => {
 };
 
 describe("error-bounded cubic fitting", () => {
+  test("selects curves only when the simplifier would split the original chord", () => {
+    const tolerance = 0.25;
+    const line = [
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: tolerance },
+      { x: 3, y: 0 },
+      { x: 4, y: 0 },
+    ];
+    const bend = line.map((point, index) =>
+      index === 2 ? { ...point, y: tolerance + 0.01 } : point,
+    );
+    expect(exceedsChordTolerance(line, tolerance)).toBe(false);
+    expect(simplifyOpen(line, tolerance)).toHaveLength(2);
+    expect(exceedsChordTolerance(bend, tolerance)).toBe(true);
+    expect(simplifyOpen(bend, tolerance).length).toBeGreaterThan(2);
+    expect(exceedsChordTolerance([...line, line[0]], tolerance)).toBe(true);
+  });
   test("fits a smooth open chain with bounded point residual", () => {
     const points = Array.from({ length: 31 }, (_value, index) => ({
       x: index,

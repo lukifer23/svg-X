@@ -1,5 +1,10 @@
 import { fitPointsToSubpath } from "./curveFit";
-import { pointsToSubpath, simplifyOpen, type Point } from "./geometry";
+import {
+  exceedsChordTolerance,
+  pointsToSubpath,
+  simplifyOpen,
+  type Point,
+} from "./geometry";
 import type { VectorCommand, VectorSubpath } from "./vectorDocument";
 
 type Segment = Extract<VectorCommand, { type: "L" | "C" }>;
@@ -48,15 +53,23 @@ export const createSharedBoundaryFitter = (
     let pair = fitted.get(key);
     if (!pair) {
       const ordered = reverse ? points.slice().reverse() : points;
-      const simplified = simplifyOpen(ordered, fitCurves ? error / 2 : error);
+      const tolerance = fitCurves ? error / 2 : error;
+      const eligible = fitCurves && ordered.length > 4;
+      // The fitted path uses the source chain. Only its first simplification
+      // split matters when deciding whether to keep the edge linear.
+      const fit = eligible && exceedsChordTolerance(ordered, tolerance);
       // Straight edges stay linear, including frame edges. At either end of
       // a curved chain keep the original unit edge as a junction tangent.
-      const path =
-        fitCurves && simplified.length > 2 && ordered.length > 4
-          ? fitPointsToSubpath(ordered.slice(1, -1), false, error / 2)
-          : pointsToSubpath(simplified, false);
+      const path = fit
+        ? fitPointsToSubpath(ordered.slice(1, -1), false, tolerance)
+        : pointsToSubpath(
+            eligible
+              ? [ordered[0], ordered[ordered.length - 1]]
+              : simplifyOpen(ordered, tolerance),
+            false,
+          );
       const forward = path.commands.slice(1) as Segment[];
-      if (fitCurves && simplified.length > 2 && ordered.length > 4) {
+      if (fit) {
         forward.unshift({ type: "L", ...ordered[1] });
         forward.push({ type: "L", ...ordered[ordered.length - 1] });
       }

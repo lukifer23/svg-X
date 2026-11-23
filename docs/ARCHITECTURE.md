@@ -42,7 +42,7 @@ Each SVG is staged in its output directory. Cancellation is checked before each 
   corrects a deep dip only where lighter neighbors bracket the tile.
   Thinning visits foreground indices and applies deletions synchronously
   in the same two subiterations.
-- `curveFit.ts`: common recursive cubic fitting bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance.
+- `curveFit.ts`: common cubic fitter bounded by point residual, source envelope, handle length, and sampled curve-to-polyline distance. It measures source chords once and processes split ranges with a reusable parameter buffer.
 
 Serialization and conversion types live in `vectorDocument.ts`, `serialize.ts`, and `vectorExport.ts`. UI code must not parse generated SVG to recover geometry.
 

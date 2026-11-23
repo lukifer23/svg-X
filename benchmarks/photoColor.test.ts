@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { Session } from "node:inspector/promises";
 import { cpus } from "node:os";
+import path from "node:path";
 import sharp from "sharp";
 import { expect, test } from "vitest";
 import {
@@ -22,6 +24,7 @@ const fixtures = [
 const sha256 = (input: string | Uint8Array) =>
   createHash("sha256").update(input).digest("hex");
 const measure = (run: () => unknown) => {
+  if (process.env.SVGX_PHOTO_HASH_ONLY === "1") return;
   for (let warmup = 0; warmup < 3; warmup += 1) run();
   const samplesMs = Array.from({ length: 7 }, () => {
     const start = performance.now();
@@ -30,6 +33,24 @@ const measure = (run: () => unknown) => {
   });
   const sorted = samplesMs.slice().sort((a, b) => a - b);
   return { medianMs: sorted[3], maxMs: sorted[6], samplesMs };
+};
+
+const profile = async (directory: string, file: string, run: () => unknown) => {
+  const session = new Session();
+  session.connect();
+  try {
+    await session.post("Profiler.enable");
+    await session.post("Profiler.setSamplingInterval", { interval: 500 });
+    await session.post("Profiler.start");
+    for (let iteration = 0; iteration < 3; iteration += 1) run();
+    const { profile } = await session.post("Profiler.stop");
+    await writeFile(
+      path.join(directory, `${file}.cpuprofile`),
+      JSON.stringify(profile),
+    );
+  } finally {
+    session.disconnect();
+  }
 };
 
 test("profiles photo conversion and checks serialized and rasterized output", async () => {
@@ -68,11 +89,14 @@ test("profiles photo conversion and checks serialized and rasterized output", as
       cases.push({
         optCurve,
         paths: document.diagnostics?.outputPaths,
+        geometrySha256: sha256(JSON.stringify(document)),
         svgSha256: sha256(svg),
         rasterSha256: sha256(raster),
         assembly: measure(assemble),
         conversion: measure(conversion),
       });
+      if (optCurve && process.env.SVGX_PHOTO_PROFILE_DIR)
+        await profile(process.env.SVGX_PHOTO_PROFILE_DIR, file, assemble);
     }
     reports.push({
       file,
@@ -105,15 +129,22 @@ test("profiles photo conversion and checks serialized and rasterized output", as
     const baseline = JSON.parse(
       await readFile(new URL(process.env.SVGX_PHOTO_BASELINE, results), "utf8"),
     );
+    const compareGeometry = baseline.reports.every(
+      ({ cases }: (typeof report.reports)[number]) =>
+        cases.every(({ geometrySha256 }) => geometrySha256),
+    );
     const fidelity = ({ reports }: typeof report) =>
       reports.map(({ inputSha256, cases }) => ({
         inputSha256,
-        output: cases.map(({ optCurve, paths, svgSha256, rasterSha256 }) => ({
-          optCurve,
-          paths,
-          svgSha256,
-          rasterSha256,
-        })),
+        output: cases.map(
+          ({ optCurve, paths, svgSha256, rasterSha256, geometrySha256 }) => ({
+            optCurve,
+            paths,
+            svgSha256,
+            rasterSha256,
+            ...(compareGeometry ? { geometrySha256 } : {}),
+          }),
+        ),
       }));
     expect(fidelity(report)).toEqual(fidelity(baseline));
   }

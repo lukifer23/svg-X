@@ -34,6 +34,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Reused exact RGB-to-OKLab results in the color pipeline. A short sample keeps low-reuse images on the direct conversion loop. The benchmark fixtures retained byte-identical SVG.
 - Replaced per-palette contour scans and edge objects with a shared pixel-side mask. Verified identical polygon and fitted SVG and rasterized output on the still-life fixture and two photographs.
 - Let single-worker color jobs finish quantization in one request, reducing renderer round trips while preserving the batch pipeline.
+- Reduced fitted photo conversion time by reusing chord lengths and fitting ranges of the original chain. Polygon and fitted geometry matched the reference outputs on three images.
 
 ## Historical releases
 

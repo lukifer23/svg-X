@@ -21,6 +21,17 @@ const distanceToSegment = (point: Point, start: Point, end: Point): number => {
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
 };
 
+export const exceedsChordTolerance = (
+  points: Point[],
+  tolerance: number,
+): boolean => {
+  const start = points[0];
+  const end = points[points.length - 1];
+  for (let index = 1; index < points.length - 1; index += 1)
+    if (distanceToSegment(points[index], start, end) > tolerance) return true;
+  return false;
+};
+
 export const simplifyOpen = (points: Point[], tolerance: number): Point[] => {
   if (points.length <= 2) return points.slice();
   const result = [points[0]];

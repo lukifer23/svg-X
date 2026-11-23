@@ -72,3 +72,38 @@ The harness writes `results/photo-color-local.json` and checks the output
 against the captured baseline. The [baseline](photo-color-332c669-before.json)
 was recorded on commit `332c669` with the previous contour implementation. The
 [updated run](photo-color-boundary-after.json) contains the shipped contour walk.
+
+## Bézier fitting follow-up
+
+An additional V8 CPU profile sampled three warmed fitted assemblies per
+image. On the still-life, cubic evaluation and least-squares generation
+accounted for about 23% of sampled time together. Chord parameterization,
+polyline length recomputation, and recursive fitting accounted for another
+10%. The fitted boundary code also fully simplified each chain before
+discarding the simplified points whenever it fitted a curve.
+
+The fitter now measures each chord once and solves contiguous index ranges
+over the source points. It reuses one parameter buffer and emits commands in
+source order without building and concatenating recursive result arrays.
+Cubic evaluation shares the same weights across the two coordinates.
+Fitted color chains check whether the original chord exceeds the tolerance
+before choosing the existing fit. Straight chains and shared-boundary
+reversal keep the same command sequence.
+
+| Input | Fitted assembly before → after | Fitted color trace before → after |
+| --- | ---: | ---: |
+| Generated still-life | 557.0 → 455.8 ms | 775.4 → 675.4 ms |
+| USDA fresh produce | 444.3 → 356.1 ms | 620.8 → 567.8 ms |
+| USFWS hummingbird | 227.1 → 194.8 ms | 395.6 → 334.7 ms |
+
+The three polygon outputs and three fitted outputs matched in unrounded
+`VectorDocument` geometry, serialized SVG, rasterized RGBA, and path count.
+The [before](photo-color-746f67b-bezier-before.json) and
+[after](photo-color-bezier-after.json) reports use the same settings and
+Windows host as this follow-up.
+
+To reproduce this comparison, set `SVGX_PHOTO_BASELINE` to
+`photo-color-746f67b-bezier-before.json` and run the command above.
+`SVGX_PHOTO_HASH_ONLY=1` runs the fidelity checks without timing.
+Set `SVGX_PHOTO_PROFILE_DIR` to an existing directory to record V8 profiles
+outside the timed runs.
