@@ -3,11 +3,13 @@ import { readFile, writeFile } from "node:fs/promises";
 import { Session } from "node:inspector/promises";
 import { cpus } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { expect, test } from "vitest";
 import {
   assembleColorDocument,
   colorSeeds,
+  findLabelComponents,
   mergeComponentsToBudget,
   quantizeColor,
   traceColorDocument,
@@ -21,6 +23,24 @@ const fixtures = [
   "usda-fresh-produce.jpg",
   "usfws-rufous-hummingbird.jpg",
 ];
+
+const loadFixture = async (file: string, workingSize: boolean) => {
+  if (!workingSize) return loadReal(file);
+  // Match the corrected-palette fidelity comparison's working raster.
+  const { data, info } = await sharp(
+    fileURLToPath(new URL(`../tests/fixtures/review/${file}`, import.meta.url)),
+  )
+    .resize(1000, 1000, { fit: "inside", withoutEnlargement: true })
+    .flatten({ background: "white" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return {
+    pixels: new Uint8ClampedArray(data),
+    width: info.width,
+    height: info.height,
+  };
+};
 const sha256 = (input: string | Uint8Array) =>
   createHash("sha256").update(input).digest("hex");
 const measure = (run: () => unknown) => {
@@ -55,8 +75,11 @@ const profile = async (directory: string, file: string, run: () => unknown) => {
 
 test("profiles photo conversion and checks serialized and rasterized output", async () => {
   const reports = [];
-  for (const file of fixtures) {
-    const { pixels, width, height } = await loadReal(file);
+  const workingSize = process.env.SVGX_PHOTO_WORKING_SIZE === "1";
+  for (const file of workingSize
+    ? ["color-bicycle.png", ...fixtures]
+    : fixtures) {
+    const { pixels, width, height } = await loadFixture(file, workingSize);
     const quantize = () =>
       quantizeColor(pixels, colorSeeds(pixels, benchOptions));
     const { labels, palette } = quantize();
@@ -77,6 +100,8 @@ test("profiles photo conversion and checks serialized and rasterized output", as
         benchOptions.turdSize,
       );
     const merged = merge();
+    if (process.env.SVGX_PHOTO_PROFILE_DIR)
+      await profile(process.env.SVGX_PHOTO_PROFILE_DIR, `${file}.merge`, merge);
     const boundaries = measure(() => {
       traceColorBoundaries(merged.labels, width, height, palette.length);
     });
@@ -98,6 +123,7 @@ test("profiles photo conversion and checks serialized and rasterized output", as
         paths: document.diagnostics?.outputPaths,
         geometrySha256: sha256(JSON.stringify(document)),
         svgSha256: sha256(svg),
+        svgBytes: Buffer.byteLength(svg),
         rasterSha256: sha256(raster),
         assembly: measure(assemble),
         conversion: measure(conversion),
@@ -112,6 +138,10 @@ test("profiles photo conversion and checks serialized and rasterized output", as
       inputSha256: sha256(pixels),
       labelsSha256: sha256(labels),
       paletteSha256: sha256(JSON.stringify(palette)),
+      mergedLabelsSha256: sha256(merged.labels),
+      componentDiscovery: workingSize
+        ? measure(() => findLabelComponents(labels, width, height))
+        : undefined,
       quantization,
       componentMerge: measure(merge),
       boundaries,
@@ -146,20 +176,45 @@ test("profiles photo conversion and checks serialized and rasterized output", as
       ({ labelsSha256, paletteSha256 }: (typeof report.reports)[number]) =>
         labelsSha256 && paletteSha256,
     );
+    const compareMerged = baseline.reports.every(
+      ({ mergedLabelsSha256 }: (typeof report.reports)[number]) =>
+        mergedLabelsSha256,
+    );
+    const compareSize = baseline.reports.every(
+      ({ cases }: (typeof report.reports)[number]) =>
+        cases.every(({ svgBytes }) => Number.isInteger(svgBytes)),
+    );
     const fidelity = ({ reports }: typeof report) =>
-      reports.map(({ inputSha256, labelsSha256, paletteSha256, cases }) => ({
-        inputSha256,
-        ...(compareQuantization ? { labelsSha256, paletteSha256 } : {}),
-        output: cases.map(
-          ({ optCurve, paths, svgSha256, rasterSha256, geometrySha256 }) => ({
-            optCurve,
-            paths,
-            svgSha256,
-            rasterSha256,
-            ...(compareGeometry ? { geometrySha256 } : {}),
-          }),
-        ),
-      }));
+      reports.map(
+        ({
+          inputSha256,
+          labelsSha256,
+          paletteSha256,
+          mergedLabelsSha256,
+          cases,
+        }) => ({
+          inputSha256,
+          ...(compareQuantization ? { labelsSha256, paletteSha256 } : {}),
+          ...(compareMerged ? { mergedLabelsSha256 } : {}),
+          output: cases.map(
+            ({
+              optCurve,
+              paths,
+              svgSha256,
+              svgBytes,
+              rasterSha256,
+              geometrySha256,
+            }) => ({
+              optCurve,
+              paths,
+              svgSha256,
+              ...(compareSize ? { svgBytes } : {}),
+              rasterSha256,
+              ...(compareGeometry ? { geometrySha256 } : {}),
+            }),
+          ),
+        }),
+      );
     expect(fidelity(report)).toEqual(fidelity(baseline));
   }
 }, 180_000);

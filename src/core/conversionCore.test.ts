@@ -3,6 +3,7 @@ import { traceBlackAndWhite } from "./bwTrace";
 import {
   accumulatePaletteSums,
   deduplicateShapes,
+  findLabelComponents,
   labelPixels,
   mergeComponentsToBudget,
   paletteSeeds,
@@ -171,6 +172,29 @@ describe("color region topology", () => {
     );
     expect(result).toMatchObject({ initial: 6, remaining: 2, merged: 4 });
     expect([...result.labels].every((label) => label !== 255)).toBe(true);
+  });
+
+  test("keeps diagonal runs separate and breaks equal merge ties in raster order", () => {
+    const diagonal = findLabelComponents(
+      Uint8Array.of(1, 1, 255, 1, 255, 1, 255, 1, 1),
+      3,
+      3,
+    );
+    expect([...diagonal.componentAt]).toEqual([0, 0, -1, 0, -1, 1, -1, 1, 1]);
+    expect(diagonal.components.map(({ area }) => area)).toEqual([3, 3]);
+
+    const result = mergeComponentsToBudget(
+      Uint8Array.of(0, 1, 2, 255),
+      2,
+      2,
+      [
+        { l: 0.5, a: 0, b: 0 },
+        { l: 0, a: 0, b: 0 },
+        { l: 1, a: 0, b: 0 },
+      ],
+      2,
+    );
+    expect([...result.labels]).toEqual([1, 1, 2, 255]);
   });
 
   test("reports a soft path-budget warning instead of deleting disconnected art", () => {

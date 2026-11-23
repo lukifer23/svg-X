@@ -567,70 +567,97 @@ export const findLabelComponents = (
   width: number,
   height: number,
 ): { components: LabelComponent[]; componentAt: Int32Array } => {
-  const componentAt = new Int32Array(labels.length).fill(-1);
-  const components: LabelComponent[] = [];
-  const stack: number[] = [];
-  for (let start = 0; start < labels.length; start += 1) {
-    if (labels[start] === 255 || componentAt[start] >= 0) continue;
-    const id = components.length;
-    const label = labels[start];
-    let area = 0;
-    componentAt[start] = id;
-    stack.push(start);
-    while (stack.length > 0) {
-      const pixel = stack.pop()!;
-      area += 1;
-      const x = pixel % width;
-      const y = (pixel - x) / width;
-      if (x > 0) {
-        const neighbor = pixel - 1;
-        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
-          componentAt[neighbor] = id;
-          stack.push(neighbor);
-        }
-      }
-      if (x + 1 < width) {
-        const neighbor = pixel + 1;
-        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
-          componentAt[neighbor] = id;
-          stack.push(neighbor);
-        }
-      }
-      if (y > 0) {
-        const neighbor = pixel - width;
-        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
-          componentAt[neighbor] = id;
-          stack.push(neighbor);
-        }
-      }
-      if (y + 1 < height) {
-        const neighbor = pixel + width;
-        if (componentAt[neighbor] < 0 && labels[neighbor] === label) {
-          componentAt[neighbor] = id;
-          stack.push(neighbor);
-        }
-      }
+  const componentAt = new Int32Array(labels.length);
+  const parents: number[] = [];
+  const areas: number[] = [];
+  const colors: number[] = [];
+  const rootOf = (id: number): number => {
+    while (parents[id] !== id) {
+      parents[id] = parents[parents[id]];
+      id = parents[id];
     }
-    components.push({
-      id,
-      label,
-      area,
-      neighbors: new Map(),
-    });
+    return id;
+  };
+  // A raster pass only needs the two neighbors it has already visited.
+  for (let y = 0; y < height; y += 1) {
+    const rowStart = y * width;
+    const rowEnd = rowStart + width;
+    let previousColor = 255;
+    let previousId = -1;
+    for (let pixel = rowStart; pixel < rowEnd; pixel += 1) {
+      const color = labels[pixel];
+      let id = -1;
+      if (color !== 255) {
+        if (color === previousColor) id = previousId;
+        if (y > 0 && labels[pixel - width] === color) {
+          const above = componentAt[pixel - width];
+          if (id < 0) id = above;
+          else if (above !== id) {
+            const leftRoot = rootOf(id);
+            const aboveRoot = rootOf(above);
+            id = Math.min(leftRoot, aboveRoot);
+            parents[Math.max(leftRoot, aboveRoot)] = id;
+          }
+        }
+        if (id < 0) {
+          id = parents.length;
+          parents.push(id);
+          areas.push(0);
+          colors.push(color);
+        }
+        areas[id] += 1;
+      }
+      componentAt[pixel] = id;
+      previousColor = color;
+      previousId = id;
+    }
   }
-  const connect = (left: number, right: number) => {
-    if (left < 0 || right < 0 || left === right) return;
+  const components: LabelComponent[] = [];
+  const finalIds = new Int32Array(parents.length);
+  for (let id = 0; id < parents.length; id += 1) {
+    const parent = parents[id];
+    if (parent === id) {
+      const index = components.length;
+      finalIds[id] = index;
+      components.push({
+        id: index,
+        label: colors[id],
+        area: areas[id],
+        neighbors: new Map(),
+      });
+    } else {
+      // Unions point at an earlier provisional ID. That preserves the
+      // row-major component IDs and lets us resolve aliases in one pass.
+      const index = finalIds[parent];
+      finalIds[id] = index;
+      components[index].area += areas[id];
+    }
+  }
+  const connect = (left: number, right: number): void => {
     const leftNeighbors = components[left].neighbors;
     const rightNeighbors = components[right].neighbors;
     leftNeighbors.set(right, (leftNeighbors.get(right) ?? 0) + 1);
     rightNeighbors.set(left, (rightNeighbors.get(left) ?? 0) + 1);
   };
+  // Probe right before down in row order. Map insertion order breaks exact
+  // merge ties, so adjacency cannot be accumulated in flood traversal order.
   for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const pixel = y * width + x;
-      if (x + 1 < width) connect(componentAt[pixel], componentAt[pixel + 1]);
-      if (y + 1 < height)
-        connect(componentAt[pixel], componentAt[pixel + width]);
+    const rowStart = y * width;
+    const rowEnd = rowStart + width;
+    const hasBelow = y + 1 < height;
+    for (let pixel = rowStart; pixel < rowEnd; pixel += 1) {
+      const provisional = componentAt[pixel];
+      if (provisional < 0) continue;
+      const source = finalIds[provisional];
+      componentAt[pixel] = source;
+      if (pixel + 1 < rowEnd) {
+        const right = finalIds[componentAt[pixel + 1]];
+        if (right !== undefined && right !== source) connect(source, right);
+      }
+      if (hasBelow) {
+        const below = finalIds[componentAt[pixel + width]];
+        if (below !== undefined && below !== source) connect(source, below);
+      }
     }
   }
   return { components, componentAt };
@@ -660,33 +687,38 @@ export const mergeComponentsToBudget = (
 
   const parent = Int32Array.from(components, (component) => component.id);
   const find = (id: number): number => {
-    let root = id;
-    while (parent[root] !== root) root = parent[root];
     while (parent[id] !== id) {
-      const next = parent[id];
-      parent[id] = root;
-      id = next;
+      parent[id] = parent[parent[id]];
+      id = parent[id];
     }
-    return root;
+    return id;
   };
+  const paletteSize = palette.length;
+  const differences = new Float64Array(paletteSize * paletteSize);
+  for (let source = 0; source < paletteSize; source += 1)
+    for (let target = 0; target < paletteSize; target += 1)
+      differences[source * paletteSize + target] = distance(
+        palette[source],
+        palette[target],
+      );
   let remaining = initial;
   const ordered = components
     .map((component) => component.id)
     .sort((left, right) => components[left].area - components[right].area);
+  const neighborRoots: number[] = [];
+  const boundaryLengths: number[] = [];
 
   let changed = true;
   while (changed) {
     changed = false;
-    for (const candidate of ordered) {
-      const source = find(candidate);
-      if (source !== candidate) continue;
+    for (const source of ordered) {
+      if (parent[source] !== source) continue;
       const sourceComponent = components[source];
       if (remaining <= budget && sourceComponent.area >= minimumArea) continue;
-      const sourcePalette = palette[sourceComponent.label];
-      // Single pass replaces the former entries[] -> map -> filter -> sort ->
-      // [0] allocation chain. The comparator is identical: smallest perceptual
-      // distance first, then widest shared boundary, then largest area, with
-      // ties keeping the earliest neighbor (stable-sort order).
+      const differenceOffset = sourceComponent.label * paletteSize;
+      // Keep the original neighbor order and individual boundary lengths.
+      // Two entries can resolve to the same root after earlier merges.
+      let neighborCount = 0;
       let target = -1;
       let bestDifference = Number.POSITIVE_INFINITY;
       let bestBoundary = -1;
@@ -694,10 +726,11 @@ export const mergeComponentsToBudget = (
       for (const [neighbor, boundary] of sourceComponent.neighbors) {
         const root = find(neighbor);
         if (root === source) continue;
-        const colorDifference = distance(
-          sourcePalette,
-          palette[components[root].label],
-        );
+        neighborRoots[neighborCount] = root;
+        boundaryLengths[neighborCount] = boundary;
+        neighborCount += 1;
+        const colorDifference =
+          differences[differenceOffset + components[root].label];
         const area = components[root].area;
         const better =
           target < 0 ||
@@ -714,18 +747,19 @@ export const mergeComponentsToBudget = (
       }
       if (target < 0) continue;
       parent[source] = target;
-      components[target].area += sourceComponent.area;
-      for (const [neighbor, boundary] of sourceComponent.neighbors) {
-        const neighborRoot = find(neighbor);
+      const targetComponent = components[target];
+      targetComponent.area += sourceComponent.area;
+      // Only the source root changed. Its links were already skipped above.
+      for (let index = 0; index < neighborCount; index += 1) {
+        const neighborRoot = neighborRoots[index];
         if (neighborRoot === target) continue;
-        components[target].neighbors.set(
+        const boundary = boundaryLengths[index];
+        targetComponent.neighbors.set(
           neighborRoot,
-          (components[target].neighbors.get(neighborRoot) ?? 0) + boundary,
+          (targetComponent.neighbors.get(neighborRoot) ?? 0) + boundary,
         );
-        components[neighborRoot].neighbors.set(
-          target,
-          (components[neighborRoot].neighbors.get(target) ?? 0) + boundary,
-        );
+        const neighbors = components[neighborRoot].neighbors;
+        neighbors.set(target, (neighbors.get(target) ?? 0) + boundary);
       }
       remaining -= 1;
       changed = true;
@@ -733,10 +767,14 @@ export const mergeComponentsToBudget = (
   }
 
   if (remaining === initial) return { labels, initial, remaining, merged: 0 };
+  const finalLabels = Uint8Array.from(
+    components,
+    ({ id }) => components[find(id)].label,
+  );
   const mergedLabels = labels.slice();
   for (let pixel = 0; pixel < componentAt.length; pixel += 1) {
     if (componentAt[pixel] >= 0)
-      mergedLabels[pixel] = components[find(componentAt[pixel])].label;
+      mergedLabels[pixel] = finalLabels[componentAt[pixel]];
   }
   return {
     labels: mergedLabels,

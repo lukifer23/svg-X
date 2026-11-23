@@ -54,6 +54,12 @@ The default pool size is `max(1, min(4, hardwareConcurrency - 1))`. Batch input 
 
 The color converter seeds a palette, precomputes OKLab, refines the palette up to four times, labels pixels, merges components, and traces their boundaries. Contour extraction seeds rings for all labels in one pass over a byte-per-pixel edge mask. A shared-chain fit uses the same endpoints and reversed cubic controls in adjacent rings. Component cleanup happens before this step so holes and neighboring outlines agree. Color SVG optimization preserves path coordinates. Per-pixel color conversion uses a 256-entry sRGB-to-linear table and flat typed arrays. When sampled colors show reuse, a bounded cache groups exact opaque RGB matches during OKLab conversion. Each refinement round weights the representative by its count, and final labels propagate from representatives to matching pixels. A direct per-pixel loop handles inputs with little color reuse. See [photo benchmarks](../results/PHOTO-COLOR.md) and [performance history](../results/PERFORMANCE.md).
 
+Component discovery joins provisional IDs in raster order using four-way
+connectivity. The adjacency pass preserves the original contact order for
+equal merge scores. Merging reuses palette distances and resolved neighbor
+roots, then applies one final label per component. See the
+[connected-component measurements](../results/COLOR-FIDELITY.md#connected-components-follow-up).
+
 Decode applies EXIF orientation on both paths — the desktop decoder calls Sharp `rotate()` and the browser decoder passes `imageOrientation: "from-image"` to `createImageBitmap` — so the same file vectorizes the same way in every transport.
 
 ### Parallel quantization

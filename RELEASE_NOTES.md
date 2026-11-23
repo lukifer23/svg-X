@@ -41,6 +41,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Corrected Wu palette splits to minimize the variance left in each pair of child boxes. At the same eight-color setting, mean color error fell on the bicycle illustration, still-life, and both public-domain photographs.
 - Added main-screen B&W, Color, and Centerline controls and direct Polygon and Fitted Bézier selection in Color mode. Moved exports under the preview, fixed SVG Source keyboard focus, and kept discarded conversions from updating the upload screen.
 - Preserved endpoint overshoot when flattening curves for DXF and fixed opt-in desktop development LAN discovery on custom ports.
+- Sped up color component discovery and merging while preserving merge order, SVG size, and rendered output on the four-image fidelity corpus.
 
 ## Historical releases
 
