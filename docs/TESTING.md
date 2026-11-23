@@ -31,6 +31,11 @@ Windows runners enforce a separate 1.25x regression floor through
 but is not evidence that the 1.5x release criterion passed. The default remains
 1.5x whenever the environment variable is absent.
 
+The benchmark prepares eight independent copies of the same RGBA fixture
+before each timed run. Timings include production worker conversion and
+SVG serialization. Generating the fixture in the timed region makes the
+pooled run contend with unrelated JavaScript on the renderer.
+
 The historical pre-recovery checkout failed before tests because its dependency install did not complete. Do not invent a relative speed or quality claim against it. A future released baseline must store hardware, fixture hashes, settings, raw timings, SSIM, and Delta E values before percentage comparisons become release gates.
 
 The centerline corpus rasterizes vector calibration artwork with known stroke

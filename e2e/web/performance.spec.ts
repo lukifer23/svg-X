@@ -74,9 +74,11 @@ test("eight-image production worker batch improves throughput without runaway me
         maxPaths: 2_000,
         svgoOptimize: false,
       };
-      const convert = () =>
-        module.processImageBatch(createInput(), params, undefined);
-      await convert();
+      const fixture = createInput();
+      const prepare = () => ({ ...fixture, pixels: fixture.pixels.slice(0) });
+      const convert = (input: ReturnType<typeof prepare>) =>
+        module.processImageBatch(input, params, undefined);
+      await convert(prepare());
       const beforeHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })
           .memory?.usedJSHeapSize ?? 0;
@@ -90,12 +92,16 @@ test("eight-image production worker batch improves throughput without runaway me
       const sequentialSamples: number[] = [];
       const concurrentSamples: number[] = [];
       for (let sample = 0; sample < 3; sample += 1) {
+        // Prepare inputs before timing. Fixture construction runs on the
+        // renderer and otherwise competes with worker scheduling.
+        const sequentialInputs = Array.from({ length: 8 }, prepare);
         const sequentialStart = performance.now();
-        for (let index = 0; index < 8; index += 1) await convert();
+        for (const input of sequentialInputs) await convert(input);
         sequentialSamples.push(performance.now() - sequentialStart);
 
+        const concurrentInputs = Array.from({ length: 8 }, prepare);
         const concurrentStart = performance.now();
-        await Promise.all(Array.from({ length: 8 }, () => convert()));
+        await Promise.all(concurrentInputs.map(convert));
         concurrentSamples.push(performance.now() - concurrentStart);
       }
       const median = (samples: number[]) =>

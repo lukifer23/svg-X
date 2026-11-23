@@ -47,10 +47,12 @@ vectors. The still-life still spends considerably more time in fitted
 assembly than in polygon assembly. A trial of simpler curve-distance checks
 showed mixed timings and was dropped.
 
-The production Chromium batch benchmark recorded 203.8–206.5 ms pooled and
-303.7–325.2 ms sequential across two local runs. The first throughput ratio
-was 1.47× and the second was 1.60× against the unchanged 1.50× floor. Pooled
-time stayed nearly steady across the runs.
+The production Chromium gate initially timed fixture generation alongside
+conversion. Its hosted ratios were 1.21× and 1.19× against 1.25×. Preparing
+the same inputs outside the timers isolates production conversion. With
+that harness, a paired local run measured 247.4 → 225.1 ms sequential and
+112.7 → 97.2 ms pooled. The current build reached 2.32× against the
+unchanged 1.50× local floor.
 
 ## Reproduce
 
