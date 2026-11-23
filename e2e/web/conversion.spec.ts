@@ -283,3 +283,57 @@ test("discarding an in-flight upload restores the clean upload screen", async ({
   await expect(page.getByText("Conversion cancelled.")).toBeHidden();
   await expect(page.getByRole("button", { name: "Download SVG" })).toBeHidden();
 });
+
+test("can cancel real SVG optimization before the preview is delivered", async ({
+  page,
+  browserName,
+}) => {
+  test.skip(
+    browserName !== "chromium",
+    "Exercise the high-resolution worker against Chromium's main-thread scheduling",
+  );
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "svgx-settings-v3",
+      JSON.stringify({
+        mode: "color",
+        colorCurveFit: true,
+        highestQuality: true,
+      }),
+    );
+  });
+  await page.goto("/");
+  await page.evaluate(() => {
+    const observe = new MutationObserver(() => {
+      const optimizing = [...document.querySelectorAll('[role="status"]')].some(
+        (status) => status.textContent?.includes("Optimizing SVG output"),
+      );
+      if (!optimizing) return;
+      const cancel = [...document.querySelectorAll("button")].find(
+        (button) => button.textContent?.trim() === "Cancel Processing",
+      );
+      if (!cancel) return;
+      observe.disconnect();
+      cancel.click();
+    });
+    observe.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  });
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(
+      path.resolve("tests/fixtures/review/usda-fresh-produce.jpg"),
+    );
+  await expect(page.getByText("Conversion cancelled.")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole("button", { name: "Download SVG" })).toBeHidden();
+  await page.getByRole("button", { name: "Upload New Image" }).click();
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(path.resolve("tests/fixtures/formats/artwork.jpg"));
+  expect(await renderedPreview(page)).toContain("<path");
+});

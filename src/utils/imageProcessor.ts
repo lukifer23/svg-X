@@ -1,5 +1,4 @@
 import slugify from "slugify";
-import { optimize as svgoOptimize } from "svgo";
 import { canParallelize, quantizeColorInParallel } from "../core/colorParallel";
 import { getVectorWorkerPool, type WorkResult } from "../core/workerPool";
 import { MAX_PALETTE_COLORS } from "../core/vectorDocument";
@@ -212,27 +211,6 @@ const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
   maxPaths: Math.max(1, params.maxPaths),
 });
 
-const optimizeSvg = (svg: string, mode: ConversionMode): string => {
-  try {
-    return svgoOptimize(svg, {
-      plugins: [
-        {
-          name: "preset-default",
-          params: {
-            overrides: {
-              cleanupIds: false,
-              // Independent relative-coordinate rounding can split a shared edge.
-              ...(mode === "color" ? { convertPathData: false } : {}),
-            },
-          },
-        },
-      ],
-    }).data;
-  } catch {
-    return svg;
-  }
-};
-
 let sequence = 0;
 const nextJobId = (): string => `conversion-${Date.now()}-${++sequence}`;
 
@@ -262,12 +240,14 @@ const executeConversion = async (
   log("METRIC", `decode=${Math.round(decodeMs)}ms`, detailedLogCallback);
   const options = toWorkerOptions(params);
   progressCallback(options.mode === "color" ? "colorProcessing" : "tracing");
-  const onProgress = (progress: ConversionProgress): void =>
+  const onProgress = (progress: ConversionProgress): void => {
+    if (progress.phase === "optimize") progressCallback("optimizing");
     log(
       "PROGRESS",
       `${progress.percent}% ${progress.message}`,
       detailedLogCallback,
     );
+  };
   const runSequential = (): Promise<WorkResult> => {
     const pixelBuffer =
       decoded.pixels.byteOffset === 0 &&
@@ -282,11 +262,13 @@ const executeConversion = async (
         pixels: pixelBuffer,
         options,
         includeDocument,
+        optimizeSvg: params.svgoOptimize,
       },
       { jobId: nextJobId(), priority, signal, onProgress },
     );
   };
   let result: WorkResult;
+  let parallelQuantizeMs = 0;
   if (
     options.mode === "color" &&
     canParallelize(
@@ -295,6 +277,7 @@ const executeConversion = async (
     )
   ) {
     try {
+      const quantizeStart = now();
       const quantization = await quantizeColorInParallel(
         decoded.pixels,
         decoded.width,
@@ -303,6 +286,7 @@ const executeConversion = async (
         signal,
         priority === "batch" ? 1 : undefined,
       );
+      const quantizeWallMs = now() - quantizeStart;
       result = await getVectorWorkerPool().run(
         {
           kind: "assemble-color",
@@ -312,9 +296,11 @@ const executeConversion = async (
           palette: quantization.palette,
           options,
           includeDocument,
+          optimizeSvg: params.svgoOptimize,
         },
         { jobId: nextJobId(), priority, signal, onProgress },
       );
+      parallelQuantizeMs = quantizeWallMs;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError")
         throw error;
@@ -328,17 +314,19 @@ const executeConversion = async (
   } else {
     result = await runSequential();
   }
-  progressCallback("optimizing");
-  const optimizeStart = now();
-  const svg = params.svgoOptimize
-    ? optimizeSvg(result.rawSvg, options.mode)
-    : result.rawSvg;
-  const optimizeMs = now() - optimizeStart;
+  const { svg, optimizeMs } = result;
   const totalMs = now() - totalStart;
+  const quantizeMs = parallelQuantizeMs + result.quantizeMs;
   progressCallback("done");
+  log("METRIC", `quantize=${Math.round(quantizeMs)}ms`, detailedLogCallback);
   log(
     "METRIC",
     `vectorize=${Math.round(result.vectorizeMs)}ms`,
+    detailedLogCallback,
+  );
+  log(
+    "METRIC",
+    `serialize=${Math.round(result.serializeMs)}ms`,
     detailedLogCallback,
   );
   log("METRIC", `optimize=${Math.round(optimizeMs)}ms`, detailedLogCallback);
@@ -348,7 +336,9 @@ const executeConversion = async (
     svg,
     metrics: {
       decodeMs,
+      quantizeMs,
       vectorizeMs: result.vectorizeMs,
+      serializeMs: result.serializeMs,
       optimizeMs,
       totalMs,
       inputPixels: decoded.width * decoded.height,

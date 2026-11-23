@@ -4,7 +4,8 @@ import { traceBlackAndWhite } from "../core/bwTrace";
 import { traceCenterlines } from "../core/centerline";
 import {
   assembleColorDocument,
-  traceColorDocument,
+  colorSeeds,
+  quantizeColor,
   type PaletteColor,
 } from "../core/colorTrace";
 import { countSubpaths, serializeVectorDocument } from "../core/serialize";
@@ -21,13 +22,54 @@ const cancelled = new Set<string>();
 const post = (message: VectorWorkerResponse): void =>
   workerScope.postMessage(message);
 
-const complete = (
+const complete = async (
   request: VectorWorkerRequest | AssembleColorWorkerRequest,
   document: VectorDocument,
   started: number,
-): void => {
-  const vectorizeMs = performance.now() - started;
+  quantizeMs = 0,
+): Promise<void> => {
+  const serializationStart = performance.now();
+  const vectorizeMs = serializationStart - started;
   const rawSvg = serializeVectorDocument(document);
+  const serializeMs = performance.now() - serializationStart;
+  let svg = rawSvg;
+  let optimizeMs = 0;
+  if (request.optimizeSvg) {
+    post({
+      type: "progress",
+      version: 1,
+      jobId: request.jobId,
+      progress: {
+        phase: "optimize",
+        percent: 90,
+        message: "Optimizing SVG output",
+      },
+    });
+    const optimizeStart = performance.now();
+    try {
+      const { optimize } = await import("svgo");
+      if (cancelled.delete(request.jobId)) return;
+      svg = optimize(rawSvg, {
+        plugins: [
+          {
+            name: "preset-default",
+            params: {
+              overrides: {
+                cleanupIds: false,
+                // Independent relative rounding can split a shared color edge.
+                ...(request.options.mode === "color"
+                  ? { convertPathData: false }
+                  : {}),
+              },
+            },
+          },
+        ],
+      }).data;
+    } catch {
+      // Serialization already produced a usable SVG.
+    }
+    optimizeMs = performance.now() - optimizeStart;
+  }
   const outputPaths = countSubpaths(document);
   const diagnostics = document.diagnostics ?? {
     outputPaths,
@@ -40,14 +82,17 @@ const complete = (
     version: 1,
     jobId: request.jobId,
     document: request.includeDocument ? document : undefined,
-    rawSvg,
+    svg,
     outputPaths,
     vectorizeMs,
+    quantizeMs,
+    serializeMs,
+    optimizeMs,
     diagnostics,
   });
 };
 
-workerScope.onmessage = (
+workerScope.onmessage = async (
   event: MessageEvent<
     | VectorWorkerRequest
     | AssembleColorWorkerRequest
@@ -74,7 +119,7 @@ workerScope.onmessage = (
         },
       });
       const labels = new Uint8Array(request.labels);
-      complete(
+      await complete(
         request,
         assembleColorDocument(
           labels,
@@ -99,28 +144,42 @@ workerScope.onmessage = (
       },
     });
     const pixels = new Uint8ClampedArray(request.pixels);
+    if (request.options.mode === "color") {
+      const quantizeStart = performance.now();
+      const { labels, palette } = quantizeColor(
+        pixels,
+        colorSeeds(pixels, request.options),
+      );
+      const traceStart = performance.now();
+      await complete(
+        request,
+        assembleColorDocument(
+          labels,
+          palette,
+          request.width,
+          request.height,
+          request.options,
+        ),
+        traceStart,
+        traceStart - quantizeStart,
+      );
+      return;
+    }
     const document =
-      request.options.mode === "color"
-        ? traceColorDocument(
+      request.options.mode === "centerline"
+        ? traceCenterlines(
             pixels,
             request.width,
             request.height,
             request.options,
           )
-        : request.options.mode === "centerline"
-          ? traceCenterlines(
-              pixels,
-              request.width,
-              request.height,
-              request.options,
-            )
-          : traceBlackAndWhite(
-              pixels,
-              request.width,
-              request.height,
-              request.options,
-            );
-    complete(request, document, started);
+        : traceBlackAndWhite(
+            pixels,
+            request.width,
+            request.height,
+            request.options,
+          );
+    await complete(request, document, started);
   } catch (error) {
     if (cancelled.delete(request.jobId)) return;
     post({

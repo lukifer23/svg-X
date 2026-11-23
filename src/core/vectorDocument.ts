@@ -50,7 +50,9 @@ export interface VectorDocument {
 
 export interface ConversionMetrics {
   decodeMs: number;
+  quantizeMs: number;
   vectorizeMs: number;
+  serializeMs: number;
   optimizeMs: number;
   totalMs: number;
   inputPixels: number;
@@ -99,6 +101,7 @@ export type VectorWorkerRequest = {
   pixels: ArrayBuffer;
   options: WorkerConversionOptions;
   includeDocument: boolean;
+  optimizeSvg: boolean;
 };
 
 /** Palette entry as it crosses the worker boundary (structurally PaletteColor). */
@@ -127,6 +130,7 @@ export type AssembleColorWorkerRequest = {
   palette: WorkerPaletteColor[];
   options: WorkerConversionOptions;
   includeDocument: boolean;
+  optimizeSvg: boolean;
 };
 
 export type VectorWorkerCancelRequest = {
@@ -147,9 +151,12 @@ export type VectorWorkerResponse =
       version: 1;
       jobId: string;
       document?: VectorDocument;
-      rawSvg: string;
+      svg: string;
       outputPaths: number;
       vectorizeMs: number;
+      quantizeMs: number;
+      serializeMs: number;
+      optimizeMs: number;
       diagnostics: ConversionDiagnostics;
     }
   | { type: "error"; version: 1; jobId: string; error: string };

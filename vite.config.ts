@@ -10,6 +10,7 @@ const port = Number(process.env.SVGX_PORT || 3001);
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  worker: { format: "es" },
   optimizeDeps: {
     // Potrace is first loaded inside the module worker. Pre-bundling it keeps
     // Vite from forcing a full-page reload when the first conversion starts.

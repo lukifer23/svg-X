@@ -2,7 +2,7 @@
 
 SVG-X is a local-first raster-to-vector converter for the browser and Electron. It supports filled B&W tracing, disjoint color-region tracing, true centerline output, batch conversion, and SVG/EPS/DXF/JSON exports.
 
-The current `main` branch is an unreleased recovery build. Historical tags and releases remain the source of truth for previously published binaries.
+The current `main` branch is an unreleased recovery build. The latest public binary is [v1.1.2](https://github.com/lukifer23/svg-X/releases/tag/v1.1.2).
 
 The [testing guide](docs/TESTING.md) links the current validation evidence, including [held-out scan results](results/ARCHIVAL-QUALIFICATION.md) and [independent export checks](results/EXPORT-CONSUMERS.md). The [November recovery audit](docs/AUDIT-2026-11-20.md) records earlier engineering findings.
 
@@ -34,7 +34,7 @@ npm run electron:dev
 npm run build
 ```
 
-The default local URL is `http://localhost:3001`. Batch input, Sharp-backed AVIF/TIFF decode, the validated BMP decoder, native save dialogs, and directory access require Electron. HEIC/HEIF works only on package targets whose Sharp/libvips build exposes that codec.
+The default local URL is `http://127.0.0.1:3001`. Native batch conversion and save dialogs require Electron. See the input matrix below for decoder details.
 
 ## Conversion modes
 
@@ -77,7 +77,7 @@ Key modules:
 - `src/core/centerline.ts` — thinning and graph traversal
 - `src/core/bwTrace.ts` — Potrace adapter
 - `src/core/vectorExport.ts` — authoritative export serializers
-- `src/core/curveFit.ts` — recursive error-bounded cubic fitting
+- `src/core/curveFit.ts` — error-bounded cubic fitting with an explicit stack of source ranges
 - `src/core/colorMetrics.ts` — D65 Lab and CIEDE2000 acceptance metrics
 - `src/core/workerPool.ts` — prioritized reusable module-worker pool
 - `src/core/parallelQuantize.ts`, `src/core/quantizePool.ts`, `src/workers/quantize.worker.ts` — band-parallel color quantization
@@ -86,11 +86,11 @@ Key modules:
 
 ## Performance
 
-Color tracing was optimized without changing output: a 256-entry sRGB→linear lookup table, indexed loops over flat typed arrays, no per-component pixel arrays, and integer lattice keys in boundary tracing. Representative fixtures measure roughly 2.2×–3.5× faster end-to-end in color mode, verified by hashing the serialized SVG.
+The [dense photo benchmark](results/COLOR-FIDELITY.md#dense-photo-boundary-assembly) measured the USDA photo at 264.1 ms for polygon tracing and 318.8 ms for fitted tracing on the recorded Windows host at a 1,000-pixel limit. Those timings cover the trace kernel and exclude image decoding, SVG serialization, and preview. The [upload-to-preview benchmark](results/PREVIEW-LATENCY.md) measures those stages in the production browser bundle.
 
 Above a size threshold, color quantization runs across a renderer-side pool capped at four workers. Interactive images use multiple row bands; batch jobs use one worker per image so concurrency is spent across files rather than oversubscribing every file. Each conversion reserves its complete band set atomically, preventing cross-job deadlocks; queued and active work is cancellable. Each band reports exact integer channel sums that are combined in band order, so the parallel result is bit-identical to the single-threaded one; any non-cancellation worker failure falls back to the single-threaded path.
 
-`npm run bench:pipeline` profiles every stage and records output hashes. Methodology and current numbers are in `results/PERFORMANCE.md`.
+Use `npm run bench:pipeline` for core stage timings, `npm run bench:photo` for photo tracing and optional exact-output comparison, and `npm run bench:preview` for real browser uploads. See the [testing guide](docs/TESTING.md).
 
 ## Batch and desktop security
 
@@ -104,7 +104,7 @@ Native exports are written only after the user chooses a destination in the main
 
 ## Network mode
 
-LAN hosting is off by default. Local, packaged, browser, and LAN clients use identical conversion settings and pixels.
+LAN hosting is off by default. Browser clients use the same conversion code and settings on loopback and LAN. The packaged smoke compares all four exports byte-for-byte on the same host. Native batch uses Sharp for decoding and resizing, which can produce different working pixels from browser canvas.
 
 To opt in:
 
@@ -128,8 +128,11 @@ For a packaged build, set the same variable before launching the app and open an
 
 ## Inputs and transparency
 
-- Browser: PNG, JPEG, GIF, BMP, WebP, and formats supported by the current browser decoder
-- Electron: PNG, JPEG, GIF, BMP, WebP, AVIF, TIFF, and HEIC/HEIF when the packaged Sharp build exposes HEIC
+| Entry point                             | Decoder and supported inputs                                                                                                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser or Electron single-image upload | Chromium, Firefox, or WebKit image decoding. PNG, JPEG, GIF, BMP, and WebP are supported by the browser test targets. AVIF, TIFF, and HEIC/HEIF availability depends on the client decoder. |
+| Electron native batch                   | Sharp handles PNG, JPEG, GIF, WebP, AVIF, and TIFF. BMP uses the native batch BMP decoder. HEIC/HEIF depends on the packaged Sharp build.                                                   |
+
 - EXIF orientation is applied on both decode paths, so camera and phone photos vectorize upright
 - Maximum desktop batch input: 50 MB
 - Maximum native text export: 25 MB
@@ -169,6 +172,8 @@ Deterministic in-memory fixtures test exact color topology, canonical deduplicat
 | `npm test`                 | Unit and algorithm tests                         |
 | `npm run test:bench`       | Bounded performance checks                       |
 | `npm run bench:pipeline`   | Per-stage pipeline profile and exactness hashes  |
+| `npm run bench:photo`      | Photo trace timing and baseline hash comparison  |
+| `npm run bench:preview`    | Production browser upload-to-preview benchmark   |
 | `npm run test:e2e:web`     | Chromium, Firefox, and WebKit user flows         |
 | `npm run package:dir`      | Unsigned unpacked package for the current OS     |
 | `npm run test:e2e:package` | Launch and convert with a packaged executable    |

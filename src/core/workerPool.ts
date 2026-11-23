@@ -16,6 +16,7 @@ export interface ConvertPayload {
   pixels: ArrayBuffer;
   options: WorkerConversionOptions;
   includeDocument: boolean;
+  optimizeSvg: boolean;
 }
 
 export interface AssembleColorPayload {
@@ -26,15 +27,19 @@ export interface AssembleColorPayload {
   palette: WorkerPaletteColor[];
   options: WorkerConversionOptions;
   includeDocument: boolean;
+  optimizeSvg: boolean;
 }
 
 export type WorkPayload = ConvertPayload | AssembleColorPayload;
 
 export interface WorkResult {
   document?: VectorDocument;
-  rawSvg: string;
+  svg: string;
   outputPaths: number;
   vectorizeMs: number;
+  quantizeMs: number;
+  serializeMs: number;
+  optimizeMs: number;
   diagnostics: ConversionDiagnostics;
 }
 
@@ -95,9 +100,12 @@ export class VectorWorkerPool {
     if (message.type === "complete")
       item.resolve({
         document: message.document,
-        rawSvg: message.rawSvg,
+        svg: message.svg,
         outputPaths: message.outputPaths,
         vectorizeMs: message.vectorizeMs,
+        quantizeMs: message.quantizeMs,
+        serializeMs: message.serializeMs,
+        optimizeMs: message.optimizeMs,
         diagnostics: message.diagnostics,
       });
     else item.reject(new Error(message.error));
@@ -198,6 +206,7 @@ export class VectorWorkerPool {
           pixels: payload.pixels,
           options: payload.options,
           includeDocument: payload.includeDocument,
+          optimizeSvg: payload.optimizeSvg,
         };
         slot.worker.postMessage(request, [payload.pixels]);
       } else {
@@ -211,6 +220,7 @@ export class VectorWorkerPool {
           palette: payload.palette,
           options: payload.options,
           includeDocument: payload.includeDocument,
+          optimizeSvg: payload.optimizeSvg,
         };
         slot.worker.postMessage(request, [
           payload.labels.buffer as ArrayBuffer,

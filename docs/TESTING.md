@@ -6,12 +6,11 @@ The deterministic corpus covers topology, holes, saddle cases, transparency, col
 
 Native batch tests use the production run and real Sharp and filesystem operations. They cancel at three observed boundaries: after submitting an archival JPEG decode, after closing a fully written staging file, and after submitting an exclusive publication under a collision suffix. They check that the run drains, an unpublished file leaves no output, and a successful publication retains its exact bytes alongside the pre-existing file.
 
-`npm run bench:pipeline` profiles every color stage on representative fixtures, verifies that each fixture's serialized-SVG SHA-256 is unchanged, and writes `results/pipeline-<label>.json`. The human summary and its methodology live in `results/PERFORMANCE.md`. `src/core/parallelQuantize.test.ts` proves the band-parallel quantizer produces bit-identical labels, palette, and SVG across two to eight bands.
+`npm run bench:pipeline` measures core stages on representative fixtures and records serialized-SVG SHA-256 values in `results/pipeline-<label>.json`. Its test checks that all fixtures produced a report. The historical measurements live in `results/PERFORMANCE.md`. `src/core/parallelQuantize.test.ts` proves the band-parallel quantizer produces bit-identical labels, palette, and SVG across two to eight bands.
 
-The [photo color benchmark](../results/PHOTO-COLOR.md) measures the still-life
+The [photo color benchmark](../results/PHOTO-COLOR.md) (`npm run bench:photo`) measures the still-life
 fixture and two public-domain photographs with polygon and fitted output.
-It checks the input, serialized SVG, rasterized RGBA, and path counts against
-the baseline when `SVGX_PHOTO_BASELINE` is set.
+It compares available palette, label, geometry, SVG, raster, and path-count evidence when `SVGX_PHOTO_BASELINE` is set. Set `SVGX_PHOTO_WORKING_SIZE=1` for the four-image working-size corpus. The [upload-to-preview benchmark](../results/PREVIEW-LATENCY.md) runs separately against the production bundle.
 
 Current absolute acceptance gates include:
 

@@ -10,7 +10,7 @@ SVG-X has three execution boundaries: the React renderer, bundled conversion wor
 4. The worker produces the authoritative `VectorDocument`; it never returns SVG as the source of truth.
 5. SVG, EPS, DXF, and JSON serialize directly from that document.
 
-The versioned worker messages carry a job ID. A result is accepted only for the active ID. Aborting terminates and replaces the active worker, rejects queued work, and prevents stale completion from updating the UI.
+The versioned worker messages carry a job ID. A result is accepted only for the active ID. Aborting terminates and replaces the active worker, rejects queued work, and prevents stale completion from updating the UI. The vector worker lazily loads optional SVGO after serialization, keeping optimization within the same cancellable job. The renderer logs elapsed times for decode, quantization, tracing, serialization, and optimization.
 
 ## Native batch lifecycle
 
@@ -67,7 +67,9 @@ with squared distances and uses the original distance for split decisions
 near the cutoff. See the
 [dense photo measurements](../results/COLOR-FIDELITY.md#dense-photo-boundary-assembly).
 
-Decode applies EXIF orientation on both paths — the desktop decoder calls Sharp `rotate()` and the browser decoder passes `imageOrientation: "from-image"` to `createImageBitmap` — so the same file vectorizes the same way in every transport.
+Both decoders apply EXIF orientation. Native batch uses Sharp `rotate()`;
+single-image upload uses `createImageBitmap` with `imageOrientation: "from-image"`.
+The paths use separate resamplers, so working pixels can differ across decoders.
 
 ### Parallel quantization
 
