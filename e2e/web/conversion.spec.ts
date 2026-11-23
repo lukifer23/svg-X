@@ -114,6 +114,23 @@ test("uploads, converts, changes mode, and exports real geometry", async ({
   const jsonDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: /JSON/ }).click();
   expect((await jsonDownload).suggestedFilename()).toMatch(/\.json$/);
+
+  for (const [format, signature] of [
+    ["EPS", /^%!PS-Adobe-[\s\S]*moveto/],
+    ["DXF", /\nENTITIES\n[\s\S]*\nPOLYLINE\n/],
+  ] as const) {
+    await exportTrigger.click();
+    const action = page.getByRole("button", { name: format, exact: true });
+    await expect(action).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      action.click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(
+      new RegExp(`\\.${format.toLowerCase()}$`),
+    );
+    expect(await readFile(await download.path(), "utf8")).toMatch(signature);
+  }
 });
 
 test("traces archived linework as stroked curves through the centerline controls", async ({

@@ -117,9 +117,9 @@ const exportFixtures = [
 ];
 const exportFormats = [
   ["svg", /^Download SVG$/],
-  ["eps", /^EPS EPS$/],
-  ["dxf", /^DXF DXF$/],
-  ["json", /^JSON JSON Paths$/],
+  ["eps", /^EPS$/],
+  ["dxf", /^DXF$/],
+  ["json", /^JSON Paths$/],
 ];
 
 const browserExports = async (browser, origin, mode, label, fixture) => {
@@ -140,9 +140,12 @@ const browserExports = async (browser, origin, mode, label, fixture) => {
     for (const [extension, name] of exportFormats) {
       if (extension !== "svg")
         await page.getByRole("button", { name: "More export formats" }).click();
-      const pending = page.waitForEvent("download");
-      await page.getByRole("button", { name }).click();
-      const download = await pending;
+      const action = page.getByRole("button", { name });
+      await expect(action).toBeVisible();
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        action.click(),
+      ]);
       expect(path.extname(download.suggestedFilename())).toBe(`.${extension}`);
       outputs[extension] = await readFile(await download.path());
     }
