@@ -723,8 +723,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div className="flex flex-col gap-3">
               {renderCheckbox(
                 "svgoOptimize",
-                "SVGO post-processing",
-                "Runs SVGO (SVG optimizer) on the output SVG after tracing. Typically reduces file size 20–50% with no visual quality loss. Disable only if you need to preserve exact path strings.",
+                "Optimize SVG",
+                "Compacts SVG markup. In Color mode it preserves shared edges and exported coordinate precision.",
                 svgoOptimize,
               )}
             </div>

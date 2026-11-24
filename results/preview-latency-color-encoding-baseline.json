@@ -1,0 +1,1210 @@
+{
+  "label": "color-encoding-baseline",
+  "platform": "win32",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics",
+  "node": "v24.19.0",
+  "chromium": "159.0.8154.6",
+  "browserCpus": 12,
+  "report": [
+    {
+      "file": "color-bicycle.png",
+      "highestQuality": false,
+      "colorCurveFit": false,
+      "inputSha256": "fcd6764e86ca7060efb21e66db1cf1a58959d80885c4d8c43583592102fb90f4",
+      "fidelity": {
+        "width": 1000,
+        "height": 1000,
+        "svgBytes": 1168137,
+        "svgSha256": "ddb887c87de400ee8c08b6f7f809dd7964180260d97765378026d834ede458e6",
+        "rasterSha256": "4e70e2e26cc0e067e6b6ae1f4569bf276e660ab68122cc9fb26e4cdc643e802c"
+      },
+      "first": {
+        "readyMs": 1053.4000000357628,
+        "jsHeapGrowthBytes": 12863881,
+        "longestTaskMs": 487,
+        "decode": 508,
+        "quantize": 93,
+        "vectorize": 150,
+        "serialize": 14,
+        "optimize": 142,
+        "delivery": 71,
+        "conversionMs": 995
+      },
+      "warm": [
+        {
+          "readyMs": 446.5999999642372,
+          "jsHeapGrowthBytes": 9795858,
+          "longestTaskMs": 0,
+          "decode": 61,
+          "quantize": 62,
+          "vectorize": 125,
+          "serialize": 11,
+          "optimize": 58,
+          "delivery": 63,
+          "conversionMs": 380
+        },
+        {
+          "readyMs": 426.5,
+          "jsHeapGrowthBytes": 14575794,
+          "longestTaskMs": 0,
+          "decode": 53,
+          "quantize": 60,
+          "vectorize": 129,
+          "serialize": 17,
+          "optimize": 56,
+          "delivery": 64,
+          "conversionMs": 381
+        },
+        {
+          "readyMs": 451.5,
+          "jsHeapGrowthBytes": 9253958,
+          "longestTaskMs": 0,
+          "decode": 55,
+          "quantize": 78,
+          "vectorize": 131,
+          "serialize": 18,
+          "optimize": 56,
+          "delivery": 67,
+          "conversionMs": 404
+        }
+      ],
+      "median": {
+        "readyMs": 446.5999999642372,
+        "jsHeapGrowthBytes": 9795858,
+        "longestTaskMs": 0,
+        "decode": 55,
+        "quantize": 62,
+        "vectorize": 129,
+        "serialize": 17,
+        "optimize": 56,
+        "delivery": 64,
+        "conversionMs": 381
+      }
+    },
+    {
+      "file": "color-bicycle.png",
+      "highestQuality": false,
+      "colorCurveFit": true,
+      "inputSha256": "fcd6764e86ca7060efb21e66db1cf1a58959d80885c4d8c43583592102fb90f4",
+      "fidelity": {
+        "width": 1000,
+        "height": 1000,
+        "svgBytes": 3238379,
+        "svgSha256": "5db59f9aa7f83c4e86d9d4dfa144b91bf10d54ee67559f80c54c1129ca987719",
+        "rasterSha256": "964f7f890685012c362be67e3cc593a47cb7b24447d0f447740125be003a3027"
+      },
+      "first": {
+        "readyMs": 803.3000000119209,
+        "jsHeapGrowthBytes": 32997533,
+        "longestTaskMs": 0,
+        "decode": 55,
+        "quantize": 88,
+        "vectorize": 196,
+        "serialize": 58,
+        "optimize": 244,
+        "delivery": 85,
+        "conversionMs": 736
+      },
+      "warm": [
+        {
+          "readyMs": 646.7000000476837,
+          "jsHeapGrowthBytes": 10211144,
+          "longestTaskMs": 0,
+          "decode": 62,
+          "quantize": 72,
+          "vectorize": 161,
+          "serialize": 33,
+          "optimize": 177,
+          "delivery": 88,
+          "conversionMs": 593
+        },
+        {
+          "readyMs": 645.6000000238419,
+          "jsHeapGrowthBytes": 6032979,
+          "longestTaskMs": 0,
+          "decode": 54,
+          "quantize": 67,
+          "vectorize": 178,
+          "serialize": 34,
+          "optimize": 174,
+          "delivery": 85,
+          "conversionMs": 593
+        },
+        {
+          "readyMs": 634.3999999761581,
+          "jsHeapGrowthBytes": 10784179,
+          "longestTaskMs": 54,
+          "decode": 52,
+          "quantize": 53,
+          "vectorize": 148,
+          "serialize": 38,
+          "optimize": 202,
+          "delivery": 91,
+          "conversionMs": 583
+        }
+      ],
+      "median": {
+        "readyMs": 645.6000000238419,
+        "jsHeapGrowthBytes": 10211144,
+        "longestTaskMs": 0,
+        "decode": 54,
+        "quantize": 67,
+        "vectorize": 161,
+        "serialize": 34,
+        "optimize": 177,
+        "delivery": 88,
+        "conversionMs": 593
+      }
+    },
+    {
+      "file": "color-bicycle.png",
+      "highestQuality": true,
+      "colorCurveFit": false,
+      "inputSha256": "fcd6764e86ca7060efb21e66db1cf1a58959d80885c4d8c43583592102fb90f4",
+      "fidelity": {
+        "width": 1254,
+        "height": 1254,
+        "svgBytes": 1705848,
+        "svgSha256": "7f50a1ec704f88512463b930e1adf685cb0d22c912847ed0d5ec86304c453a22",
+        "rasterSha256": "395bac17f248c95429c077e490976977ab79e9d0e81232039db9df87820851f4"
+      },
+      "first": {
+        "readyMs": 678.8000000119209,
+        "jsHeapGrowthBytes": 31570379,
+        "longestTaskMs": 0,
+        "decode": 47,
+        "quantize": 124,
+        "vectorize": 204,
+        "serialize": 16,
+        "optimize": 147,
+        "delivery": 82,
+        "conversionMs": 632
+      },
+      "warm": [
+        {
+          "readyMs": 545.3000000119209,
+          "jsHeapGrowthBytes": 11729863,
+          "longestTaskMs": 51,
+          "decode": 39,
+          "quantize": 88,
+          "vectorize": 159,
+          "serialize": 19,
+          "optimize": 108,
+          "delivery": 86,
+          "conversionMs": 498
+        },
+        {
+          "readyMs": 560.3999999761581,
+          "jsHeapGrowthBytes": 8461171,
+          "longestTaskMs": 0,
+          "decode": 39,
+          "quantize": 96,
+          "vectorize": 186,
+          "serialize": 14,
+          "optimize": 99,
+          "delivery": 81,
+          "conversionMs": 515
+        },
+        {
+          "readyMs": 518,
+          "jsHeapGrowthBytes": 28885131,
+          "longestTaskMs": 0,
+          "decode": 41,
+          "quantize": 75,
+          "vectorize": 154,
+          "serialize": 20,
+          "optimize": 88,
+          "delivery": 86,
+          "conversionMs": 464
+        }
+      ],
+      "median": {
+        "readyMs": 545.3000000119209,
+        "jsHeapGrowthBytes": 11729863,
+        "longestTaskMs": 0,
+        "decode": 39,
+        "quantize": 88,
+        "vectorize": 159,
+        "serialize": 19,
+        "optimize": 99,
+        "delivery": 86,
+        "conversionMs": 498
+      }
+    },
+    {
+      "file": "color-bicycle.png",
+      "highestQuality": true,
+      "colorCurveFit": true,
+      "inputSha256": "fcd6764e86ca7060efb21e66db1cf1a58959d80885c4d8c43583592102fb90f4",
+      "fidelity": {
+        "width": 1254,
+        "height": 1254,
+        "svgBytes": 4744280,
+        "svgSha256": "449645a97ab41a7e3fb00c0e3c75ef2d711ece2f3cf799cab6486a3bbb6f0c0c",
+        "rasterSha256": "af71115ccce27842fd6b2b52876d0eda3924d58663baffbddd550a3f039f232d"
+      },
+      "first": {
+        "readyMs": 1098,
+        "jsHeapGrowthBytes": 44358335,
+        "longestTaskMs": 69,
+        "decode": 46,
+        "quantize": 115,
+        "vectorize": 280,
+        "serialize": 53,
+        "optimize": 390,
+        "delivery": 120,
+        "conversionMs": 1014
+      },
+      "warm": [
+        {
+          "readyMs": 831.3999999761581,
+          "jsHeapGrowthBytes": 9829491,
+          "longestTaskMs": 64,
+          "decode": 40,
+          "quantize": 89,
+          "vectorize": 218,
+          "serialize": 44,
+          "optimize": 257,
+          "delivery": 112,
+          "conversionMs": 761
+        },
+        {
+          "readyMs": 898.2999999523163,
+          "jsHeapGrowthBytes": 17972352,
+          "longestTaskMs": 68,
+          "decode": 47,
+          "quantize": 84,
+          "vectorize": 229,
+          "serialize": 49,
+          "optimize": 281,
+          "delivery": 127,
+          "conversionMs": 817
+        },
+        {
+          "readyMs": 1003.1000000238419,
+          "jsHeapGrowthBytes": 17512430,
+          "longestTaskMs": 90,
+          "decode": 44,
+          "quantize": 89,
+          "vectorize": 216,
+          "serialize": 46,
+          "optimize": 379,
+          "delivery": 146,
+          "conversionMs": 919
+        }
+      ],
+      "median": {
+        "readyMs": 898.2999999523163,
+        "jsHeapGrowthBytes": 17512430,
+        "longestTaskMs": 68,
+        "decode": 44,
+        "quantize": 89,
+        "vectorize": 218,
+        "serialize": 46,
+        "optimize": 281,
+        "delivery": 127,
+        "conversionMs": 817
+      }
+    },
+    {
+      "file": "realistic-still-life.png",
+      "highestQuality": false,
+      "colorCurveFit": false,
+      "inputSha256": "4c0e09cff5ee553607dfc54cf76fc64b31484c1fdff562977b40671664f709e9",
+      "fidelity": {
+        "width": 1000,
+        "height": 1000,
+        "svgBytes": 1519679,
+        "svgSha256": "799e4e6ffded5b359c667d531549f3bbf54311a91fd2452fbb8350413f13911e",
+        "rasterSha256": "2ceecf38022c800541e45a0aae35f841667a2311f6e71daf35fab923cb12450e"
+      },
+      "first": {
+        "readyMs": 607.0999999642372,
+        "jsHeapGrowthBytes": 27177618,
+        "longestTaskMs": 0,
+        "decode": 59,
+        "quantize": 108,
+        "vectorize": 131,
+        "serialize": 26,
+        "optimize": 140,
+        "delivery": 79,
+        "conversionMs": 554
+      },
+      "warm": [
+        {
+          "readyMs": 465,
+          "jsHeapGrowthBytes": 8915023,
+          "longestTaskMs": 0,
+          "decode": 60,
+          "quantize": 81,
+          "vectorize": 116,
+          "serialize": 17,
+          "optimize": 67,
+          "delivery": 85,
+          "conversionMs": 426
+        },
+        {
+          "readyMs": 557.2000000476837,
+          "jsHeapGrowthBytes": 25047794,
+          "longestTaskMs": 0,
+          "decode": 58,
+          "quantize": 90,
+          "vectorize": 148,
+          "serialize": 18,
+          "optimize": 105,
+          "delivery": 80,
+          "conversionMs": 499
+        },
+        {
+          "readyMs": 486.69999998807907,
+          "jsHeapGrowthBytes": 25158798,
+          "longestTaskMs": 0,
+          "decode": 59,
+          "quantize": 85,
+          "vectorize": 129,
+          "serialize": 15,
+          "optimize": 61,
+          "delivery": 84,
+          "conversionMs": 432
+        }
+      ],
+      "median": {
+        "readyMs": 486.69999998807907,
+        "jsHeapGrowthBytes": 25047794,
+        "longestTaskMs": 0,
+        "decode": 59,
+        "quantize": 85,
+        "vectorize": 129,
+        "serialize": 17,
+        "optimize": 67,
+        "delivery": 84,
+        "conversionMs": 432
+      }
+    },
+    {
+      "file": "realistic-still-life.png",
+      "highestQuality": false,
+      "colorCurveFit": true,
+      "inputSha256": "4c0e09cff5ee553607dfc54cf76fc64b31484c1fdff562977b40671664f709e9",
+      "fidelity": {
+        "width": 1000,
+        "height": 1000,
+        "svgBytes": 4235365,
+        "svgSha256": "0e0c33ecd8263791cf1a0981d4289cd5ce7e252a5d5f814b60a0006866b16157",
+        "rasterSha256": "d83720f1062d78d7566211af927d23d881e61997dcb7e621ae5d7ca146792d05"
+      },
+      "first": {
+        "readyMs": 921.2999999523163,
+        "jsHeapGrowthBytes": 12494227,
+        "longestTaskMs": 63,
+        "decode": 68,
+        "quantize": 118,
+        "vectorize": 219,
+        "serialize": 47,
+        "optimize": 270,
+        "delivery": 107,
+        "conversionMs": 841
+      },
+      "warm": [
+        {
+          "readyMs": 784.3000000119209,
+          "jsHeapGrowthBytes": 37969336,
+          "longestTaskMs": 59,
+          "decode": 64,
+          "quantize": 87,
+          "vectorize": 188,
+          "serialize": 45,
+          "optimize": 227,
+          "delivery": 103,
+          "conversionMs": 715
+        },
+        {
+          "readyMs": 864,
+          "jsHeapGrowthBytes": 24775482,
+          "longestTaskMs": 75,
+          "decode": 61,
+          "quantize": 80,
+          "vectorize": 217,
+          "serialize": 44,
+          "optimize": 265,
+          "delivery": 123,
+          "conversionMs": 792
+        },
+        {
+          "readyMs": 752.8000000119209,
+          "jsHeapGrowthBytes": 5791915,
+          "longestTaskMs": 58,
+          "decode": 63,
+          "quantize": 99,
+          "vectorize": 171,
+          "serialize": 42,
+          "optimize": 228,
+          "delivery": 106,
+          "conversionMs": 708
+        }
+      ],
+      "median": {
+        "readyMs": 784.3000000119209,
+        "jsHeapGrowthBytes": 24775482,
+        "longestTaskMs": 59,
+        "decode": 63,
+        "quantize": 87,
+        "vectorize": 188,
+        "serialize": 44,
+        "optimize": 228,
+        "delivery": 106,
+        "conversionMs": 715
+      }
+    },
+    {
+      "file": "realistic-still-life.png",
+      "highestQuality": true,
+      "colorCurveFit": false,
+      "inputSha256": "4c0e09cff5ee553607dfc54cf76fc64b31484c1fdff562977b40671664f709e9",
+      "fidelity": {
+        "width": 1254,
+        "height": 1254,
+        "svgBytes": 2199811,
+        "svgSha256": "11bf8b5d44d73d53ad5d8a997afb0c20e7b19d76d73d04eb9c18615badb751ed",
+        "rasterSha256": "80a9ef7d4faccd42d9ea12b07809ca0d2fd647f00aa88dfb38d67beb3be7f278"
+      },
+      "first": {
+        "readyMs": 803.1999999880791,
+        "jsHeapGrowthBytes": 0,
+        "longestTaskMs": 55,
+        "decode": 55,
+        "quantize": 151,
+        "vectorize": 225,
+        "serialize": 21,
+        "optimize": 179,
+        "delivery": 107,
+        "conversionMs": 752
+      },
+      "warm": [
+        {
+          "readyMs": 724.7999999523163,
+          "jsHeapGrowthBytes": 12926920,
+          "longestTaskMs": 61,
+          "decode": 51,
+          "quantize": 136,
+          "vectorize": 222,
+          "serialize": 25,
+          "optimize": 130,
+          "delivery": 115,
+          "conversionMs": 680
+        },
+        {
+          "readyMs": 703.0999999642372,
+          "jsHeapGrowthBytes": 8443603,
+          "longestTaskMs": 54,
+          "decode": 46,
+          "quantize": 126,
+          "vectorize": 200,
+          "serialize": 21,
+          "optimize": 127,
+          "delivery": 106,
+          "conversionMs": 626
+        },
+        {
+          "readyMs": 694.4000000357628,
+          "jsHeapGrowthBytes": 10813999,
+          "longestTaskMs": 59,
+          "decode": 51,
+          "quantize": 129,
+          "vectorize": 183,
+          "serialize": 23,
+          "optimize": 152,
+          "delivery": 117,
+          "conversionMs": 654
+        }
+      ],
+      "median": {
+        "readyMs": 703.0999999642372,
+        "jsHeapGrowthBytes": 10813999,
+        "longestTaskMs": 59,
+        "decode": 51,
+        "quantize": 129,
+        "vectorize": 200,
+        "serialize": 23,
+        "optimize": 130,
+        "delivery": 115,
+        "conversionMs": 654
+      }
+    },
+    {
+      "file": "realistic-still-life.png",
+      "highestQuality": true,
+      "colorCurveFit": true,
+      "inputSha256": "4c0e09cff5ee553607dfc54cf76fc64b31484c1fdff562977b40671664f709e9",
+      "fidelity": {
+        "width": 1254,
+        "height": 1254,
+        "svgBytes": 6165701,
+        "svgSha256": "ed36cbbb95f9eaafde50522a5c40f375d8538f941aa63a7765104d91920f681b",
+        "rasterSha256": "ec108fcda6a54a84322eb50e9fabccbbec71b3e8c23b46c224738dbfaa487f81"
+      },
+      "first": {
+        "readyMs": 1327.6000000238419,
+        "jsHeapGrowthBytes": 35092078,
+        "longestTaskMs": 91,
+        "decode": 53,
+        "quantize": 158,
+        "vectorize": 303,
+        "serialize": 61,
+        "optimize": 480,
+        "delivery": 155,
+        "conversionMs": 1221
+      },
+      "warm": [
+        {
+          "readyMs": 1129.8999999761581,
+          "jsHeapGrowthBytes": 11727779,
+          "longestTaskMs": 133,
+          "decode": 63,
+          "quantize": 130,
+          "vectorize": 281,
+          "serialize": 63,
+          "optimize": 306,
+          "delivery": 201,
+          "conversionMs": 1044
+        },
+        {
+          "readyMs": 1130.1000000238419,
+          "jsHeapGrowthBytes": 36556341,
+          "longestTaskMs": 98,
+          "decode": 52,
+          "quantize": 139,
+          "vectorize": 278,
+          "serialize": 59,
+          "optimize": 325,
+          "delivery": 180,
+          "conversionMs": 1032
+        },
+        {
+          "readyMs": 1304.7000000476837,
+          "jsHeapGrowthBytes": 27909403,
+          "longestTaskMs": 95,
+          "decode": 58,
+          "quantize": 153,
+          "vectorize": 291,
+          "serialize": 107,
+          "optimize": 412,
+          "delivery": 161,
+          "conversionMs": 1183
+        }
+      ],
+      "median": {
+        "readyMs": 1130.1000000238419,
+        "jsHeapGrowthBytes": 27909403,
+        "longestTaskMs": 98,
+        "decode": 58,
+        "quantize": 139,
+        "vectorize": 281,
+        "serialize": 63,
+        "optimize": 325,
+        "delivery": 180,
+        "conversionMs": 1044
+      }
+    },
+    {
+      "file": "usda-fresh-produce.jpg",
+      "highestQuality": false,
+      "colorCurveFit": false,
+      "inputSha256": "1ff1486435cba731de66dff14a436584b6c806b496e981f9b94a15eab038a836",
+      "fidelity": {
+        "width": 1000,
+        "height": 800,
+        "svgBytes": 1658282,
+        "svgSha256": "27b885628e4a2f3fb3a0312ac96810ce2f512f642503d16daa2156eabba00f64",
+        "rasterSha256": "d3ac3eb50c1e890df830fb002bc9f21c400249c005eb3d98659a7fc322c0466c"
+      },
+      "first": {
+        "readyMs": 626,
+        "jsHeapGrowthBytes": 28056945,
+        "longestTaskMs": 0,
+        "decode": 45,
+        "quantize": 101,
+        "vectorize": 160,
+        "serialize": 20,
+        "optimize": 151,
+        "delivery": 88,
+        "conversionMs": 577
+      },
+      "warm": [
+        {
+          "readyMs": 569.3000000119209,
+          "jsHeapGrowthBytes": 7452895,
+          "longestTaskMs": 51,
+          "decode": 42,
+          "quantize": 90,
+          "vectorize": 151,
+          "serialize": 18,
+          "optimize": 123,
+          "delivery": 94,
+          "conversionMs": 517
+        },
+        {
+          "readyMs": 503.4000000357628,
+          "jsHeapGrowthBytes": 7513433,
+          "longestTaskMs": 50,
+          "decode": 40,
+          "quantize": 73,
+          "vectorize": 148,
+          "serialize": 20,
+          "optimize": 80,
+          "delivery": 96,
+          "conversionMs": 456
+        },
+        {
+          "readyMs": 520,
+          "jsHeapGrowthBytes": 25608710,
+          "longestTaskMs": 0,
+          "decode": 40,
+          "quantize": 78,
+          "vectorize": 141,
+          "serialize": 23,
+          "optimize": 74,
+          "delivery": 98,
+          "conversionMs": 454
+        }
+      ],
+      "median": {
+        "readyMs": 520,
+        "jsHeapGrowthBytes": 7513433,
+        "longestTaskMs": 50,
+        "decode": 40,
+        "quantize": 78,
+        "vectorize": 148,
+        "serialize": 20,
+        "optimize": 80,
+        "delivery": 96,
+        "conversionMs": 456
+      }
+    },
+    {
+      "file": "usda-fresh-produce.jpg",
+      "highestQuality": false,
+      "colorCurveFit": true,
+      "inputSha256": "1ff1486435cba731de66dff14a436584b6c806b496e981f9b94a15eab038a836",
+      "fidelity": {
+        "width": 1000,
+        "height": 800,
+        "svgBytes": 4561248,
+        "svgSha256": "35db832f06521c580fcc352ec8abf49a6914498d7578f2870a38f9e18dfe028e",
+        "rasterSha256": "212555e1f5c656943a293b69f88fd92afe37cfb7a32780c452fe84dc171515ef"
+      },
+      "first": {
+        "readyMs": 886.5999999642372,
+        "jsHeapGrowthBytes": 41548287,
+        "longestTaskMs": 64,
+        "decode": 36,
+        "quantize": 99,
+        "vectorize": 206,
+        "serialize": 47,
+        "optimize": 283,
+        "delivery": 119,
+        "conversionMs": 802
+      },
+      "warm": [
+        {
+          "readyMs": 810.1999999880791,
+          "jsHeapGrowthBytes": 28271623,
+          "longestTaskMs": 70,
+          "decode": 41,
+          "quantize": 84,
+          "vectorize": 201,
+          "serialize": 49,
+          "optimize": 241,
+          "delivery": 123,
+          "conversionMs": 740
+        },
+        {
+          "readyMs": 816.6999999880791,
+          "jsHeapGrowthBytes": 24315789,
+          "longestTaskMs": 71,
+          "decode": 40,
+          "quantize": 76,
+          "vectorize": 216,
+          "serialize": 47,
+          "optimize": 239,
+          "delivery": 124,
+          "conversionMs": 742
+        },
+        {
+          "readyMs": 830.3000000119209,
+          "jsHeapGrowthBytes": 26208329,
+          "longestTaskMs": 74,
+          "decode": 52,
+          "quantize": 81,
+          "vectorize": 187,
+          "serialize": 45,
+          "optimize": 267,
+          "delivery": 126,
+          "conversionMs": 759
+        }
+      ],
+      "median": {
+        "readyMs": 816.6999999880791,
+        "jsHeapGrowthBytes": 26208329,
+        "longestTaskMs": 71,
+        "decode": 41,
+        "quantize": 81,
+        "vectorize": 201,
+        "serialize": 47,
+        "optimize": 241,
+        "delivery": 124,
+        "conversionMs": 742
+      }
+    },
+    {
+      "file": "usda-fresh-produce.jpg",
+      "highestQuality": true,
+      "colorCurveFit": false,
+      "inputSha256": "1ff1486435cba731de66dff14a436584b6c806b496e981f9b94a15eab038a836",
+      "fidelity": {
+        "width": 1280,
+        "height": 1024,
+        "svgBytes": 2427945,
+        "svgSha256": "6fe3275604b92c159e51c2ff1a689888368715e9d917c686fce22b3f26fc2291",
+        "rasterSha256": "6128eabfd124b4548d4a2e732210290a3c62414a3af4bca28752edb774ff11b0"
+      },
+      "first": {
+        "readyMs": 855.3000000119209,
+        "jsHeapGrowthBytes": 20656979,
+        "longestTaskMs": 72,
+        "decode": 36,
+        "quantize": 131,
+        "vectorize": 255,
+        "serialize": 22,
+        "optimize": 205,
+        "delivery": 144,
+        "conversionMs": 803
+      },
+      "warm": [
+        {
+          "readyMs": 769.8999999761581,
+          "jsHeapGrowthBytes": 21932106,
+          "longestTaskMs": 80,
+          "decode": 36,
+          "quantize": 101,
+          "vectorize": 243,
+          "serialize": 49,
+          "optimize": 139,
+          "delivery": 155,
+          "conversionMs": 723
+        },
+        {
+          "readyMs": 738.6000000238419,
+          "jsHeapGrowthBytes": 43090289,
+          "longestTaskMs": 64,
+          "decode": 38,
+          "quantize": 111,
+          "vectorize": 248,
+          "serialize": 20,
+          "optimize": 158,
+          "delivery": 123,
+          "conversionMs": 698
+        },
+        {
+          "readyMs": 730.3000000119209,
+          "jsHeapGrowthBytes": 35966768,
+          "longestTaskMs": 62,
+          "decode": 30,
+          "quantize": 92,
+          "vectorize": 215,
+          "serialize": 21,
+          "optimize": 203,
+          "delivery": 124,
+          "conversionMs": 685
+        }
+      ],
+      "median": {
+        "readyMs": 738.6000000238419,
+        "jsHeapGrowthBytes": 35966768,
+        "longestTaskMs": 64,
+        "decode": 36,
+        "quantize": 101,
+        "vectorize": 243,
+        "serialize": 21,
+        "optimize": 158,
+        "delivery": 124,
+        "conversionMs": 698
+      }
+    },
+    {
+      "file": "usda-fresh-produce.jpg",
+      "highestQuality": true,
+      "colorCurveFit": true,
+      "inputSha256": "1ff1486435cba731de66dff14a436584b6c806b496e981f9b94a15eab038a836",
+      "fidelity": {
+        "width": 1280,
+        "height": 1024,
+        "svgBytes": 6701721,
+        "svgSha256": "1a3a29b68829a865aaded484d88013106da41b7746f986517d17a4b668a59853",
+        "rasterSha256": "bca7ab3e3e20778b4a4404de320081af7cb50dd333bc337bd94250cadba79dc0"
+      },
+      "first": {
+        "readyMs": 1414,
+        "jsHeapGrowthBytes": 37486641,
+        "longestTaskMs": 101,
+        "decode": 43,
+        "quantize": 136,
+        "vectorize": 361,
+        "serialize": 67,
+        "optimize": 494,
+        "delivery": 176,
+        "conversionMs": 1292
+      },
+      "warm": [
+        {
+          "readyMs": 1132.699999988079,
+          "jsHeapGrowthBytes": 33838438,
+          "longestTaskMs": 98,
+          "decode": 37,
+          "quantize": 95,
+          "vectorize": 319,
+          "serialize": 66,
+          "optimize": 345,
+          "delivery": 172,
+          "conversionMs": 1035
+        },
+        {
+          "readyMs": 1259.1000000238419,
+          "jsHeapGrowthBytes": 39333063,
+          "longestTaskMs": 131,
+          "decode": 35,
+          "quantize": 93,
+          "vectorize": 340,
+          "serialize": 73,
+          "optimize": 366,
+          "delivery": 232,
+          "conversionMs": 1140
+        },
+        {
+          "readyMs": 1201.300000011921,
+          "jsHeapGrowthBytes": 39547794,
+          "longestTaskMs": 99,
+          "decode": 38,
+          "quantize": 117,
+          "vectorize": 328,
+          "serialize": 69,
+          "optimize": 378,
+          "delivery": 171,
+          "conversionMs": 1101
+        }
+      ],
+      "median": {
+        "readyMs": 1201.300000011921,
+        "jsHeapGrowthBytes": 39333063,
+        "longestTaskMs": 99,
+        "decode": 37,
+        "quantize": 95,
+        "vectorize": 328,
+        "serialize": 69,
+        "optimize": 366,
+        "delivery": 172,
+        "conversionMs": 1101
+      }
+    },
+    {
+      "file": "usfws-rufous-hummingbird.jpg",
+      "highestQuality": false,
+      "colorCurveFit": false,
+      "inputSha256": "0e429d3dcc396eb78abee0a9a83392f0451e042df3c704e5c021c9492c10a03b",
+      "fidelity": {
+        "width": 1000,
+        "height": 666,
+        "svgBytes": 824873,
+        "svgSha256": "8faea6cd4dcf83d9562fb178f1a39fe5d8afc79a9cd2b8d25265d88ef5e36288",
+        "rasterSha256": "7e5b20d8284f9c004fed75fd3b527b6b24df28b99396c7d2bb92808f4ef70993"
+      },
+      "first": {
+        "readyMs": 394.30000001192093,
+        "jsHeapGrowthBytes": 17524286,
+        "longestTaskMs": 0,
+        "decode": 26,
+        "quantize": 77,
+        "vectorize": 87,
+        "serialize": 9,
+        "optimize": 105,
+        "delivery": 41,
+        "conversionMs": 354
+      },
+      "warm": [
+        {
+          "readyMs": 295.89999997615814,
+          "jsHeapGrowthBytes": 16381290,
+          "longestTaskMs": 0,
+          "decode": 24,
+          "quantize": 64,
+          "vectorize": 76,
+          "serialize": 11,
+          "optimize": 33,
+          "delivery": 41,
+          "conversionMs": 250
+        },
+        {
+          "readyMs": 324.10000002384186,
+          "jsHeapGrowthBytes": 22655167,
+          "longestTaskMs": 0,
+          "decode": 27,
+          "quantize": 68,
+          "vectorize": 62,
+          "serialize": 8,
+          "optimize": 68,
+          "delivery": 42,
+          "conversionMs": 275
+        },
+        {
+          "readyMs": 288.19999998807907,
+          "jsHeapGrowthBytes": 15435798,
+          "longestTaskMs": 0,
+          "decode": 22,
+          "quantize": 57,
+          "vectorize": 69,
+          "serialize": 8,
+          "optimize": 42,
+          "delivery": 48,
+          "conversionMs": 246
+        }
+      ],
+      "median": {
+        "readyMs": 295.89999997615814,
+        "jsHeapGrowthBytes": 16381290,
+        "longestTaskMs": 0,
+        "decode": 24,
+        "quantize": 64,
+        "vectorize": 69,
+        "serialize": 8,
+        "optimize": 42,
+        "delivery": 42,
+        "conversionMs": 250
+      }
+    },
+    {
+      "file": "usfws-rufous-hummingbird.jpg",
+      "highestQuality": false,
+      "colorCurveFit": true,
+      "inputSha256": "0e429d3dcc396eb78abee0a9a83392f0451e042df3c704e5c021c9492c10a03b",
+      "fidelity": {
+        "width": 1000,
+        "height": 666,
+        "svgBytes": 2163371,
+        "svgSha256": "045f6eb4bf50a14f54242820dd56cb138ac188aac10bb09001a56f85f259cfa8",
+        "rasterSha256": "486de0a1f5cb0adbd851569e2ad307c2cd7e049df90460bd5085cc9499f5a343"
+      },
+      "first": {
+        "readyMs": 569.0999999642372,
+        "jsHeapGrowthBytes": 24296197,
+        "longestTaskMs": 0,
+        "decode": 33,
+        "quantize": 92,
+        "vectorize": 113,
+        "serialize": 25,
+        "optimize": 176,
+        "delivery": 60,
+        "conversionMs": 510
+      },
+      "warm": [
+        {
+          "readyMs": 515.2999999523163,
+          "jsHeapGrowthBytes": 23042792,
+          "longestTaskMs": 0,
+          "decode": 25,
+          "quantize": 64,
+          "vectorize": 115,
+          "serialize": 23,
+          "optimize": 161,
+          "delivery": 55,
+          "conversionMs": 443
+        },
+        {
+          "readyMs": 452,
+          "jsHeapGrowthBytes": 29421453,
+          "longestTaskMs": 0,
+          "decode": 28,
+          "quantize": 64,
+          "vectorize": 94,
+          "serialize": 22,
+          "optimize": 133,
+          "delivery": 60,
+          "conversionMs": 401
+        },
+        {
+          "readyMs": 418.30000001192093,
+          "jsHeapGrowthBytes": 6119839,
+          "longestTaskMs": 0,
+          "decode": 30,
+          "quantize": 58,
+          "vectorize": 78,
+          "serialize": 23,
+          "optimize": 124,
+          "delivery": 64,
+          "conversionMs": 377
+        }
+      ],
+      "median": {
+        "readyMs": 452,
+        "jsHeapGrowthBytes": 23042792,
+        "longestTaskMs": 0,
+        "decode": 28,
+        "quantize": 64,
+        "vectorize": 94,
+        "serialize": 23,
+        "optimize": 133,
+        "delivery": 60,
+        "conversionMs": 401
+      }
+    },
+    {
+      "file": "usfws-rufous-hummingbird.jpg",
+      "highestQuality": true,
+      "colorCurveFit": false,
+      "inputSha256": "0e429d3dcc396eb78abee0a9a83392f0451e042df3c704e5c021c9492c10a03b",
+      "fidelity": {
+        "width": 1300,
+        "height": 866,
+        "svgBytes": 1205366,
+        "svgSha256": "cfff428b43c67aa6976ed6f59f7df1049fc796feb982d7832db7a53af0b41c4c",
+        "rasterSha256": "8cd644a12792a3c881a27c90e1e996fcbcc3ad30047cf1a4af16b5ce19eeafa8"
+      },
+      "first": {
+        "readyMs": 465.10000002384186,
+        "jsHeapGrowthBytes": 23928355,
+        "longestTaskMs": 0,
+        "decode": 19,
+        "quantize": 94,
+        "vectorize": 110,
+        "serialize": 13,
+        "optimize": 114,
+        "delivery": 62,
+        "conversionMs": 423
+      },
+      "warm": [
+        {
+          "readyMs": 377.5,
+          "jsHeapGrowthBytes": 22448478,
+          "longestTaskMs": 0,
+          "decode": 23,
+          "quantize": 64,
+          "vectorize": 101,
+          "serialize": 10,
+          "optimize": 46,
+          "delivery": 64,
+          "conversionMs": 309
+        },
+        {
+          "readyMs": 376.5999999642372,
+          "jsHeapGrowthBytes": 21280931,
+          "longestTaskMs": 0,
+          "decode": 22,
+          "quantize": 71,
+          "vectorize": 102,
+          "serialize": 14,
+          "optimize": 50,
+          "delivery": 60,
+          "conversionMs": 320
+        },
+        {
+          "readyMs": 358.80000001192093,
+          "jsHeapGrowthBytes": 21539911,
+          "longestTaskMs": 0,
+          "decode": 21,
+          "quantize": 72,
+          "vectorize": 86,
+          "serialize": 11,
+          "optimize": 44,
+          "delivery": 65,
+          "conversionMs": 298
+        }
+      ],
+      "median": {
+        "readyMs": 376.5999999642372,
+        "jsHeapGrowthBytes": 21539911,
+        "longestTaskMs": 0,
+        "decode": 22,
+        "quantize": 71,
+        "vectorize": 101,
+        "serialize": 11,
+        "optimize": 46,
+        "delivery": 64,
+        "conversionMs": 309
+      }
+    },
+    {
+      "file": "usfws-rufous-hummingbird.jpg",
+      "highestQuality": true,
+      "colorCurveFit": true,
+      "inputSha256": "0e429d3dcc396eb78abee0a9a83392f0451e042df3c704e5c021c9492c10a03b",
+      "fidelity": {
+        "width": 1300,
+        "height": 866,
+        "svgBytes": 3232280,
+        "svgSha256": "82443c31024ac35519c640c330830fbe27459d63bf3f1192ede6335ef210fa6d",
+        "rasterSha256": "b74b5508c0fc2768d0289cb44c68943049a396f6142859b89245d33ca4496641"
+      },
+      "first": {
+        "readyMs": 689.2000000476837,
+        "jsHeapGrowthBytes": 14705542,
+        "longestTaskMs": 0,
+        "decode": 22,
+        "quantize": 106,
+        "vectorize": 150,
+        "serialize": 35,
+        "optimize": 234,
+        "delivery": 81,
+        "conversionMs": 640
+      },
+      "warm": [
+        {
+          "readyMs": 728.5,
+          "jsHeapGrowthBytes": 31710937,
+          "longestTaskMs": 0,
+          "decode": 19,
+          "quantize": 83,
+          "vectorize": 183,
+          "serialize": 44,
+          "optimize": 240,
+          "delivery": 93,
+          "conversionMs": 662
+        },
+        {
+          "readyMs": 687.8000000119209,
+          "jsHeapGrowthBytes": 8578323,
+          "longestTaskMs": 69,
+          "decode": 23,
+          "quantize": 77,
+          "vectorize": 162,
+          "serialize": 40,
+          "optimize": 208,
+          "delivery": 112,
+          "conversionMs": 622
+        },
+        {
+          "readyMs": 602.8999999761581,
+          "jsHeapGrowthBytes": 21662425,
+          "longestTaskMs": 0,
+          "decode": 24,
+          "quantize": 75,
+          "vectorize": 129,
+          "serialize": 39,
+          "optimize": 190,
+          "delivery": 88,
+          "conversionMs": 545
+        }
+      ],
+      "median": {
+        "readyMs": 687.8000000119209,
+        "jsHeapGrowthBytes": 21662425,
+        "longestTaskMs": 0,
+        "decode": 23,
+        "quantize": 77,
+        "vectorize": 162,
+        "serialize": 40,
+        "optimize": 208,
+        "delivery": 93,
+        "conversionMs": 622
+      }
+    }
+  ]
+}

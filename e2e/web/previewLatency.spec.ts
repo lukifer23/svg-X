@@ -31,13 +31,11 @@ test("benchmarks real photo uploads through the production preview", async ({
   ];
   const cases = inputs.flatMap((file) =>
     [false, true].flatMap((highestQuality) =>
-      (file.startsWith("usda") ? [false, true] : [false]).map(
-        (colorCurveFit) => ({
-          file,
-          highestQuality,
-          colorCurveFit,
-        }),
-      ),
+      [false, true].map((colorCurveFit) => ({
+        file,
+        highestQuality,
+        colorCurveFit,
+      })),
     ),
   );
   await page.goto("/");
@@ -147,7 +145,7 @@ test("benchmarks real photo uploads through the production preview", async ({
       const metrics = Object.fromEntries(
         Array.from(
           logs.matchAll(
-            /(decode|quantize|vectorize|serialize|optimize)=([0-9]+)ms/g,
+            /(decode|delivery|quantize|vectorize|serialize|optimize)=([0-9]+)ms/g,
           ),
           ([, name, value]) => [name, Number(value)],
         ),
@@ -155,6 +153,7 @@ test("benchmarks real photo uploads through the production preview", async ({
       const total = logs.match(/Completed in ([0-9]+)ms/);
       expect(Object.keys(metrics).sort()).toEqual([
         "decode",
+        "delivery",
         "optimize",
         "quantize",
         "serialize",
@@ -215,6 +214,7 @@ test("benchmarks real photo uploads through the production preview", async ({
   const label = process.env.BENCH_LABEL ?? "local";
   const baseline = process.env.SVGX_PREVIEW_BASELINE;
   if (baseline) {
+    const allowReencoding = process.env.SVGX_PREVIEW_ALLOW_REENCODING === "1";
     const compare = (entries: typeof report) =>
       entries.map(
         ({ file, highestQuality, colorCurveFit, inputSha256, fidelity }) => ({
@@ -222,7 +222,13 @@ test("benchmarks real photo uploads through the production preview", async ({
           highestQuality,
           colorCurveFit,
           inputSha256,
-          fidelity,
+          fidelity: allowReencoding
+            ? {
+                width: fidelity.width,
+                height: fidelity.height,
+                rasterSha256: fidelity.rasterSha256,
+              }
+            : fidelity,
         }),
       );
     const expected: { report: typeof report } = JSON.parse(

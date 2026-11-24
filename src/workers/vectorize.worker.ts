@@ -30,10 +30,9 @@ const complete = async (
 ): Promise<void> => {
   const serializationStart = performance.now();
   const vectorizeMs = serializationStart - started;
-  const rawSvg = serializeVectorDocument(document);
-  const serializeMs = performance.now() - serializationStart;
-  let svg = rawSvg;
-  let optimizeMs = 0;
+  // Color paths can be compacted directly without reparsing a large SVG
+  // or independently rounding either side of a shared boundary.
+  const compact = document.mode === "color" && request.optimizeSvg;
   if (request.optimizeSvg) {
     post({
       type: "progress",
@@ -45,6 +44,12 @@ const complete = async (
         message: "Optimizing SVG output",
       },
     });
+  }
+  const rawSvg = serializeVectorDocument(document, { compact });
+  const serializeMs = performance.now() - serializationStart;
+  let svg = rawSvg;
+  let optimizeMs = 0;
+  if (request.optimizeSvg && !compact) {
     const optimizeStart = performance.now();
     try {
       const { optimize } = await import("svgo");
@@ -56,10 +61,6 @@ const complete = async (
             params: {
               overrides: {
                 cleanupIds: false,
-                // Independent relative rounding can split a shared color edge.
-                ...(request.options.mode === "color"
-                  ? { convertPathData: false }
-                  : {}),
               },
             },
           },
@@ -77,12 +78,20 @@ const complete = async (
     warnings: [],
   };
   if (cancelled.delete(request.jobId)) return;
+  const publishedAt = performance.timeOrigin + performance.now();
   post({
     type: "complete",
     version: 1,
     jobId: request.jobId,
-    document: request.includeDocument ? document : undefined,
+    // Color geometry can contain hundreds of thousands of command objects.
+    // The browser's JSON codec avoids recursively cloning that object graph.
+    document: request.includeDocument
+      ? compact
+        ? JSON.stringify(document)
+        : document
+      : undefined,
     svg,
+    publishedAt,
     outputPaths,
     vectorizeMs,
     quantizeMs,

@@ -150,8 +150,9 @@ export type VectorWorkerResponse =
       type: "complete";
       version: 1;
       jobId: string;
-      document?: VectorDocument;
+      document?: VectorDocument | string;
       svg: string;
+      publishedAt: number;
       outputPaths: number;
       vectorizeMs: number;
       quantizeMs: number;

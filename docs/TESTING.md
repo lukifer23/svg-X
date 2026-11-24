@@ -10,7 +10,7 @@ Native batch tests use the production run and real Sharp and filesystem operatio
 
 The [photo color benchmark](../results/PHOTO-COLOR.md) (`npm run bench:photo`) measures the still-life
 fixture and two public-domain photographs with polygon and fitted output.
-It compares available palette, label, geometry, SVG, raster, and path-count evidence when `SVGX_PHOTO_BASELINE` is set. Set `SVGX_PHOTO_WORKING_SIZE=1` for the four-image working-size corpus. The [upload-to-preview benchmark](../results/PREVIEW-LATENCY.md) runs separately against the production bundle.
+It compares available palette, label, geometry, SVG, raster, and path-count evidence when `SVGX_PHOTO_BASELINE` is set. Set `SVGX_PHOTO_WORKING_SIZE=1` for the four-image working-size corpus. The [upload-to-preview benchmark](../results/PREVIEW-LATENCY.md) runs separately against the production bundle and measures SVG bytes, worker delivery, preview latency, and decoded pixel hashes in both Color path styles.
 
 Current absolute acceptance gates include:
 

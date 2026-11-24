@@ -141,7 +141,7 @@ Transparency is composited over white before tracing for compatibility. This beh
 
 ## Exports
 
-- SVG: exact `VectorDocument` geometry, optionally optimized by SVGO
+- SVG: geometry serialized from `VectorDocument`. **Optimize SVG** compacts Color output at the same coordinate precision and uses SVGO for B&W and Centerline. See the [photo preview measurements](results/PREVIEW-LATENCY.md).
 - EPS: cubic commands are preserved as PostScript `curveto`; opacity is deterministically composited over white because EPS has no alpha channel
 - DXF R12: curves are flattened adaptively to a geometric tolerance, with Y flipped into CAD coordinates
 - JSON: the complete versioned `VectorDocument`

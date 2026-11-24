@@ -330,6 +330,11 @@ const executeConversion = async (
     detailedLogCallback,
   );
   log("METRIC", `optimize=${Math.round(optimizeMs)}ms`, detailedLogCallback);
+  log(
+    "METRIC",
+    `delivery=${Math.round(result.deliveryMs)}ms`,
+    detailedLogCallback,
+  );
   log("DONE", `Completed in ${Math.round(totalMs)}ms`, detailedLogCallback);
   return {
     document: result.document,

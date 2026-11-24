@@ -161,7 +161,7 @@ test("traces archived linework as stroked curves through the centerline controls
   expect(svg).toMatch(/<path[^>]*\bd="[^"]*[Cc]/);
 });
 
-test("batch and interactive color workers produce the same photo SVG", async ({
+test("batch and interactive color workers preserve export geometry and match SVG", async ({
   page,
 }) => {
   await page.goto("/", { waitUntil: "networkidle" });
@@ -195,12 +195,27 @@ test("batch and interactive color workers produce the same photo SVG", async ({
     };
     const interactive = await processImageDetailed(input(), params, () => {});
     const batch = await processImageBatch(input(), params);
+    const compactParams = { ...params, svgoOptimize: true };
+    const compact = await processImageDetailed(
+      input(),
+      compactParams,
+      () => {},
+    );
+    const compactBatch = await processImageBatch(input(), compactParams);
     return {
       identical: batch === interactive.svg,
+      identicalCompact: compactBatch === compact.svg,
+      identicalGeometry:
+        JSON.stringify(compact.document) ===
+        JSON.stringify(interactive.document),
+      smaller: compact.svg.length < interactive.svg.length,
       paths: interactive.metrics.outputPaths,
     };
   });
   expect(result.identical).toBe(true);
+  expect(result.identicalCompact).toBe(true);
+  expect(result.identicalGeometry).toBe(true);
+  expect(result.smaller).toBe(true);
   expect(result.paths).toBeGreaterThan(0);
 });
 

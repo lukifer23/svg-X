@@ -40,6 +40,7 @@ export interface WorkResult {
   quantizeMs: number;
   serializeMs: number;
   optimizeMs: number;
+  deliveryMs: number;
   diagnostics: ConversionDiagnostics;
 }
 
@@ -97,18 +98,30 @@ export class VectorWorkerPool {
     }
     this.detachAbort(item);
     slot.item = null;
-    if (message.type === "complete")
-      item.resolve({
-        document: message.document,
-        svg: message.svg,
-        outputPaths: message.outputPaths,
-        vectorizeMs: message.vectorizeMs,
-        quantizeMs: message.quantizeMs,
-        serializeMs: message.serializeMs,
-        optimizeMs: message.optimizeMs,
-        diagnostics: message.diagnostics,
-      });
-    else item.reject(new Error(message.error));
+    if (message.type === "complete") {
+      try {
+        const document =
+          typeof message.document === "string"
+            ? (JSON.parse(message.document) as VectorDocument)
+            : message.document;
+        item.resolve({
+          document,
+          svg: message.svg,
+          outputPaths: message.outputPaths,
+          vectorizeMs: message.vectorizeMs,
+          quantizeMs: message.quantizeMs,
+          serializeMs: message.serializeMs,
+          optimizeMs: message.optimizeMs,
+          deliveryMs: Math.max(
+            0,
+            performance.timeOrigin + performance.now() - message.publishedAt,
+          ),
+          diagnostics: message.diagnostics,
+        });
+      } catch {
+        item.reject(new Error("Vector worker returned unreadable geometry"));
+      }
+    } else item.reject(new Error(message.error));
     this.dispatch();
   }
 

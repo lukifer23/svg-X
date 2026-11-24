@@ -524,7 +524,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         : "B&W",
     `threshold ${potraceParams.threshold}`,
     `speckle ${potraceParams.turdSize}`,
-    potraceParams.svgoOptimize ? "SVGO on" : "",
+    potraceParams.svgoOptimize ? "SVG optimization on" : "",
   ]
     .filter(Boolean)
     .join(" · ");

@@ -44,6 +44,7 @@ This work is intentionally unreleased. No tag or downloadable binary is implied.
 - Sped up color component discovery and merging while preserving merge order, SVG size, and rendered output on the four-image fidelity corpus.
 - Reused contour area, junction information, and shared boundary work. The USDA produce photo's polygon trace took 8.6% less time with identical SVG bytes and rendered pixels.
 - Moved SVG optimization into the cancellable conversion worker. The real-upload benchmark found shorter main-thread tasks across all ten cases with identical SVG bytes and decoded preview pixels.
+- Added direct, precision-preserving Color SVG compaction and faster delivery of export geometry. The four-image fitted benchmark produced 43–47% smaller SVGs with identical decoded pixels. The largest preview went from 1,201 to 799 ms.
 
 ## Historical releases
 

@@ -10,7 +10,7 @@ SVG-X has three execution boundaries: the React renderer, bundled conversion wor
 4. The worker produces the authoritative `VectorDocument`; it never returns SVG as the source of truth.
 5. SVG, EPS, DXF, and JSON serialize directly from that document.
 
-The versioned worker messages carry a job ID. A result is accepted only for the active ID. Aborting terminates and replaces the active worker, rejects queued work, and prevents stale completion from updating the UI. The vector worker lazily loads optional SVGO after serialization, keeping optimization within the same cancellable job. The renderer logs elapsed times for decode, quantization, tracing, serialization, and optimization.
+The versioned worker messages carry a job ID. A result is accepted only for the active ID. Aborting terminates and replaces the active worker, rejects queued work, and prevents stale completion from updating the UI. With SVG optimization enabled, the worker emits compact Color SVG directly from the document and lazily loads SVGO for B&W and Centerline. Both routes run in the same cancellable job. For compact Color results that need EPS, DXF, or JSON export, the worker encodes the authoritative document as JSON and the renderer reconstructs it on receipt. SVG-only batch jobs omit the geometry payload. The renderer logs elapsed times for decode, quantization, tracing, serialization, optional SVGO, and delivery of the complete worker response.
 
 ## Native batch lifecycle
 
