@@ -156,8 +156,31 @@ const getMask = async (file) => {
         lines[y] |= 1 << x;
         area += 1;
       }
-  if (!area)
-    throw new Error(`No foreground survived the audit threshold: ${file}`);
+  if (!area) {
+    // Area averaging can erase subpixel strokes. Project dark source pixels
+    // into the same letterboxed grid when the ordinary silhouette is empty.
+    const {
+      data,
+      info: { width, height },
+    } = await sharp(file, { limitInputPixels: 2048 * 2048 })
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const scale = side / Math.max(width, height);
+    const left = (side - width * scale) / 2;
+    const top = (side - height * scale) / 2;
+    for (let y = 0; y < height; y += 1) {
+      const row = Math.floor(top + (y + 0.5) * scale);
+      for (let x = 0; x < width; x += 1) {
+        if (data[y * width + x] >= 192) continue;
+        const bit = 1 << Math.floor(left + (x + 0.5) * scale);
+        if (!(lines[row] & bit)) area += 1;
+        lines[row] |= bit;
+      }
+    }
+    if (!area)
+      throw new Error(`No foreground survived the audit threshold: ${file}`);
+  }
   return { lines, area };
 };
 const bitCount = (value) => {

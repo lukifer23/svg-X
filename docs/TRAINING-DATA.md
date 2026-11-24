@@ -75,6 +75,9 @@ explicit provenance if added later.
 
 ## Decide whether to train
 
+The [faded-line restoration pilot](RESTORATION-PILOT.md) implements and
+evaluates the first task below on local hardware.
+
 Use the 32-design corpus to validate loading, deterministic batching and
 reproducibility. Its two icon collections and shared styles across splits
 limit what it can establish about generalization to scanned plans,

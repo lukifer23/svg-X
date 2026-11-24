@@ -1,0 +1,1457 @@
+{
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "platform": "win32",
+  "node": "v24.19.0",
+  "checkpointStep": 600,
+  "threads": 4,
+  "tile": 256,
+  "inferenceMs": {
+    "bell-optical-sketch-1000": [
+      156.8377999938093,
+      153.8072000257671,
+      145.35959996283054
+    ],
+    "bell-optical-sketch-2000": [
+      614.850599959027,
+      618.3249999885447,
+      616.3200999726541
+    ],
+    "bell-relay-alt-1000": [
+      131.6007999703288,
+      140.17530001001433,
+      145.79799998318776
+    ],
+    "bell-relay-alt-2000": [
+      705.4109000018798,
+      595.2152999816462,
+      713.8866999885067
+    ],
+    "bell-telephone-relay-1000": [
+      149.64819996384904,
+      142.13350001955405,
+      168.7542999861762
+    ],
+    "bell-telephone-relay-2000": [
+      647.4606999545358,
+      541.8159000109881,
+      639.8250999627635
+    ],
+    "edison-meter-1000": [
+      143.77369999419898,
+      153.2539000036195,
+      145.40959999430925
+    ],
+    "edison-meter-2000": [
+      531.2989000231028,
+      581.7681000335142,
+      512.1940999524668
+    ],
+    "multiple-telegraph-1000": [
+      160.93750001164153,
+      153.27289997367188,
+      167.13509999681264
+    ],
+    "multiple-telegraph-2000": [
+      649.0478999912739,
+      717.7263000048697,
+      695.9376999875531
+    ],
+    "photophone-1000": [
+      81.10630000010133,
+      74.45050001842901,
+      98.16549997776747
+    ],
+    "photophone-2000": [
+      82.36110000871122,
+      86.04969998123124,
+      98.2178999693133
+    ],
+    "telephone-1000": [
+      110.23409996414557,
+      107.7995999949053,
+      103.6405999911949
+    ],
+    "telephone-2000": [
+      467.13439997984096,
+      487.14969999855384,
+      461.68739994755015
+    ]
+  },
+  "checkpointSha256": "b31146c2f6648acbbdf29a1c2a2eea8b60d6b4e609da6e4287205ea293464c38",
+  "loops": {
+    "raw": 12,
+    "current": 18,
+    "learned": 13
+  },
+  "gates": {
+    "gainsLoops": false,
+    "preservesMatchedLoops": false,
+    "preservesOpenGaps": true,
+    "addsNoPaperInk": true,
+    "preservesInk": false,
+    "fitsCpuBudget": true
+  },
+  "qualified": false,
+  "report": [
+    {
+      "name": "photophone-1000",
+      "limit": 1000,
+      "sourceSha256": "1e43bfea68f1328383c218146712be0a17c806d05a9a66c13cf73635adb2d04f",
+      "width": 1000,
+      "height": 468,
+      "raw": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.0060763540090096125,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 16.578199999999924,
+        "samplesMs": [
+          27.869800000000396,
+          14.123500000001513,
+          16.578199999999924
+        ]
+      },
+      "current": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.3654403567447046,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 64.58300000000236,
+        "samplesMs": [
+          134.05549999999857,
+          54.655900000001566,
+          64.58300000000236
+        ]
+      },
+      "learned": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.6944320712694878,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 13.743999999998778,
+        "samplesMs": [
+          13.743999999998778,
+          13.183199999999488,
+          15.654999999998836
+        ]
+      },
+      "addedMs": 30.267300000097748
+    },
+    {
+      "name": "photophone-2000",
+      "limit": 2000,
+      "sourceSha256": "1e43bfea68f1328383c218146712be0a17c806d05a9a66c13cf73635adb2d04f",
+      "width": 1024,
+      "height": 479,
+      "raw": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.006173958091274807,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 13.789600000000064,
+        "samplesMs": [
+          13.789600000000064,
+          14.08009999999922,
+          11.846799999999348
+        ]
+      },
+      "current": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.33726067746686306,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 70.41340000000127,
+        "samplesMs": [
+          43.91029999999955,
+          70.41340000000127,
+          74.49890000000232
+        ]
+      },
+      "learned": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.6964360587002096,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 12.822700000000623,
+        "samplesMs": [
+          12.822700000000623,
+          12.60620000000199,
+          13.580500000000029
+        ]
+      },
+      "addedMs": 28.45899998123059
+    },
+    {
+      "name": "telephone-1000",
+      "limit": 1000,
+      "sourceSha256": "3d459932a20a24c539a9caa1bbf88ee753a39976e37c395842f4c632f121657e",
+      "width": 608,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.3804347826086957,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8522483940042827,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 18.67320000000109,
+        "samplesMs": [
+          18.211100000000442,
+          18.6887999999999,
+          18.67320000000109
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.6802575107296137,
+            "matched": true
+          },
+          "lower-box-face": {
+            "iou": 0.49767441860465117,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          45
+        ],
+        "open": {
+          "horn-mouth-gap": false
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 78.47360000000117,
+        "samplesMs": [
+          90.91019999999844,
+          78.47360000000117,
+          71.06270000000222
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-box": {
+            "iou": 0,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          22
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 17.999800000001414,
+        "samplesMs": [
+          17.999800000001414,
+          17.407500000001164,
+          19.168900000000576
+        ]
+      },
+      "addedMs": 47.32579999490554
+    },
+    {
+      "name": "telephone-2000",
+      "limit": 2000,
+      "sourceSha256": "3d459932a20a24c539a9caa1bbf88ee753a39976e37c395842f4c632f121657e",
+      "width": 1200,
+      "height": 1975,
+      "raw": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.35564730168092007,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8594997339010112,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 60.681000000000495,
+        "samplesMs": [
+          66.41600000000108,
+          60.681000000000495,
+          60.245999999999185
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.41602465331278893,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.9403620873269436,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          75
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 387.7504000000008,
+        "samplesMs": [
+          284.20939999999973,
+          387.7504000000008,
+          395.5262999999977
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.007828454731109599,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.03394546466332777,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          53
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 63.73119999999835,
+        "samplesMs": [
+          63.15780000000086,
+          63.73119999999835,
+          71.05940000000192
+        ]
+      },
+      "addedMs": 143.1151999798385
+    },
+    {
+      "name": "multiple-telegraph-1000",
+      "limit": 1000,
+      "sourceSha256": "3544d3fe71152e154f91b120c9944dd33cf554c93a2b7c54e3e4bc9588af1ac3",
+      "width": 812,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006544069341671717,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009095492485778744,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 17.495999999999185,
+        "samplesMs": [
+          17.495999999999185,
+          17.334100000000035,
+          17.561099999998987
+        ]
+      },
+      "current": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.8707865168539326,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9437669376693767,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 78.02449999999953,
+        "samplesMs": [
+          82.03199999999924,
+          77.1922999999988,
+          78.02449999999953
+        ]
+      },
+      "learned": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006204794804170145,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009134745992936701,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "traceMs": 24.086099999996804,
+        "samplesMs": [
+          24.086099999996804,
+          25.535100000000966,
+          22.94919999999911
+        ]
+      },
+      "addedMs": 106.9991000116388
+    },
+    {
+      "name": "multiple-telegraph-2000",
+      "limit": 2000,
+      "sourceSha256": "3544d3fe71152e154f91b120c9944dd33cf554c93a2b7c54e3e4bc9588af1ac3",
+      "width": 1623,
+      "height": 2000,
+      "raw": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006448180037007777,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009051053238942201,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 88.08329999999842,
+        "samplesMs": [
+          92.36160000000018,
+          88.08329999999842,
+          86.31530000000203
+        ]
+      },
+      "current": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.9148737137511693,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9667234332425068,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 280.213499999998,
+        "samplesMs": [
+          277.99319999999716,
+          280.213499999998,
+          284.2720999999983
+        ]
+      },
+      "learned": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0013380110759461576,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.017979538799785207,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 99.60269999999946,
+        "samplesMs": [
+          98.16229999999996,
+          106.87320000000182,
+          99.60269999999946
+        ]
+      },
+      "addedMs": 515.3268999875545
+    },
+    {
+      "name": "bell-optical-sketch-1000",
+      "limit": 1000,
+      "sourceSha256": "46a04635460030f2c5032662034c280948fface6b9ad3b1310f57d4e83b0673b",
+      "width": 1000,
+      "height": 816,
+      "raw": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8476714100905562,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 28.29449999999997,
+        "samplesMs": [
+          28.13170000000173,
+          28.520300000000134,
+          28.29449999999997
+        ]
+      },
+      "current": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8495145631067961,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          8,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 56.660899999998946,
+        "samplesMs": [
+          59.19810000000143,
+          56.17909999999756,
+          56.660899999998946
+        ]
+      },
+      "learned": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8576960309777347,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 29.322199999998702,
+        "samplesMs": [
+          32.77149999999892,
+          29.322199999998702,
+          27.231599999999162
+        ]
+      },
+      "addedMs": 126.46850002576684
+    },
+    {
+      "name": "bell-optical-sketch-2000",
+      "limit": 2000,
+      "sourceSha256": "46a04635460030f2c5032662034c280948fface6b9ad3b1310f57d4e83b0673b",
+      "width": 2000,
+      "height": 1631,
+      "raw": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8555295636040978,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 145.16890000000058,
+        "samplesMs": [
+          151.80099999999948,
+          143.33650000000125,
+          145.16890000000058
+        ]
+      },
+      "current": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8590095176641394,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          16,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 208.99319999999716,
+        "samplesMs": [
+          213.89819999999963,
+          208.99319999999716,
+          208.15920000000187
+        ]
+      },
+      "learned": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8379379782521144,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          7,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 95.00009999999747,
+        "samplesMs": [
+          98.39259999999922,
+          92.40149999999994,
+          95.00009999999747
+        ]
+      },
+      "addedMs": 502.32699997265445
+    },
+    {
+      "name": "bell-telephone-relay-1000",
+      "limit": 1000,
+      "sourceSha256": "09e54c34ad4983f112e3d7c044a915600853f28cbd8178836f93deaa4ce5abb8",
+      "width": 1000,
+      "height": 712,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7941429801894918,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8931297709923665,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 45.24689999999828,
+        "samplesMs": [
+          51.72909999999683,
+          44.71740000000136,
+          45.24689999999828
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7723785166240409,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8256997455470738,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          6,
+          3
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 54.761599999998,
+        "samplesMs": [
+          56.40690000000177,
+          54.761599999998,
+          52.744900000005146
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.8001730103806228,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8967046894803549,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 19.988600000004226,
+        "samplesMs": [
+          19.81319999999687,
+          19.988600000004226,
+          20.100299999998242
+        ]
+      },
+      "addedMs": 114.87519996385527
+    },
+    {
+      "name": "bell-telephone-relay-2000",
+      "limit": 2000,
+      "sourceSha256": "09e54c34ad4983f112e3d7c044a915600853f28cbd8178836f93deaa4ce5abb8",
+      "width": 2000,
+      "height": 1423,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.787917737789203,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8945518453427065,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 305.9032999999981,
+        "samplesMs": [
+          305.9032999999981,
+          323.2968000000037,
+          305.6587999999974
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7778252510147404,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8590378775771136,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          4,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 195.95219999999972,
+        "samplesMs": [
+          192.89450000000215,
+          199.7291000000041,
+          195.95219999999972
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7352561343090831,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8745042043471363,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 80.18620000000374,
+        "samplesMs": [
+          74.5054999999993,
+          90.79980000000069,
+          80.18620000000374
+        ]
+      },
+      "addedMs": 524.0590999627675
+    },
+    {
+      "name": "bell-relay-alt-1000",
+      "limit": 1000,
+      "sourceSha256": "1b8819ae669d7e362b9874c9a97fb889717d6274b884aeb5747f1bdf91f2d370",
+      "width": 1000,
+      "height": 716,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.6810422282120395,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8107861060329068,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 43.914099999994505,
+        "samplesMs": [
+          43.914099999994505,
+          44.01800000000367,
+          43.77560000000085
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.5611164581328201,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.6809480401093893,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          5
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 60.42710000000079,
+        "samplesMs": [
+          60.42710000000079,
+          62.10570000000007,
+          56.17420000000129
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.6758034026465028,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7755474452554745,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 22.181700000001,
+        "samplesMs": [
+          22.401999999994587,
+          22.181700000001,
+          21.95629999999801
+        ]
+      },
+      "addedMs": 101.92990001001453
+    },
+    {
+      "name": "bell-relay-alt-2000",
+      "limit": 2000,
+      "sourceSha256": "1b8819ae669d7e362b9874c9a97fb889717d6274b884aeb5747f1bdf91f2d370",
+      "width": 2000,
+      "height": 1431,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7117323556370303,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8168406718111666,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "traceMs": 300.01780000000144,
+        "samplesMs": [
+          383.2917000000016,
+          300.01780000000144,
+          296.77219999999943
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.63,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7548930359581247,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          11
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 219.78280000000086,
+        "samplesMs": [
+          208.49109999999928,
+          240.01779999999417,
+          219.78280000000086
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.6455538996522603,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.768604388147478,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "traceMs": 85.59840000000258,
+        "samplesMs": [
+          85.59840000000258,
+          88.11149999999907,
+          83.61909999999625
+        ]
+      },
+      "addedMs": 571.2265000018815
+    },
+    {
+      "name": "edison-meter-1000",
+      "limit": 1000,
+      "sourceSha256": "dbd7e7173c16e82a29b4c74762b31d9ee5bcc11ef5f549a35d275c3414d11ed7",
+      "width": 674,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 18.778999999994994,
+        "samplesMs": [
+          20.650699999998324,
+          18.778999999994994,
+          18.689299999998184
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.8968859231013664,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 82.88739999999962,
+        "samplesMs": [
+          83.24060000000463,
+          82.88739999999962,
+          78.74090000000433
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.2619216137308679,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 25.134100000002945,
+        "samplesMs": [
+          27.059399999998277,
+          24.825000000004366,
+          25.134100000002945
+        ]
+      },
+      "addedMs": 87.65629999431258
+    },
+    {
+      "name": "edison-meter-2000",
+      "limit": 2000,
+      "sourceSha256": "dbd7e7173c16e82a29b4c74762b31d9ee5bcc11ef5f549a35d275c3414d11ed7",
+      "width": 1347,
+      "height": 2000,
+      "raw": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.27475479407216785,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 80.73180000000139,
+        "samplesMs": [
+          88.39390000000276,
+          80.73180000000139,
+          75.67579999999725
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9380488583745809,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 308.2468000000008,
+        "samplesMs": [
+          308.2468000000008,
+          313.9290000000037,
+          292.23019999999815
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9397373987308936,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 102.1166000000012,
+        "samplesMs": [
+          98.2577999999994,
+          109.40350000000035,
+          102.1166000000012
+        ]
+      },
+      "addedMs": 325.16870002310316
+    }
+  ]
+}

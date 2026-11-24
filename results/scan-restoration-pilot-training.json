@@ -1,0 +1,50 @@
+{
+  "manifestSha256": "552ea38e6ea1885cc88a9d390cf50b8ba42fd619bf1cd34fd8f17e88bd2f9480",
+  "seed": 173,
+  "steps": 600,
+  "batch": 12,
+  "patch": 96,
+  "trainPairs": 288,
+  "validationPairs": 96,
+  "torch": "2.5.1+cu121",
+  "python": "3.12.10",
+  "numpy": "1.26.4",
+  "device": "NVIDIA GeForce RTX 2050",
+  "deviceBytes": 4294443008,
+  "peakAllocatedBytes": 88441344,
+  "peakReservedBytes": 111149056,
+  "seconds": 17.066885200038087,
+  "parameters": 4273,
+  "history": [
+    {
+      "step": 100,
+      "trainLoss": 0.5136128067970276,
+      "validationLoss": 0.3219882473349571
+    },
+    {
+      "step": 200,
+      "trainLoss": 0.17581522464752197,
+      "validationLoss": 0.12319102021865547
+    },
+    {
+      "step": 300,
+      "trainLoss": 0.16734427213668823,
+      "validationLoss": 0.10709848860278726
+    },
+    {
+      "step": 400,
+      "trainLoss": 0.16043920814990997,
+      "validationLoss": 0.09920330590102822
+    },
+    {
+      "step": 500,
+      "trainLoss": 0.14083705842494965,
+      "validationLoss": 0.0944909336976707
+    },
+    {
+      "step": 600,
+      "trainLoss": 0.1198081448674202,
+      "validationLoss": 0.08897422219160944
+    }
+  ]
+}
