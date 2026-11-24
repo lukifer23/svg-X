@@ -92,7 +92,7 @@ restoration.
 
 ```powershell
 New-Item -ItemType Directory -Force artifacts | Out-Null
-npm run restoration:pilot -- artifacts/restoration-run-2 cuda
+npm run restoration:pilot -- artifacts/restoration-run-2 cuda examples/training-data/real-scans/manifest.json
 ```
 
 The command generates and audits the procedural pairs, trains the synthetic
@@ -147,3 +147,63 @@ scores on the measured checkpoints. Median
 added CPU time was 146 ms at 1,000 px and 587 ms at 2,000 px.
 [Original hybrid report](../results/scan-restoration-hybrid-control.json) ·
 [Adapted archival report](../results/scan-restoration-adapted-guidance.json)
+
+## Faint ink and narrow gaps
+
+The current pilot defaults to the [faint-ink and gap manifest](../examples/training-data/real-scans/faint-manifest.json).
+It adds six crops from three Library of Congress scans. Morse's railway
+telegraph and Fitch's steam piston enter training. The architectural floor
+plan enters validation as one independent document. The seven archival
+qualification documents remain separate. The runner checks their source
+URLs and fixture file digests before creating a run. [Morse sketch](https://www.loc.gov/item/mcc.039/) ·
+[Fitch sketch](https://www.loc.gov/item/mcc.072/) ·
+[Floor plan](https://www.loc.gov/item/2022642651/)
+
+The new manifest keeps source JPEG hashes, crop hashes and bounds.
+New grayscale crops are cut after resizing each source to fit within
+900 × 1,150 pixels with Lanczos resampling without enlargement.
+The paths mark faint strokes and narrow paper gaps at observed positions
+in the original scans. These labels use coordinates instead of the old
+darkness cutoff. Unreviewed pixels still contribute no supervision.
+The audit verifies file digests, label bounds, conflicting annotations,
+document and source separation across splits, and coverage of both
+classes. Of 828 faint-ink pixels, 679 have grayscale values at or above 180. The manifest also supplies 711 verified gap pixels.
+
+```powershell
+python scripts/scan-restoration.py audit-reviewed examples/training-data/real-scans/faint-manifest.json
+npm run restoration:pilot -- artifacts/restoration-faint-run cuda
+```
+
+Training balances the four reviewed classes and samples near the
+hand-marked faint strokes and gaps. Checkpoint selection averages the
+class-balanced loss on the original validation crops and a deterministic
+reduced-contrast view of those same crops. The reduced-contrast view
+tests robustness on known labels. It is a stress test constructed
+from the validation images. The archival qualification thresholds stay
+the same.
+
+On the same 143 faint-ink validation pixels, recall rose from **55.2% to
+86.7%** on the regular scans and from **7.7% to 72.7%** under the fixed
+reduced-contrast stress test. Both checkpoints classified the 132 annotated
+gap pixels as paper in both views. The new adaptation took 11.7 seconds
+on the RTX 2050 with 106 MiB reserved by PyTorch.
+The procedural holdout F1 fell from 0.867 to 0.816.
+[Previous checkpoint](../results/scan-restoration-faint-previous-reviewed.json) ·
+[New checkpoint](../results/scan-restoration-faint-reviewed.json) ·
+[Training](../results/scan-restoration-faint-training.json) ·
+[Procedural holdout](../results/scan-restoration-faint-pairs.json)
+
+| Archival route                           | Loop checks before → after | Outcome                                                                    |
+| ---------------------------------------- | -------------------------: | -------------------------------------------------------------------------- |
+| Model followed by plain tracing          |                    14 → 15 | More matches, with lost production loops and extra ink on some paper zones |
+| Model followed by existing repair        |                    17 → 16 | Recovered fewer loops and closed a measured gap                            |
+| Model as a guide for supplemental repair |                    18 → 18 | Retained every measured production check                                   |
+
+Production recovered 18 loops. Guided repair passed the time budgets with
+median added CPU time of 135 ms at 1,000 px and 549 ms at 2,000 px.
+It gained no verified loop and remains experimental. The isolated pixel
+result supports adding more real annotations. The end-to-end result points
+to the next experiment evaluating **complete weak stroke spans together
+with their neighboring gaps** on independent drawings, so a model that
+improves individual pixels also has to preserve the right connections.
+[Archival report](../results/scan-restoration-faint-archive.json)

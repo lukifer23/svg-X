@@ -1,0 +1,605 @@
+{
+  "version": 2,
+  "renderWidth": 900,
+  "scans": [
+    {
+      "image": "tesla-0.png",
+      "sha256": "3735e71f9f4aaa83ac3ccef9712d81d97f428b3e9da7b01da7f17e4617089685",
+      "document": "US609251",
+      "source": "https://patents.google.com/patent/US609251A/en",
+      "page": 1,
+      "sourceSha256": "7747e1e43819f5d88065adc797959ae9537d7d7dee2e80eaa80d920e47e682d9",
+      "split": "train",
+      "crop": [228, 640, 470, 882],
+      "inkRegions": [
+        [85, 9, 159, 21],
+        [10, 102, 22, 151],
+        [81, 222, 163, 240],
+        [111, 109, 140, 146]
+      ],
+      "paperRegions": [
+        [26, 111, 96, 147],
+        [65, 63, 113, 91],
+        [145, 142, 197, 166],
+        [77, 181, 126, 206]
+      ]
+    },
+    {
+      "image": "tesla-1.png",
+      "sha256": "4921beb151dcc4fa453b2cc6f98fc114e01c9b1fb92a852bce49b27b2042a830",
+      "document": "US609251",
+      "source": "https://patents.google.com/patent/US609251A/en",
+      "page": 1,
+      "sourceSha256": "7747e1e43819f5d88065adc797959ae9537d7d7dee2e80eaa80d920e47e682d9",
+      "split": "train",
+      "crop": [166, 257, 481, 566],
+      "inkRegions": [
+        [104, 4, 202, 20],
+        [4, 132, 119, 140],
+        [5, 172, 119, 182]
+      ],
+      "paperRegions": [
+        [16, 18, 38, 44],
+        [254, 10, 280, 30],
+        [53, 147, 61, 167]
+      ]
+    },
+    {
+      "image": "sewing-0.png",
+      "sha256": "9805810439527a7e84d2d3560d7089eb61e86a9fda60a729f4d9db456df85e41",
+      "document": "US219225",
+      "source": "https://patents.google.com/patent/US219225A/en",
+      "page": 3,
+      "sourceSha256": "4a83bf2f3d79d626c2616d06bb05731573ceb6336965317d1421d517cf5ea14f",
+      "split": "train",
+      "crop": [246, 729, 370, 852],
+      "inkRegions": [
+        [15, 5, 117, 20],
+        [15, 40, 23, 78],
+        [42, 103, 93, 116],
+        [50, 50, 82, 71]
+      ],
+      "paperRegions": [
+        [1, 18, 14, 58],
+        [3, 91, 15, 108],
+        [98, 6, 118, 15]
+      ]
+    },
+    {
+      "image": "sewing-1.png",
+      "sha256": "26ede32bec64db49f412c3b32a44bc0b95be3350ba5dea2ba0630d51c56be3a5",
+      "document": "US219225",
+      "source": "https://patents.google.com/patent/US219225A/en",
+      "page": 3,
+      "sourceSha256": "4a83bf2f3d79d626c2616d06bb05731573ceb6336965317d1421d517cf5ea14f",
+      "split": "train",
+      "crop": [122, 225, 382, 287],
+      "inkRegions": [
+        [52, 12, 79, 34],
+        [82, 15, 158, 29],
+        [158, 12, 186, 34],
+        [182, 17, 257, 30]
+      ],
+      "paperRegions": [
+        [91, 4, 125, 13],
+        [114, 32, 141, 42],
+        [212, 31, 251, 41]
+      ]
+    },
+    {
+      "image": "governor-0.png",
+      "sha256": "a917b9e8f3479a2a890f30c8f58c4379dc677c51d9c264505b4b7653c63f44b9",
+      "document": "US402015",
+      "source": "https://patents.google.com/patent/US402015A/en",
+      "page": 1,
+      "sourceSha256": "63850fda8191d19d674369ba055695fd5ad5205318f9e9915606f30fb33bcc80",
+      "split": "validation",
+      "crop": [478, 871, 627, 1010],
+      "inkRegions": [
+        [65, 15, 88, 37],
+        [32, 39, 53, 58],
+        [103, 32, 124, 56],
+        [34, 82, 58, 100],
+        [106, 76, 129, 98],
+        [70, 100, 93, 123]
+      ],
+      "paperRegions": [
+        [52, 23, 61, 37],
+        [93, 16, 102, 34],
+        [65, 88, 81, 98]
+      ]
+    },
+    {
+      "image": "governor-1.png",
+      "sha256": "50eb8e06e9582bb7dc8f59fcb2c88082834692a6b1e1977b4233aada41e257fb",
+      "document": "US402015",
+      "source": "https://patents.google.com/patent/US402015A/en",
+      "page": 1,
+      "sourceSha256": "63850fda8191d19d674369ba055695fd5ad5205318f9e9915606f30fb33bcc80",
+      "split": "validation",
+      "crop": [243, 223, 393, 377],
+      "inkRegions": [
+        [57, 2, 91, 13],
+        [31, 65, 64, 71],
+        [33, 83, 60, 88],
+        [61, 58, 89, 96]
+      ],
+      "paperRegions": [
+        [47, 19, 63, 26],
+        [59, 27, 73, 38]
+      ]
+    },
+    {
+      "image": "morse-0.png",
+      "sha256": "a1e87e2473e119ec416b6e3b0b700e79bc1350b41664a784d4e7458f43a55de5",
+      "document": "mcc.039",
+      "source": "https://www.loc.gov/item/mcc.039/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:039:0001/full/pct:25/0/default.jpg",
+      "page": 1,
+      "sourceSha256": "9f6bcac4e99af9b3d59366bad41670caf50c09ad12335dc27317846cd6ccfccc",
+      "split": "train",
+      "crop": [120, 204, 310, 291],
+      "inkRegions": [[82, 25, 136, 31]],
+      "paperRegions": [[4, 54, 36, 69]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [55, 59],
+            [60, 65],
+            [68, 71],
+            [77, 76],
+            [84, 78]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [72, 39],
+            [87, 39],
+            [100, 39]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [158, 46],
+            [170, 46],
+            [176, 45]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [79, 34],
+            [104, 34]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [115, 34],
+            [144, 34]
+          ],
+          "width": 1
+        }
+      ]
+    },
+    {
+      "image": "morse-1.png",
+      "sha256": "7a0337464fa7bec834417d3beaff86fac221bda8cbd5a91a3680a8bde3f132bc",
+      "document": "mcc.039",
+      "source": "https://www.loc.gov/item/mcc.039/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:039:0001/full/pct:25/0/default.jpg",
+      "page": 1,
+      "sourceSha256": "9f6bcac4e99af9b3d59366bad41670caf50c09ad12335dc27317846cd6ccfccc",
+      "split": "train",
+      "crop": [347, 472, 495, 627],
+      "inkRegions": [
+        [65, 23, 103, 37],
+        [36, 130, 122, 133]
+      ],
+      "paperRegions": [[93, 64, 108, 70]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [18, 29],
+            [18, 46],
+            [18, 62],
+            [18, 76]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [39, 46],
+            [39, 57],
+            [39, 71],
+            [40, 81]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [120, 82],
+            [120, 101],
+            [120, 116]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [25, 44],
+            [25, 64],
+            [25, 79]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [28, 54],
+            [28, 72]
+          ],
+          "width": 1
+        }
+      ]
+    },
+    {
+      "image": "fitch-0.png",
+      "sha256": "c11e813e80b30b85416207e726c6c05c9f3ec5473b5e80983e83bae5dbc4b62e",
+      "document": "mcc.072",
+      "source": "https://www.loc.gov/item/mcc.072/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:072:0001/full/pct:50/0/default.jpg",
+      "page": 1,
+      "sourceSha256": "b014d4782f7fc3ddcc59b61ce9667f79dae1617abea19441db386d1ece154536",
+      "split": "train",
+      "crop": [129, 401, 307, 506],
+      "inkRegions": [
+        [70, 9, 136, 13],
+        [73, 30, 112, 34]
+      ],
+      "paperRegions": [[72, 70, 144, 74]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [68, 54],
+            [91, 54],
+            [116, 54],
+            [148, 54]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [74, 65],
+            [98, 65],
+            [133, 65],
+            [151, 65]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [89, 79],
+            [106, 79],
+            [134, 79],
+            [150, 79]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [68, 59],
+            [95, 59],
+            [133, 59],
+            [151, 59]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [70, 70],
+            [101, 70],
+            [130, 70],
+            [153, 70]
+          ],
+          "width": 1
+        }
+      ]
+    },
+    {
+      "image": "fitch-1.png",
+      "sha256": "d4205acdf18059608a87a27608882d1ad0db44fc4ec6e1d449e9300e72f15678",
+      "document": "mcc.072",
+      "source": "https://www.loc.gov/item/mcc.072/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:072:0001/full/pct:50/0/default.jpg",
+      "page": 1,
+      "sourceSha256": "b014d4782f7fc3ddcc59b61ce9667f79dae1617abea19441db386d1ece154536",
+      "split": "train",
+      "crop": [243, 537, 446, 640],
+      "inkRegions": [[59, 86, 190, 94]],
+      "paperRegions": [[32, 25, 74, 30]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [72, 22],
+            [92, 22],
+            [115, 22],
+            [139, 22]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [86, 36],
+            [116, 36],
+            [147, 36],
+            [169, 36]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [20, 74],
+            [46, 74],
+            [70, 74]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [127, 74],
+            [147, 74],
+            [170, 74],
+            [189, 74]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [79, 28],
+            [119, 28],
+            [168, 28]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [82, 69],
+            [112, 69],
+            [153, 69],
+            [185, 69]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [80, 79],
+            [113, 79],
+            [149, 79],
+            [185, 79]
+          ],
+          "width": 1
+        }
+      ]
+    },
+    {
+      "image": "floor-0.png",
+      "sha256": "7c657bdce89718783b1b466271379171f68b6731b5657a5ca5ccc70adfa6e7da",
+      "document": "2022642651",
+      "source": "https://www.loc.gov/item/2022642651/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67430v.jpg",
+      "page": 1,
+      "sourceSha256": "a6109bcd996b9578645860ba07c20952ec87797494d7b5b611c419bfeedcd457",
+      "split": "validation",
+      "crop": [187, 67, 387, 130],
+      "inkRegions": [
+        [12, 3, 77, 10],
+        [85, 59, 148, 63]
+      ],
+      "paperRegions": [[51, 29, 79, 34]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [24, 13],
+            [24, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 13],
+            [42, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [79, 14],
+            [79, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [99, 14],
+            [99, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [116, 47],
+            [116, 54]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [134, 47],
+            [134, 55]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [170, 15],
+            [171, 25]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [24, 30],
+            [24, 39]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 31],
+            [42, 38]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [79, 30],
+            [79, 39]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [99, 30],
+            [99, 38]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [116, 30],
+            [116, 38]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [134, 30],
+            [134, 38]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [170, 32],
+            [170, 38]
+          ],
+          "width": 1
+        }
+      ]
+    },
+    {
+      "image": "floor-1.png",
+      "sha256": "ff37460ae7c2f0a41ce8f4067b22e0d8a89e931fa4855c1a153da6ae6b68142d",
+      "document": "2022642651",
+      "source": "https://www.loc.gov/item/2022642651/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67430v.jpg",
+      "page": 1,
+      "sourceSha256": "a6109bcd996b9578645860ba07c20952ec87797494d7b5b611c419bfeedcd457",
+      "split": "validation",
+      "crop": [699, 143, 766, 260],
+      "inkRegions": [[17, 8, 21, 41]],
+      "paperRegions": [[7, 35, 13, 59]],
+      "faintInkPaths": [
+        {
+          "points": [
+            [24, 23],
+            [35, 23],
+            [37, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [24, 43],
+            [36, 43],
+            [38, 43]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [24, 63],
+            [34, 63],
+            [37, 63]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [24, 82],
+            [36, 82],
+            [38, 82]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [24, 100],
+            [35, 100],
+            [38, 100]
+          ],
+          "width": 1
+        }
+      ],
+      "gapPaths": [
+        {
+          "points": [
+            [42, 23],
+            [55, 23]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 43],
+            [55, 43]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 63],
+            [55, 63]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 82],
+            [55, 82]
+          ],
+          "width": 1
+        },
+        {
+          "points": [
+            [42, 100],
+            [55, 100]
+          ],
+          "width": 1
+        }
+      ]
+    }
+  ],
+  "cropCoordinateSystem": "Legacy patent sheets use 900px width. New Library of Congress JPEGs fit within 900x1150 with Pillow Lanczos without enlargement, then crop."
+}

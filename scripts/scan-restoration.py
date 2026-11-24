@@ -9,7 +9,7 @@ import sys
 import time
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -125,13 +125,46 @@ def loss_for(prediction, target):
     ).mean()
 
 
+REVIEW_CLASSES = ("paper", "ink", "faintInk", "gap")
+
+
+def mark_paths(labels, paths, label, name):
+    height, width = labels.shape
+    stencil = Image.new("L", (width, height))
+    draw = ImageDraw.Draw(stencil)
+    for path in paths:
+        points, stroke = path["points"], path["width"]
+        if (
+            not isinstance(stroke, int)
+            or not 1 <= stroke <= 3
+            or len(points) < 2
+            or any(
+                not (
+                    isinstance(x, int)
+                    and isinstance(y, int)
+                    and 1 <= x < width - 1
+                    and 1 <= y < height - 1
+                )
+                for x, y in points
+            )
+        ):
+            raise ValueError(f"Invalid reviewed path: {name}")
+        draw.line([tuple(point) for point in points], fill=1, width=stroke)
+    mask = np.asarray(stencil, dtype=bool)
+    other = (1, 2) if label == 3 else (0, 3)
+    if np.isin(labels[mask], other).any():
+        raise ValueError(f"Conflicting reviewed paths: {name}")
+    labels[mask] = label
+
+
 def load_reviewed_scans(manifest):
     contents = manifest.read_bytes()
     config = json.loads(contents)
-    if config["version"] != 1:
+    if config["version"] not in (1, 2):
         raise ValueError("Unsupported reviewed-scan manifest")
     splits = {"train": [], "validation": []}
     documents = {}
+    sources = {}
     seen = set()
     for row in config["scans"]:
         name, split, document = row["image"], row["split"], row["document"]
@@ -140,6 +173,8 @@ def load_reviewed_scans(manifest):
         seen.add(name)
         if documents.setdefault(document, split) != split:
             raise ValueError(f"Document appears across splits: {document}")
+        if sources.setdefault(row["sourceSha256"], split) != split:
+            raise ValueError(f"Source image appears across splits: {document}")
         file = manifest.parent / name
         if hashlib.sha256(file.read_bytes()).hexdigest() != row["sha256"]:
             raise ValueError(f"Reviewed crop has changed: {name}")
@@ -159,23 +194,33 @@ def load_reviewed_scans(manifest):
                 if np.any((zone[valid] != -1) & (zone[valid] != value)):
                     raise ValueError(f"Conflicting reviewed labels: {name}")
                 zone[valid] = value
-        ink = np.argwhere(labels == 1)
-        if not len(ink) or not np.any(labels == 0):
+        for key, label in (("faintInkPaths", 2), ("gapPaths", 3)):
+            mark_paths(labels, row.get(key, []), label, name)
+        ink = np.argwhere((labels == 1) | (labels == 2))
+        if not len(ink) or not np.any((labels == 0) | (labels == 3)):
             raise ValueError(f"Reviewed crop needs both ink and paper: {name}")
-        splits[split].append((gray, labels, ink))
+        decisive = np.argwhere(labels >= 2)
+        splits[split].append((gray, labels, decisive if len(decisive) else ink))
     if not all(splits.values()):
         raise ValueError("Reviewed train and validation documents are required")
+    if config["version"] == 2 and any(
+        not all(
+            any(np.any(labels == label) for _, labels, _ in samples) for label in (2, 3)
+        )
+        for samples in splits.values()
+    ):
+        raise ValueError("Version 2 requires faint ink and gap labels in both splits")
     return splits, hashlib.sha256(contents).hexdigest()
 
 
 def reviewed_patch(sample, size, rng):
-    gray, labels, ink = sample
+    gray, labels, candidates = sample
     height, width = gray.shape
     if width < size or height < size:
         pad = ((0, max(0, size - height)), (0, max(0, size - width)))
         gray = np.pad(gray, pad, mode="edge")
         labels = np.pad(labels, pad, constant_values=-1)
-    y, x = map(int, ink[rng.integers(len(ink))])
+    y, x = map(int, candidates[rng.integers(len(candidates))])
     y = np.clip(
         y - rng.integers(size // 4, max(size // 4 + 1, 3 * size // 4)),
         0,
@@ -196,34 +241,97 @@ def reviewed_patch(sample, size, rng):
 
 
 def reviewed_loss(logits, labels):
-    ink = labels == 1
-    paper = labels == 0
-    return (
-        (F.softplus(-logits) * ink).sum() / ink.sum().clamp_min(1)
-        + (F.softplus(logits) * paper).sum() / paper.sum().clamp_min(1)
-    ) / 2
+    positive_loss = F.softplus(-logits)
+    negative_loss = F.softplus(logits)
+    loss = logits.new_zeros(())
+    represented = logits.new_zeros(())
+    for label, class_loss in (
+        (1, positive_loss),
+        (0, negative_loss),
+        (2, positive_loss),
+        (3, negative_loss),
+    ):
+        selected = labels == label
+        count = selected.sum()
+        loss = loss + (class_loss * selected).sum() / count.clamp_min(1)
+        represented = represented + (count > 0)
+    return loss / represented.clamp_min(1)
 
 
 @torch.inference_mode()
-def reviewed_metrics(model, samples, device):
+def reviewed_metrics(model, samples, device, stress=False):
     loss = 0
-    ink_hit = ink_total = paper_hit = paper_total = 0
+    hits = [0] * 4
+    totals = [0] * 4
     for gray, labels, _ in samples:
+        if stress:
+            shadow = np.linspace(0.78, 0.99, gray.shape[1], dtype=np.float32)
+            gray = shadow * (1 - 0.60 * (1 - gray))
         data = torch.from_numpy(gray)[None, None].to(device)
         target = torch.from_numpy(labels)[None, None].to(device)
         scores = model(data)
         loss += reviewed_loss(scores, target).item()
-        ink_hit += ((scores >= 0) & (target == 1)).sum().item()
-        ink_total += (target == 1).sum().item()
-        paper_hit += ((scores >= 0) & (target == 0)).sum().item()
-        paper_total += (target == 0).sum().item()
-    return {
-        "loss": loss / len(samples),
-        "inkRecall": ink_hit / ink_total,
-        "paperFalsePositiveRate": paper_hit / paper_total,
-        "inkPixels": ink_total,
-        "paperPixels": paper_total,
+        for label in range(4):
+            selected = target == label
+            hits[label] += ((scores >= 0) & selected).sum().item()
+            totals[label] += selected.sum().item()
+    result = {"loss": loss / len(samples)}
+    for label, (name, total) in enumerate(
+        zip(
+            (
+                "paperFalsePositiveRate",
+                "inkRecall",
+                "faintInkRecall",
+                "gapFalsePositiveRate",
+            ),
+            totals,
+        )
+    ):
+        if total:
+            result[name] = hits[label] / total
+    result["pixels"] = dict(zip(REVIEW_CLASSES, totals))
+    return result
+
+
+def audit_reviewed(args):
+    data, digest = load_reviewed_scans(args.reviewed)
+    coverage = {}
+    for split, samples in data.items():
+        coverage[split] = {
+            "crops": len(samples),
+            "pixels": {
+                name: sum(
+                    int(np.count_nonzero(labels == label)) for _, labels, _ in samples
+                )
+                for label, name in enumerate(REVIEW_CLASSES)
+            },
+            "faintInkAtOrAbove180": sum(
+                int(np.count_nonzero((labels == 2) & (gray >= 180 / 255)))
+                for gray, labels, _ in samples
+            ),
+        }
+    print(
+        json.dumps({"reviewedManifestSha256": digest, "coverage": coverage}, indent=2)
+    )
+
+
+def evaluate_reviewed(args):
+    data, digest = load_reviewed_scans(args.reviewed)
+    model, step = load_model(args.checkpoint)
+    validation = data["validation"]
+    report = {
+        "reviewedManifestSha256": digest,
+        "checkpointStep": step,
+        "checkpointSha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
+        "original": reviewed_metrics(model, validation, torch.device("cpu")),
+        "stressed": reviewed_metrics(
+            model, validation, torch.device("cpu"), stress=True
+        ),
     }
+    with args.report.open("x", encoding="utf-8") as output:
+        json.dump(report, output, indent=2)
+        output.write("\n")
+    print(json.dumps(report))
 
 
 def train(args):
@@ -254,6 +362,15 @@ def train(args):
     best = float("inf")
     reviewed_baseline = (
         reviewed_metrics(model, reviewed["validation"], device) if reviewed else None
+    )
+    stress_review = reviewed_baseline is not None and (
+        reviewed_baseline["pixels"]["faintInk"] > 0
+        and reviewed_baseline["pixels"]["gap"] > 0
+    )
+    stress_baseline = (
+        reviewed_metrics(model, reviewed["validation"], device, stress=True)
+        if stress_review
+        else None
     )
     start = time.perf_counter()
     for step in range(1, args.steps + 1):
@@ -289,13 +406,22 @@ def train(args):
             if reviewed
             else None
         )
+        stress_score = (
+            reviewed_metrics(model, reviewed["validation"], device, stress=True)
+            if stress_review
+            else None
+        )
         model.train()
         record = {"step": step, "trainLoss": loss.item(), "validationLoss": score}
         if real_score:
             record["reviewedValidation"] = real_score
+        if stress_score:
+            record["stressedReviewedValidation"] = stress_score
         history.append(record)
         print(json.dumps(history[-1]), flush=True)
         selection_loss = real_score["loss"] if real_score else score
+        if stress_score:
+            selection_loss = (selection_loss + stress_score["loss"]) / 2
         if selection_loss < best:
             best = selection_loss
             weights = {
@@ -309,6 +435,7 @@ def train(args):
         "manifestSha256": manifest_hash,
         "reviewedManifestSha256": reviewed_hash,
         "reviewedBaseline": reviewed_baseline,
+        "stressedReviewedBaseline": stress_baseline,
         "initializedFrom": hashlib.sha256(args.initialize.read_bytes()).hexdigest()
         if args.initialize
         else None,
@@ -468,6 +595,16 @@ def positive(value):
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(required=True)
+    audit = commands.add_parser("audit-reviewed")
+    audit.add_argument("reviewed", type=Path)
+    audit.add_argument("--threads", type=positive, default=4)
+    audit.set_defaults(run_command=audit_reviewed)
+    review = commands.add_parser("evaluate-reviewed")
+    review.add_argument("checkpoint", type=Path)
+    review.add_argument("reviewed", type=Path)
+    review.add_argument("report", type=Path)
+    review.add_argument("--threads", type=positive, default=4)
+    review.set_defaults(run_command=evaluate_reviewed)
     training = commands.add_parser("train")
     training.add_argument("dataset", type=Path)
     training.add_argument("run", type=Path)

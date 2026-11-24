@@ -78,6 +78,13 @@ explicit provenance if added later.
 The [faded-line restoration pilot](RESTORATION-PILOT.md) implements and
 evaluates the first task below on local hardware.
 
+For real-scan supervision, the [version 2 reviewed manifest](../examples/training-data/real-scans/faint-manifest.json)
+adds sparse faint-ink and gap paths beside the procedural training pairs.
+Use `python scripts/scan-restoration.py audit-reviewed MANIFEST` to check
+crop hashes, label conflicts, and document separation before training.
+The audit reports how many faint-ink labels would have been excluded by
+the earlier grayscale cutoff.
+
 Use the 32-design corpus to validate loading, deterministic batching and
 reproducibility. Its two icon collections and shared styles across splits
 limit what it can establish about generalization to scanned plans,

@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import qualification from "../../tests/fixtures/qualification/references.json";
 import sharp from "sharp";
 import { expect, test } from "vitest";
 
@@ -16,6 +18,56 @@ const build = (manifest: string, output: string) =>
     manifest,
     output,
   ]);
+
+test("restoration pilot rejects a qualification document before starting training", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "svgx-reserved-scan-"));
+  try {
+    const reviewed = path.join(directory, "reviewed.json");
+    const source = new URL(qualification[0].source);
+    source.hostname = source.hostname.replace(/^www\./, "");
+    source.searchParams.set("sp", "1");
+    await writeFile(
+      reviewed,
+      JSON.stringify({ scans: [{ source: source.href }] }),
+    );
+    await expect(
+      run(process.execPath, [
+        "scripts/run-restoration-pilot.mjs",
+        path.join(directory, "run"),
+        "cpu",
+        reviewed,
+      ]),
+    ).rejects.toThrow(/Reserved archival qualification source/);
+    const scan = await readFile(
+      path.resolve(
+        "tests/fixtures/qualification",
+        `${qualification[0].id}.jpg`,
+      ),
+    );
+    await writeFile(
+      reviewed,
+      JSON.stringify({
+        scans: [
+          {
+            source: "https://example.org/renamed-scan",
+            sourceSha256: createHash("sha256").update(scan).digest("hex"),
+          },
+        ],
+      }),
+    );
+    await expect(
+      run(process.execPath, [
+        "scripts/run-restoration-pilot.mjs",
+        path.join(directory, "run"),
+        "cpu",
+        reviewed,
+      ]),
+    ).rejects.toThrow(/Reserved archival qualification source/);
+    expect(await readdir(directory)).toEqual(["reviewed.json"]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("exports repeatable source-aligned training pairs using the real CLI", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "svgx-dataset-"));

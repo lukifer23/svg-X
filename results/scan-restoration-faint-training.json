@@ -1,0 +1,234 @@
+{
+  "manifestSha256": "552ea38e6ea1885cc88a9d390cf50b8ba42fd619bf1cd34fd8f17e88bd2f9480",
+  "reviewedManifestSha256": "62763f8e47f281cf2e7fd6d6d0a96475774db37782bb791b76840e4cceeb3bfc",
+  "reviewedBaseline": {
+    "loss": 0.42064232379198074,
+    "paperFalsePositiveRate": 0.0,
+    "inkRecall": 0.976497346474602,
+    "faintInkRecall": 0.36363636363636365,
+    "gapFalsePositiveRate": 0.0,
+    "pixels": {
+      "paper": 998,
+      "ink": 1319,
+      "faintInk": 143,
+      "gap": 132
+    }
+  },
+  "stressedReviewedBaseline": {
+    "loss": 0.7053277492523193,
+    "paperFalsePositiveRate": 0.0,
+    "inkRecall": 0.8953752843062927,
+    "faintInkRecall": 0.006993006993006993,
+    "gapFalsePositiveRate": 0.0,
+    "pixels": {
+      "paper": 998,
+      "ink": 1319,
+      "faintInk": 143,
+      "gap": 132
+    }
+  },
+  "initializedFrom": "d8f384d71161160a521e445c8c8f6e658c258dbbfda3ae90afd0a65fe4e26d3c",
+  "seed": 173,
+  "steps": 300,
+  "batch": 12,
+  "patch": 96,
+  "trainPairs": 288,
+  "validationPairs": 96,
+  "torch": "2.5.1+cu121",
+  "python": "3.12.10",
+  "numpy": "1.26.4",
+  "device": "NVIDIA GeForce RTX 2050",
+  "deviceBytes": 4294443008,
+  "peakAllocatedBytes": 104121344,
+  "peakReservedBytes": 111149056,
+  "seconds": 11.695787299948279,
+  "parameters": 4273,
+  "history": [
+    {
+      "step": 50,
+      "trainLoss": 0.2611675262451172,
+      "validationLoss": 0.12609535548835993,
+      "reviewedValidation": {
+        "loss": 0.24704872071743011,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9931766489764974,
+        "faintInkRecall": 0.8041958041958042,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.281364519149065,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9901440485216073,
+        "faintInkRecall": 0.4965034965034965,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    },
+    {
+      "step": 100,
+      "trainLoss": 0.21364432573318481,
+      "validationLoss": 0.11731716385111213,
+      "reviewedValidation": {
+        "loss": 0.24900909140706062,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9893858984078847,
+        "faintInkRecall": 0.8181818181818182,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.28099900856614113,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9848369977255497,
+        "faintInkRecall": 0.5314685314685315,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    },
+    {
+      "step": 150,
+      "trainLoss": 0.22536304593086243,
+      "validationLoss": 0.11843915283679962,
+      "reviewedValidation": {
+        "loss": 0.24560536444187164,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9909021986353298,
+        "faintInkRecall": 0.8251748251748252,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.27000540867447853,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9871114480667172,
+        "faintInkRecall": 0.5874125874125874,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    },
+    {
+      "step": 200,
+      "trainLoss": 0.2070683389902115,
+      "validationLoss": 0.1185085903853178,
+      "reviewedValidation": {
+        "loss": 0.24448303878307343,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9901440485216073,
+        "faintInkRecall": 0.8391608391608392,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.26371798664331436,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9886277482941622,
+        "faintInkRecall": 0.6363636363636364,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    },
+    {
+      "step": 250,
+      "trainLoss": 0.19631654024124146,
+      "validationLoss": 0.13169584143906832,
+      "reviewedValidation": {
+        "loss": 0.2413279078900814,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9939347990902199,
+        "faintInkRecall": 0.8671328671328671,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.2514065094292164,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9924184988627748,
+        "faintInkRecall": 0.7272727272727273,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    },
+    {
+      "step": 300,
+      "trainLoss": 0.21054789423942566,
+      "validationLoss": 0.11040182737633586,
+      "reviewedValidation": {
+        "loss": 0.24411367997527122,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9939347990902199,
+        "faintInkRecall": 0.8601398601398601,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      },
+      "stressedReviewedValidation": {
+        "loss": 0.26181821525096893,
+        "paperFalsePositiveRate": 0.0,
+        "inkRecall": 0.9901440485216073,
+        "faintInkRecall": 0.6573426573426573,
+        "gapFalsePositiveRate": 0.0,
+        "pixels": {
+          "paper": 998,
+          "ink": 1319,
+          "faintInk": 143,
+          "gap": 132
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "reviewedManifestSha256": "62763f8e47f281cf2e7fd6d6d0a96475774db37782bb791b76840e4cceeb3bfc",
+  "checkpointStep": 250,
+  "checkpointSha256": "aec0e74549b79dd383157649411e01668c0f01627adfdde9bd7322b9c077b6cc",
+  "original": {
+    "loss": 0.2413279078900814,
+    "paperFalsePositiveRate": 0.0,
+    "inkRecall": 0.9939347990902199,
+    "faintInkRecall": 0.8671328671328671,
+    "gapFalsePositiveRate": 0.0,
+    "pixels": {
+      "paper": 998,
+      "ink": 1319,
+      "faintInk": 143,
+      "gap": 132
+    }
+  },
+  "stressed": {
+    "loss": 0.251406516879797,
+    "paperFalsePositiveRate": 0.0,
+    "inkRecall": 0.9924184988627748,
+    "faintInkRecall": 0.7272727272727273,
+    "gapFalsePositiveRate": 0.0,
+    "pixels": {
+      "paper": 998,
+      "ink": 1319,
+      "faintInk": 143,
+      "gap": 132
+    }
+  }
+}
