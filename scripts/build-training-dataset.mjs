@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   mkdir,
   open,
@@ -10,8 +9,8 @@ import {
 import path from "node:path";
 import sharp from "sharp";
 import { optimize } from "svgo";
+import { rasterSha256, sha256 } from "./training-dataset-hashes.mjs";
 
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const MAX_SVG_BYTES = 2 * 1024 * 1024;
 const MAX_RASTER_PIXELS = 16_000_000;
 const requiredText = (value) =>
@@ -210,9 +209,7 @@ try {
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const targetPixelSha256 = sha256(
-      Buffer.concat([Buffer.from(`${width}x${height}\0`), data]),
-    );
+    const targetPixelSha256 = rasterSha256(data, width, height);
     const previousGroup = rasterGroups.get(targetPixelSha256);
     if (previousGroup && previousGroup !== item.group)
       throw new Error(
@@ -234,7 +231,7 @@ try {
       );
       await encode(pixels).toFile(path.join(output, input));
       const record = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         id,
         split,
         input,
@@ -247,6 +244,7 @@ try {
         source: item.svg,
         sourceSha256: digest,
         targetPixelSha256,
+        inputPixelSha256: rasterSha256(pixels, width, height),
         labelKind: "source-svg",
         augmentation: { version: 1, seed, variant, ...augmentation },
       };

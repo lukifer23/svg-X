@@ -28,6 +28,7 @@
     "test:bench": "vitest run --config vitest.config.ts src/utils/imageProcessor.bench.test.ts",
     "bench:pipeline": "vitest run --config benchmarks/vitest.config.ts benchmarks/pipeline.test.ts",
     "bench:photo": "vitest run --config benchmarks/vitest.config.ts benchmarks/photoColor.test.ts",
+    "bench:competitive": "vitest run --config benchmarks/vitest.config.ts benchmarks/competitiveColor.test.ts",
     "bench:preview": "npm run build && cross-env SVGX_PREVIEW_BENCHMARK=1 playwright test e2e/web/previewLatency.spec.ts --project=chromium --workers=1 --retries=0",
     "bench:centerline": "vitest run --config benchmarks/vitest.config.ts benchmarks/centerline.test.ts",
     "bench:scan-lighting": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanLighting.test.ts",

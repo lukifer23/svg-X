@@ -46,7 +46,7 @@ test("exports repeatable source-aligned training pairs using the real CLI", asyn
     expect(records).toHaveLength(2);
     expect(records[0]).toMatchObject({
       labelKind: "source-svg",
-      schemaVersion: 1,
+      schemaVersion: 2,
       group: item.group,
       license: item.license,
       width: 48,
@@ -54,6 +54,7 @@ test("exports repeatable source-aligned training pairs using the real CLI", asyn
     });
     expect(records[0].split).toBe(records[1].split);
     expect(records[0].target).toBe(records[1].target);
+    expect(records[0].inputPixelSha256).toMatch(/^[a-f0-9]{64}$/);
     for (const { input, target, reference } of records) {
       const data = await readFile(path.join(left, input));
       expect(data.equals(await readFile(path.join(right, input)))).toBe(true);
@@ -68,7 +69,7 @@ test("exports repeatable source-aligned training pairs using the real CLI", asyn
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
+}, 15_000);
 
 test("rejects external SVG references and prevents exact raster split leakage", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "svgx-dataset-invalid-"));
@@ -115,6 +116,7 @@ test("audits a published dataset and flags near-duplicate targets across splits"
     await build(path.join(corpus, "manifest.json"), curated);
     expect(JSON.parse((await audit(curated)).stdout)).toMatchObject({
       rows: 128,
+      legacyRows: 0,
       uniqueTargets: 32,
       bySplit: { train: 23, validation: 4, test: 5 },
       flagged: 0,
@@ -123,6 +125,44 @@ test("audits a published dataset and flags near-duplicate targets across splits"
     expect(await readFile(path.join(curated, "notices", notice), "utf8")).toBe(
       await readFile(path.join(corpus, "lucide", notice), "utf8"),
     );
+    const index = await readFile(path.join(curated, "manifest.jsonl"), "utf8");
+    const first = JSON.parse(index.split("\n")[0]);
+    for (const [relative, replacement, error] of [
+      [
+        first.input,
+        await readFile(path.join(curated, first.target)),
+        /Raster pixels do not match manifest/,
+      ],
+      [
+        first.target,
+        await readFile(path.join(curated, first.input)),
+        /Raster pixels do not match manifest/,
+      ],
+      [first.reference, Buffer.from(svg), /Reference does not match manifest/],
+    ] as const) {
+      const file = path.join(curated, relative);
+      const original = await readFile(file);
+      await writeFile(file, replacement);
+      await expect(audit(curated)).rejects.toThrow(error);
+      await writeFile(file, original);
+    }
+    const version1 = index
+      .trimEnd()
+      .split("\n")
+      .map((line) => {
+        const record = JSON.parse(line);
+        delete record.inputPixelSha256;
+        return JSON.stringify({ ...record, schemaVersion: 1 });
+      });
+    await writeFile(
+      path.join(curated, "manifest.jsonl"),
+      version1.join("\n") + "\n",
+    );
+    expect(JSON.parse((await audit(curated)).stdout)).toMatchObject({
+      rows: 128,
+      legacyRows: 128,
+      flagged: 0,
+    });
 
     const manifest = path.join(root, "source.json");
     await Promise.all([
@@ -153,4 +193,4 @@ test("audits a published dataset and flags near-duplicate targets across splits"
   } finally {
     await rm(root, { recursive: true, force: true });
   }
-});
+}, 15_000);

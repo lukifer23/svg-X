@@ -92,6 +92,8 @@ Above a size threshold, color quantization runs across a renderer-side pool capp
 
 Use `npm run bench:pipeline` for core stage timings, `npm run bench:photo` for photo tracing and optional exact-output comparison, and `npm run bench:preview` for real browser uploads. See the [testing guide](docs/TESTING.md).
 
+See the [competitive review](docs/COMPETITIVE-REVIEW.md) for the measured VTracer comparison and product gaps, and the [training-data guide](docs/TRAINING-DATA.md) for building and auditing supervised pairs.
+
 ## Batch and desktop security
 
 The renderer never supplies arbitrary filesystem paths. Electron grants opaque IDs for user-selected input and output directories. Main-process operations validate the grant, filename, extension, size, and final resolved child path.
