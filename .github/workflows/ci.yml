@@ -88,6 +88,10 @@ jobs:
     name: Browser E2E
     needs: validate
     runs-on: ubuntu-latest
+    container:
+      # Keep the image version aligned with @playwright/test in package-lock.json.
+      image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
+      options: --ipc=host
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -96,8 +100,6 @@ jobs:
           cache: npm
       - run: npm install --global npm@12.0.2
       - run: npm ci
-      - run: npx --no-install playwright install --with-deps chromium firefox webkit
-        timeout-minutes: 8
       - run: npm run test:e2e:web:functional
 
   performance:
