@@ -35,6 +35,7 @@ const references = (
       "fresh-references.json",
       "perimeter-references.json",
       "weak-span-references.json",
+      "loop-holdout-references.json",
     ].map(async (file) =>
       JSON.parse(
         await readFile(path.join(qualificationDirectory, file), "utf8"),

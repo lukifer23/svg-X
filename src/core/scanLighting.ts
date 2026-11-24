@@ -7,6 +7,7 @@ export interface ScanInkEvidence {
 const TILE_SIZE = 16;
 const PAPER_OCCLUSION_DROP = 52;
 const MINIMUM_RUN = 3;
+const DIRECTIONS = [-1, 1] as const;
 const WIDE_MINIMUM_RUN = 4;
 const AXES = [
   [1, 0],
@@ -133,14 +134,24 @@ export const traceScanInk = (
   }
   const minimumContrast = Math.max(10, Math.round((255 - inkThreshold) / 8));
   const solidContrast = Math.max(32, 255 - inkThreshold);
-  const mask = new Uint8Array(tones.length);
+  let mask = new Uint8Array(tones.length);
   const strongInk = preserveEvidence ? new Uint8Array(tones.length) : undefined;
   const ridges = new Uint8Array(tones.length);
   const wide = new Uint8Array(tones.length);
   const wideCandidates: number[] = [];
   const inside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height;
+  const acrossOffsets = AXES.map(([dx, dy]) => dx * width - dy);
+  const rightEdge = width - narrowRadius;
+  const bottomEdge = height - narrowRadius;
+  // In small native scans, a one-pixel valley can be an antialias
+  // artifact between a stroke and a leader. The closer-flank rule is
+  // calibrated at the standard and high working resolutions.
+  const resolveCloseOutlines = Math.max(width, height) >= 1000;
+  const closeInkMin = minimumContrast * 4;
+  const closeInkMax = minimumContrast * 7;
   for (let y = 0; y < height; y += 1) {
+    const interiorRow = y >= narrowRadius && y < bottomEdge;
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
       const ink = contrast[index];
@@ -150,27 +161,52 @@ export const traceScanInk = (
         continue;
       }
       if (ink < minimumContrast) continue;
+      const interior = interiorRow && x >= narrowRadius && x < rightEdge;
+      const checkCloseFlanks =
+        resolveCloseOutlines && ink >= closeInkMin && ink <= closeInkMax;
       for (let axis = 0; axis < AXES.length; axis += 1) {
         const [dx, dy] = AXES[axis];
         // A fade candidate must be darker than the two sides of its stroke.
-        const offset = dx * width - dy;
+        const offset = acrossOffsets[axis];
+        if (!interior) {
+          const fx = -dy * narrowRadius;
+          const fy = dx * narrowRadius;
+          if (!inside(x + fx, y + fy) || !inside(x - fx, y - fy)) continue;
+        }
+        const flank = narrowRadius * offset;
+        const left = contrast[index - flank];
+        const right = contrast[index + flank];
+        if (ink - Math.max(left, right) >= 8) {
+          ridges[index] |= 1 << axis;
+          continue;
+        }
+        // A parallel outline can fall on a normal flank. Require a valley
+        // between the two strokes and a near-paper flank on the other side
+        // before admitting a ridge at the closer spacing.
+        if (checkCloseFlanks) {
+          const near = resolutionScale * offset;
+          const nearLeft = contrast[index - near];
+          const nearRight = contrast[index + near];
+          if (
+            ink - Math.max(nearLeft, nearRight) >= 12 &&
+            Math.max(left - nearLeft, right - nearRight) >= 12 &&
+            Math.min(nearLeft, nearRight) <= minimumContrast / 2
+          ) {
+            ridges[index] |= 1 << axis;
+            continue;
+          }
+        }
+        // Widen only where the closer flanks are also ink. A wider
+        // neighborhood alone would confuse separate thin strokes.
+        if (ink < 36 || Math.min(left, right) < minimumContrast + 5) continue;
         for (
-          let radius = narrowRadius;
+          let radius = narrowRadius + 1;
           radius <= 2 * narrowRadius;
           radius += 1
         ) {
-          const fx = -dy * radius;
-          const fy = dx * radius;
-          if (!inside(x + fx, y + fy) || !inside(x - fx, y - fy)) break;
-          if (
-            radius > narrowRadius &&
-            (ink < 36 ||
-              Math.min(
-                contrast[index - narrowRadius * offset],
-                contrast[index + narrowRadius * offset],
-              ) <
-                minimumContrast + 5)
-          )
+          const wideX = -dy * radius;
+          const wideY = dx * radius;
+          if (!inside(x + wideX, y + wideY) || !inside(x - wideX, y - wideY))
             break;
           if (
             ink -
@@ -181,13 +217,8 @@ export const traceScanInk = (
             8
           )
             continue;
-          if (radius === narrowRadius) ridges[index] |= 1 << axis;
-          else {
-            // Widen only where the closer flanks are also ink. A wider
-            // neighborhood alone would confuse separate thin strokes.
-            if (!wide[index]) wideCandidates.push(index);
-            wide[index] |= 1 << axis;
-          }
+          if (!wide[index]) wideCandidates.push(index);
+          wide[index] |= 1 << axis;
           break;
         }
       }
@@ -201,7 +232,7 @@ export const traceScanInk = (
       if (!(wide[index] & bit)) continue;
       const [dx, dy] = AXES[axis];
       let support = 1;
-      for (const sign of [-1, 1]) {
+      for (const sign of DIRECTIONS) {
         for (
           let step = 1;
           step < wideMinimumRun && support < wideMinimumRun;
@@ -225,7 +256,7 @@ export const traceScanInk = (
       if (!(ridges[index] & bit)) continue;
       const [dx, dy] = AXES[axis];
       let run = 1;
-      for (const direction of [-1, 1]) {
+      for (const direction of DIRECTIONS) {
         for (let step = 1; step < minimumRun && run < minimumRun; step += 1) {
           const nx = x + dx * step * direction;
           const ny = y + dy * step * direction;
@@ -252,12 +283,13 @@ export const traceScanInk = (
         filled[i] = 1;
     }
   }
-  mask.set(filled);
+  mask = filled;
   // At crossings, the other arm can hide both flanks of a true ridge.
   // Restore only existing ink along a short run between accepted pixels.
   // Newly restored pixels cannot seed another bridge.
   const connected = mask.slice();
   const parent = new Int32Array(mask.length).fill(-1);
+  const anchors: number[] = [];
   const root = (pixel: number) => {
     let index = pixel;
     while (parent[index] !== index) {
@@ -271,6 +303,7 @@ export const traceScanInk = (
   };
   for (let index = 0; index < mask.length; index += 1) {
     if (!mask[index]) continue;
+    anchors.push(index);
     parent[index] = index;
     const x = index % width;
     if (x > 0 && mask[index - 1]) join(index, index - 1);
@@ -286,8 +319,8 @@ export const traceScanInk = (
     offset: number;
     distance: number;
   }> = [];
-  for (let start = 0; start < mask.length; start += 1) {
-    if (!mask[start] || !ridges[start]) continue;
+  for (const start of anchors) {
+    if (!ridges[start]) continue;
     const x = start % width;
     const y = (start - x) / width;
     for (let axis = 0; axis < AXES.length; axis += 1) {
@@ -295,7 +328,7 @@ export const traceScanInk = (
       if (!(ridges[start] & bit)) continue;
       const [dx, dy] = AXES[axis];
       const offset = dy * width + dx;
-      for (const sign of [-1, 1]) {
+      for (const sign of DIRECTIONS) {
         for (let distance = 1; distance <= 5; distance += 1) {
           if (!inside(x + sign * dx * distance, y + sign * dy * distance))
             break;
@@ -332,8 +365,8 @@ export const traceScanInk = (
   // directional run cannot pass through a bend or crossing. Seed the
   // repair from the existing mask so new pixels cannot extend a bridge.
   const gapFloor = minimumContrast * 1.5;
-  for (let start = 0; start < mask.length; start += 1) {
-    if (!mask[start] || contrast[start] < minimumContrast) continue;
+  for (const start of anchors) {
+    if (contrast[start] < minimumContrast) continue;
     const x = start % width;
     const y = (start - x) / width;
     for (let axis = 0; axis < AXES.length; axis += 1) {
@@ -408,9 +441,21 @@ export const traceScanInk = (
             }
           }
         }
+        // A nearby arm can hide one flank at a one-pixel diagonal
+        // corner. Both anchors must still support the same direction.
+        const diagonalCorner =
+          resolutionScale === 1 &&
+          axis >= 2 &&
+          length === 2 &&
+          (ridges[start] & ridges[end] & (1 << axis)) !== 0 &&
+          ink >= 3 * minimumContrast &&
+          ink - Math.min(left, right) >= 2 * minimumContrast &&
+          Math.max(left, right) <= ink + minimumContrast;
         if (
           valid &&
-          (faintAndAligned || ink - Math.max(left, right) >= 6 * (length - 1))
+          (faintAndAligned ||
+            diagonalCorner ||
+            ink - Math.max(left, right) >= 6 * (length - 1))
         ) {
           for (let step = 1; step < length; step += 1) {
             const gap = start + step * along;

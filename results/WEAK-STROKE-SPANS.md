@@ -1,5 +1,9 @@
 # Weak-stroke tracing on archival scans
 
+This report records the original qualification. The
+[loop recheck](LOOP-RECHECK.md) audits the nine misses using the source
+scans and records the follow-up measurements separately.
+
 The heating-trench upper rail was connected in the extracted and cleaned
 ink masks. During thinning, its weak two-pixel diagonal staircase
 repeatedly appeared to be a cardinal tip. The strong-ink-only guard let

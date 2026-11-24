@@ -1,0 +1,124 @@
+[
+  {
+    "id": "boiler-fronts",
+    "source": "https://www.loc.gov/item/2022642685/",
+    "masterUrl": "https://tile.loc.gov/storage-services/master/pnp/ppmsca/67400/67464u.tif",
+    "masterSha256": "a1dec833d226e66b1f3d466b31a579ee60b29bb0e4be093f225ca0803aba3103",
+    "sha256": "be46e62aa90bd07a5e631b8c1017aa17361d4a4c3328cb7f490f2408a4194f56",
+    "loops": {
+      "plate-miter-outline": [
+        [235, 330],
+        [338, 330],
+        [338, 406],
+        [235, 406]
+      ],
+      "front-center-inset": [
+        [124, 153],
+        [146, 153],
+        [146, 192],
+        [124, 192]
+      ],
+      "front-right-inset": [
+        [150, 153],
+        [201, 153],
+        [201, 192],
+        [150, 192]
+      ],
+      "front-left-inset": [
+        [70, 153],
+        [121, 153],
+        [121, 192],
+        [70, 192]
+      ],
+      "beveled-bottom-section": [
+        [234, 414],
+        [337, 414],
+        [333, 423],
+        [238, 423]
+      ]
+    },
+    "gaps": [
+      {
+        "id": "adjacent-front-insets",
+        "points": [
+          [121, 171],
+          [124, 171]
+        ],
+        "radius": 1
+      },
+      {
+        "id": "pilot-measurement-dash",
+        "points": [
+          [495, 369],
+          [500, 369]
+        ],
+        "radius": 1
+      }
+    ],
+    "paper": [
+      [25, 92, 40, 108],
+      [780, 419, 798, 430],
+      [953, 358, 968, 389]
+    ]
+  },
+  {
+    "id": "cellar-guards",
+    "source": "https://www.loc.gov/item/2022636995/",
+    "masterUrl": "https://tile.loc.gov/storage-services/master/pnp/ppmsca/66900/66948u.tif",
+    "masterSha256": "a8dd4c48bba0dcba9a30bf96fef6cf1486c9489475b70cca0d5a35c75dbe8f35",
+    "sha256": "0ab9b72671f14a81d4f7d2b8bd016034f73937125bf611b2bcede109feb9df59",
+    "loops": {
+      "nested-window-inner": [
+        [300, 91],
+        [389, 91],
+        [389, 121],
+        [388, 121],
+        [388, 150],
+        [301, 150],
+        [301, 121],
+        [300, 121]
+      ],
+      "nested-window-outer": [
+        [296, 87],
+        [393, 87],
+        [393, 153],
+        [296, 153]
+      ],
+      "guard-middle-pane": [
+        [553, 110],
+        [557, 110],
+        [557, 130],
+        [553, 130]
+      ],
+      "wide-guard-middle-pane": [
+        [482, 258],
+        [486, 258],
+        [486, 278],
+        [482, 278]
+      ]
+    },
+    "gaps": [
+      {
+        "id": "nested-window-top-clearance",
+        "points": [
+          [342, 87],
+          [342, 91]
+        ],
+        "radius": 1
+      },
+      {
+        "id": "guard-below-pickets",
+        "points": [
+          [542, 146],
+          [542, 150]
+        ],
+        "radius": 1
+      }
+    ],
+    "paper": [
+      [322, 100, 365, 133],
+      [94, 103, 124, 196],
+      [707, 423, 751, 450]
+    ]
+  }
+]

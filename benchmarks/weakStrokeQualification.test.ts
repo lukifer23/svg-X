@@ -10,10 +10,12 @@ import {
 } from "../tests/fixtures/archivalLoopReview";
 import { centerlineOptions } from "../tests/fixtures/centerlineCorpus";
 import {
+  isolateOutline,
   measurePath,
   type PathReference,
 } from "../tests/fixtures/scanSpanReview";
 import annotations from "../tests/fixtures/qualification/weak-span-references.json";
+import holdout from "../tests/fixtures/qualification/loop-holdout-references.json";
 import spans from "../examples/training-data/real-scans/span-manifest.json";
 
 const output = process.env.SVGX_WEAK_SPAN_RECORD;
@@ -101,7 +103,7 @@ test("retains the weak heating rail and the separately reviewed ironwork crossin
 
 test("measures recovered loops, open gaps, paper ink and warmed trace time on independent sheets", async () => {
   const reports = [];
-  for (const scan of annotations) {
+  for (const scan of [...annotations, ...holdout]) {
     const source = await readFile(
       new URL(
         `../tests/fixtures/qualification/${scan.id}.jpg`,
@@ -129,6 +131,16 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
         height,
         reference,
       );
+      if ("outlineBands" in scan)
+        for (const [id, radius] of Object.entries(scan.outlineBands ?? {})) {
+          const outline = reference.loops[id] as [number, number][];
+          loops[id] = measureArchivalReference(
+            isolateOutline(raster, width, height, outline, scale(radius)),
+            width,
+            height,
+            { loops: { [id]: outline }, open: {}, paper: [] },
+          ).loops[id];
+        }
       const gaps = Object.fromEntries(
         scan.gaps.map(({ id, points, radius }) => [
           id,
@@ -173,14 +185,24 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
   if (recordingBaseline) return;
   const baseline: { reports: typeof reports } = JSON.parse(
     await readFile(
-      new URL("../results/weak-span-fresh-before.json", import.meta.url),
+      new URL("../results/loop-recheck-before.json", import.meta.url),
       "utf8",
     ),
   );
   expect(reports).toHaveLength(baseline.reports.length);
+  const recoveredAt1000: Readonly<Partial<Record<string, string>>> = {
+    "north-trench": "upper-north-diamond",
+    "ornamental-iron": "medallion-center",
+    "boiler-fronts": "beveled-bottom-section",
+  };
   for (const [index, current] of reports.entries()) {
     const previous = baseline.reports[index];
     const label = `${current.id} at ${current.limit} px`;
+    const recovered = recoveredAt1000[current.id];
+    if (current.limit === 1000 && recovered)
+      expect(current.loops[recovered].matched, `${label} ${recovered}`).toBe(
+        true,
+      );
     expect([current.id, current.limit, current.width, current.height]).toEqual([
       previous.id,
       previous.limit,

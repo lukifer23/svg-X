@@ -73,3 +73,40 @@ export const measurePath = (
   }
   return { endpoints, connected: false };
 };
+
+// A partitioned outline can be closed even when every enclosed face is
+// smaller than its full interior. Keep only stroke near the reviewed outline
+// and run the same enclosed-region measurement on those real pixels.
+export const isolateOutline = (
+  stroke: Buffer,
+  width: number,
+  height: number,
+  points: Point[],
+  radius: number,
+) => {
+  const isolated = Buffer.alloc(stroke.length);
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const left = Math.max(0, Math.floor(Math.min(...xs) - radius));
+  const right = Math.min(width, Math.ceil(Math.max(...xs) + radius));
+  const top = Math.max(0, Math.floor(Math.min(...ys) - radius));
+  const bottom = Math.min(height, Math.ceil(Math.max(...ys) + radius));
+  for (let y = top; y < bottom; y += 1)
+    for (let x = left; x < right; x += 1) {
+      const index = y * width + x;
+      if (
+        stroke[index] >= 64 &&
+        points.some(
+          (start, i) =>
+            distanceToSegment(
+              x + 0.5,
+              y + 0.5,
+              start,
+              points[(i + 1) % points.length],
+            ) <= radius,
+        )
+      )
+        isolated[index] = stroke[index];
+    }
+  return isolated;
+};

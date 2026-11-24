@@ -68,6 +68,8 @@ test suite gates the recovered loops and checks these negative controls.
 plus separate 1,000- and 2,000-pixel scans of two architectural sheets.
 The [weak-stroke benchmark](../results/WEAK-STROKE-SPANS.md) documents the
 reference corrections, trace timings, and source provenance.
+The [loop recheck](../results/LOOP-RECHECK.md) audits the original misses
+and qualifies the corner and close-outline changes on two further scans.
 
 The [Velocipede rim benchmark](../results/VELOCIPEDE-RIM.md) measures the
 best individual closed subpath as well as the complete SVG. Fork

@@ -1,0 +1,502 @@
+{
+  "node": "v24.19.0",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "reports": [
+    {
+      "id": "north-trench",
+      "limit": 1000,
+      "width": 1000,
+      "height": 569,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.7990543735224587,
+          "matched": true
+        },
+        "first-tie-west": {
+          "iou": 0.7578947368421053,
+          "matched": true
+        },
+        "upper-north-diamond": {
+          "iou": 0.8567335243553008,
+          "matched": true
+        },
+        "east-wall-inset": {
+          "iou": 0.6,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 64.53999999999996,
+      "timesMs": [
+        75.34359999999992,
+        88.34469999999988,
+        79.92729999999983,
+        82.0181,
+        65.5744000000002,
+        63.021799999999985,
+        62.096000000000004,
+        62.57439999999997,
+        62.76599999999985,
+        62.9675000000002,
+        63.00999999999999,
+        61.17399999999998,
+        68.77399999999989,
+        73.12119999999982,
+        64.53999999999996
+      ]
+    },
+    {
+      "id": "north-trench",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1137,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.8863503222026948,
+          "matched": true
+        },
+        "first-tie-west": {
+          "iou": 0.8925294888597641,
+          "matched": true
+        },
+        "upper-north-diamond": {
+          "iou": 0.8619505494505495,
+          "matched": true
+        },
+        "east-wall-inset": {
+          "iou": 0.575,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 229.85240000000067,
+      "timesMs": [
+        227.29899999999998,
+        225.52680000000055,
+        230.67579999999998,
+        227.07960000000003,
+        236.15899999999965,
+        227.35099999999966,
+        235.8136000000004,
+        229.85240000000067,
+        233.77070000000003,
+        228.51080000000002,
+        238.10800000000017,
+        227.78519999999935,
+        235.13410000000022,
+        225.45730000000003,
+        234.83789999999954
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 1000,
+      "width": 1000,
+      "height": 697,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0,
+          "matched": false
+        },
+        "medallion-center": {
+          "iou": 0.6317567567567568,
+          "matched": true
+        },
+        "corner-post-panel": {
+          "iou": 0.7733333333333333,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.827482447342026,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.891860465116279,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8634361233480177,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 59.965799999999945,
+      "timesMs": [
+        62.34270000000015,
+        60.49960000000101,
+        59.82760000000053,
+        60.55589999999938,
+        60.51679999999942,
+        59.94510000000082,
+        60.61540000000059,
+        60.65279999999984,
+        60.69050000000061,
+        59.67309999999998,
+        59.025400000000445,
+        59.35009999999966,
+        59.91789999999855,
+        59.965799999999945,
+        59.876500000000306
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1393,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0,
+          "matched": false
+        },
+        "medallion-center": {
+          "iou": 0.4766935985083903,
+          "matched": false
+        },
+        "corner-post-panel": {
+          "iou": 0.7990196078431373,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.8108371979497193,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.9301246738184981,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8842337375964718,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 228.3736000000008,
+      "timesMs": [
+        244.55229999999938,
+        238.05409999999938,
+        226.68009999999958,
+        233.40740000000005,
+        223.65270000000055,
+        228.3736000000008,
+        219.96189999999842,
+        230.4964999999993,
+        229.44989999999962,
+        238.97689999999966,
+        227.64500000000044,
+        227.51980000000003,
+        231.52560000000085,
+        225.6913000000004,
+        223.79839999999967
+      ]
+    },
+    {
+      "id": "boiler-fronts",
+      "limit": 1000,
+      "width": 1000,
+      "height": 599,
+      "loops": {
+        "plate-miter-outline": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-center-inset": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-right-inset": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-left-inset": {
+          "iou": 0.8591756624141315,
+          "matched": true
+        },
+        "beveled-bottom-section": {
+          "iou": 0.7912457912457912,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-front-insets": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "pilot-measurement-dash": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 60.697799999999916,
+      "timesMs": [
+        60.697799999999916,
+        61.04739999999947,
+        60.01020000000062,
+        60.60649999999987,
+        60.61939999999959,
+        61.125700000000506,
+        59.97899999999936,
+        60.3773999999994,
+        60.7523999999994,
+        60.29860000000008,
+        60.73879999999917,
+        59.521199999999226,
+        62.89800000000105,
+        65.0690999999988,
+        64.9305000000004
+      ]
+    },
+    {
+      "id": "boiler-fronts",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1198,
+      "loops": {
+        "plate-miter-outline": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-center-inset": {
+          "iou": 0.06802272914436301,
+          "matched": false
+        },
+        "front-right-inset": {
+          "iou": 0.8523706896551724,
+          "matched": true
+        },
+        "front-left-inset": {
+          "iou": 0.1561878600274697,
+          "matched": false
+        },
+        "beveled-bottom-section": {
+          "iou": 0.8516129032258064,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-front-insets": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "pilot-measurement-dash": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 217.7325000000019,
+      "timesMs": [
+        263.61279999999897,
+        227.5698999999986,
+        233.64919999999984,
+        216.43249999999898,
+        213.72320000000036,
+        215.8630000000012,
+        223.16990000000078,
+        213.55349999999817,
+        212.92730000000302,
+        215.47810000000027,
+        225.12030000000232,
+        217.69390000000203,
+        218.89419999999882,
+        217.7325000000019,
+        230.1787000000004
+      ]
+    },
+    {
+      "id": "cellar-guards",
+      "limit": 1000,
+      "width": 1000,
+      "height": 678,
+      "loops": {
+        "nested-window-inner": {
+          "iou": 0.951473136915078,
+          "matched": true
+        },
+        "nested-window-outer": {
+          "iou": 0.7717900656044986,
+          "matched": true
+        },
+        "guard-middle-pane": {
+          "iou": 0.2773722627737226,
+          "matched": false
+        },
+        "wide-guard-middle-pane": {
+          "iou": 0.5510204081632653,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "nested-window-top-clearance": {
+          "endpoints": 0,
+          "connected": false
+        },
+        "guard-below-pickets": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 66.69999999999709,
+      "timesMs": [
+        67.31779999999708,
+        66.79000000000087,
+        66.38550000000032,
+        66.69999999999709,
+        68.03900000000067,
+        66.46970000000147,
+        68.43929999999818,
+        65.86379999999917,
+        66.45149999999921,
+        66.95639999999912,
+        66.16939999999886,
+        66.23099999999977,
+        66.81050000000323,
+        66.20869999999923,
+        66.86479999999938
+      ]
+    },
+    {
+      "id": "cellar-guards",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1356,
+      "loops": {
+        "nested-window-inner": {
+          "iou": 0.9584988751136854,
+          "matched": true
+        },
+        "nested-window-outer": {
+          "iou": 0.7865901280849734,
+          "matched": true
+        },
+        "guard-middle-pane": {
+          "iou": 0.30141843971631205,
+          "matched": false
+        },
+        "wide-guard-middle-pane": {
+          "iou": 0.7430167597765364,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "nested-window-top-clearance": {
+          "endpoints": 0,
+          "connected": false
+        },
+        "guard-below-pickets": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 248.41419999999925,
+      "timesMs": [
+        247.60090000000127,
+        257.1095999999998,
+        248.41419999999925,
+        259.1137999999992,
+        246.82849999999962,
+        254.78509999999733,
+        247.6991999999991,
+        257.0097999999998,
+        245.22079999999914,
+        255.4239000000016,
+        247.71140000000014,
+        259.23649999999907,
+        245.11959999999817,
+        253.91830000000118,
+        245.9411
+      ]
+    }
+  ]
+}
