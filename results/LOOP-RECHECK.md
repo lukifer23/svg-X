@@ -1,5 +1,9 @@
 # Archival loop recheck
 
+This report preserves the earlier results. The
+[medallion qualification](MEDALLION-RECOVERY.md) follows up on the three
+remaining checks.
+
 The original [weak-stroke qualification](WEAK-STROKE-SPANS.md) reported
 nine misses. We compared the master-derived scans, extracted ink,
 skeletons, repaired skeletons, and rasterized SVG. The timing and

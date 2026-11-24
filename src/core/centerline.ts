@@ -1,5 +1,8 @@
 import { findCircularPerimeters } from "./circularPerimeters";
-import { recoverCircularStrokes } from "./circularStrokeRecovery";
+import {
+  recoverCircularStrokes,
+  recoverInsetRing,
+} from "./circularStrokeRecovery";
 import { fitPointsToSubpath } from "./curveFit";
 import { repairFadedCurves } from "./fadedCurveRepair";
 import {
@@ -8,6 +11,7 @@ import {
   simplifyRing,
   type Point,
 } from "./geometry";
+import { isolatedFrameCrop, repairInsetFrames } from "./insetFrameRepair";
 import { traceScanInk, type ScanInkEvidence } from "./scanLighting";
 import type {
   VectorDocument,
@@ -610,17 +614,111 @@ export const traceCenterlines = (
       (index) => neighborBits(thinned, index, width, height, true),
       repairGuide,
     );
-  const { subpaths } = walkSkeleton(
-    thinned,
-    width,
-    height,
-    tolerance,
-    options.optCurve,
-    tolerance,
-    Math.min(4, options.turdSize),
-    supportsTip,
-    evidence !== undefined,
-  );
+  const walk = (
+    mask = thinned,
+    columns = width,
+    rows = height,
+    tip = supportsTip,
+  ) =>
+    walkSkeleton(
+      mask,
+      columns,
+      rows,
+      tolerance,
+      options.optCurve,
+      tolerance,
+      Math.min(4, options.turdSize),
+      tip,
+      evidence !== undefined,
+    );
+  let { subpaths } = walk();
+  if (evidence) {
+    const frames = repairInsetFrames(
+      subpaths,
+      thinned,
+      width,
+      height,
+      evidence,
+    );
+    if (frames.length > 0) {
+      const crops = frames.map((frame) =>
+        isolatedFrameCrop(
+          thinned,
+          width,
+          height,
+          frame,
+          evidence.resolutionScale,
+        ),
+      );
+      const disjoint = crops.every(
+        (crop, i) =>
+          crop &&
+          crops
+            .slice(0, i)
+            .every(
+              (earlier) =>
+                earlier &&
+                (crop[2] < earlier[0] ||
+                  earlier[2] < crop[0] ||
+                  crop[3] < earlier[1] ||
+                  earlier[3] < crop[1]),
+            ),
+      );
+      if (disjoint) {
+        for (const crop of crops) {
+          if (!crop) continue;
+          const [left, top, right, bottom] = crop;
+          const columns = right - left + 1;
+          const rows = bottom - top + 1;
+          const local = new Uint8Array(columns * rows);
+          for (let y = 0; y < rows; y++) {
+            const start = (top + y) * width + left;
+            local.set(thinned.subarray(start, start + columns), y * columns);
+          }
+          const tip =
+            supportsTip &&
+            ((index: number, direction: number) =>
+              supportsTip(
+                (top + Math.floor(index / columns)) * width +
+                  left +
+                  (index % columns),
+                direction,
+              ));
+          subpaths = subpaths.filter(({ commands }) => {
+            const start = commands[0];
+            return (
+              start.type !== "M" ||
+              start.x < left ||
+              start.x >= right + 1 ||
+              start.y < top ||
+              start.y >= bottom + 1
+            );
+          });
+          for (const path of walk(local, columns, rows, tip).subpaths) {
+            for (const command of path.commands) {
+              if (command.type === "Z") continue;
+              command.x += left;
+              command.y += top;
+              if (command.type === "C") {
+                command.x1 += left;
+                command.y1 += top;
+                command.x2 += left;
+                command.y2 += top;
+              }
+            }
+            subpaths.push(path);
+          }
+        }
+      } else {
+        ({ subpaths } = walk());
+      }
+      if (evidence.resolutionScale === 2)
+        for (const frame of frames) {
+          const ring = recoverInsetRing(thinned, width, evidence, frame);
+          if (ring.length) recoveredRings.push(ring);
+        }
+    }
+  }
   for (const ring of recoveredRings) {
     const geometry = simplifyRing(
       ring,

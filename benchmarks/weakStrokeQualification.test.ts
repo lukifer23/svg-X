@@ -15,6 +15,7 @@ import {
   type PathReference,
 } from "../tests/fixtures/scanSpanReview";
 import annotations from "../tests/fixtures/qualification/weak-span-references.json";
+import medallionHoldout from "../tests/fixtures/qualification/medallion-holdout-references.json";
 import holdout from "../tests/fixtures/qualification/loop-holdout-references.json";
 import spans from "../examples/training-data/real-scans/span-manifest.json";
 
@@ -103,7 +104,7 @@ test("retains the weak heating rail and the separately reviewed ironwork crossin
 
 test("measures recovered loops, open gaps, paper ink and warmed trace time on independent sheets", async () => {
   const reports = [];
-  for (const scan of [...annotations, ...holdout]) {
+  for (const scan of [...annotations, ...holdout, ...medallionHoldout]) {
     const source = await readFile(
       new URL(
         `../tests/fixtures/qualification/${scan.id}.jpg`,
@@ -115,6 +116,35 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
       const { width, height, trace } = await traceImage(source, limit);
       const raster = await rasterizeStroke(trace());
       const scale = (x: number) => (x * width) / 1000;
+      if (scan.id === "ornamental-iron" && !recordingBaseline) {
+        const separations: PathReference[] = [
+          {
+            id: "medallion-frames-top",
+            points: [
+              [492, 384.5],
+              [492, 389.5],
+            ],
+            radius: 1,
+          },
+          {
+            id: "medallion-frames-right",
+            points: [
+              [532, 430],
+              [537, 430],
+            ],
+            radius: 1,
+          },
+        ];
+        for (const gap of separations)
+          expect(
+            measurePath(raster, width, height, {
+              ...gap,
+              points: gap.points.map(([x, y]) => [scale(x), scale(y)]),
+              radius: scale(gap.radius),
+            }),
+            `${gap.id} at ${limit} px`,
+          ).toEqual({ endpoints: 2, connected: false });
+      }
       const reference = {
         loops: Object.fromEntries(
           Object.entries(scan.loops).map(([id, points]) => [
@@ -141,6 +171,22 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
             { loops: { [id]: outline }, open: {}, paper: [] },
           ).loops[id];
         }
+      if (
+        limit === 2000 &&
+        "fullResolutionOutline" in scan &&
+        scan.fullResolutionOutline
+      ) {
+        const { id, points, radius } = scan.fullResolutionOutline;
+        const outline = points.map(
+          ([x, y]) => [scale(x), scale(y)] as [number, number],
+        );
+        loops[id] = measureArchivalReference(
+          isolateOutline(raster, width, height, outline, scale(radius)),
+          width,
+          height,
+          { loops: { [id]: outline }, open: {}, paper: [] },
+        ).loops[id];
+      }
       const gaps = Object.fromEntries(
         scan.gaps.map(({ id, points, radius }) => [
           id,
@@ -185,7 +231,7 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
   if (recordingBaseline) return;
   const baseline: { reports: typeof reports } = JSON.parse(
     await readFile(
-      new URL("../results/loop-recheck-before.json", import.meta.url),
+      new URL("../results/medallion-recovery-before.json", import.meta.url),
       "utf8",
     ),
   );
@@ -198,6 +244,11 @@ test("measures recovered loops, open gaps, paper ink and warmed trace time on in
   for (const [index, current] of reports.entries()) {
     const previous = baseline.reports[index];
     const label = `${current.id} at ${current.limit} px`;
+    if (current.id === "ornamental-iron") {
+      expect(current.loops["medallion-inner-frame"].matched, label).toBe(true);
+      if (current.limit === 2000)
+        expect(current.loops["medallion-inner-ring"].matched, label).toBe(true);
+    }
     const recovered = recoveredAt1000[current.id];
     if (current.limit === 1000 && recovered)
       expect(current.loops[recovered].matched, `${label} ${recovered}`).toBe(

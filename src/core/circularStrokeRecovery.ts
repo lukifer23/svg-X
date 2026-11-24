@@ -198,6 +198,7 @@ const traceAnnulus = (
   width: number,
   contrast: Uint8Array,
   skeleton: Uint8Array,
+  insideRidge = false,
 ) => {
   const samples = Math.ceil(2 * Math.PI * radius);
   const positions = new Int32Array(samples * TRACKS);
@@ -215,9 +216,11 @@ const traceAnnulus = (
       const r = radius + shift;
       const position = at(r);
       positions[slot] = position;
-      supportScore[slot] =
-        Math.min(20, contrast[position]) -
-        0.45 * Math.max(contrast[at(r - 2)], contrast[at(r + 2)]);
+      const inner = contrast[at(r - 2)];
+      const outer = contrast[at(r + 2)];
+      supportScore[slot] = insideRidge
+        ? Math.min(32, contrast[position]) - 0.6 * inner - 0.1 * outer
+        : Math.min(20, contrast[position]) - 0.45 * Math.max(inner, outer);
       scores[slot] = supportScore[slot] + (skeleton[position] ? 4 : 0);
     }
   }
@@ -286,6 +289,66 @@ const traceAnnulus = (
     }
   }
   return ring;
+};
+
+// An existing nested frame supplies a local search center. Require visible
+// ink around the full annulus plus already traced arcs in each quadrant.
+export const recoverInsetRing = (
+  skeleton: Uint8Array,
+  width: number,
+  { contrast, minimumContrast }: ScanInkEvidence,
+  [left, top, right, bottom]: [number, number, number, number],
+): Point[] => {
+  const x = (left + right) / 2;
+  const y = (top + bottom) / 2;
+  const side = Math.min(right - left, bottom - top);
+  for (let radius = Math.ceil(side * 0.13); radius <= side * 0.24; radius++) {
+    const probes = new Uint8Array(4);
+    let strong = 0;
+    for (const [i, unit] of PROBES.entries()) {
+      const pixel =
+        Math.round(y + radius * unit.y) * width +
+        Math.round(x + radius * unit.x);
+      const inner =
+        Math.round(y + (radius - 2) * unit.y) * width +
+        Math.round(x + (radius - 2) * unit.x);
+      if (
+        contrast[pixel] >= 2 * minimumContrast &&
+        contrast[pixel] - contrast[inner] >= minimumContrast
+      )
+        strong++;
+      for (let shift = -1; shift <= 1; shift++) {
+        const offset =
+          Math.round(y + (radius + shift) * unit.y) * width +
+          Math.round(x + (radius + shift) * unit.x);
+        if (skeleton[offset]) {
+          probes[Math.floor(i / 12)]++;
+          break;
+        }
+      }
+    }
+    if (strong < 32 || probes.some((n) => n < 4)) continue;
+    const ring = traceAnnulus(
+      { x, y, radius, score: 0 },
+      width,
+      contrast,
+      skeleton,
+      true,
+    );
+    if (
+      ring.length < 12 ||
+      ring.some((pixel) => contrast[pixel] < minimumContrast)
+    )
+      continue;
+    const unique = ring.filter(
+      (pixel, i) => pixel !== ring[(i + ring.length - 1) % ring.length],
+    );
+    return unique.map((pixel) => ({
+      x: (pixel % width) + 0.5,
+      y: Math.floor(pixel / width) + 0.5,
+    }));
+  }
+  return [];
 };
 
 export const recoverCircularStrokes = (

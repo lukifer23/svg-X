@@ -156,6 +156,24 @@
     "masterSha256": "2588c4d56a3f8f5f77accb613be8e6acb9dc0e92a028a7f49f2706f9143a5728",
     "outlineBands": {
       "medallion-inner-frame": 2.5
+    },
+    "fullResolutionOutline": {
+      "id": "medallion-inner-ring",
+      "radius": 1.5,
+      "points": [
+        [508.5, 404.8],
+        [512, 405.9],
+        [515, 409],
+        [516, 412.2],
+        [515, 416],
+        [512, 419],
+        [508.5, 420.1],
+        [504.8, 419],
+        [502, 416],
+        [501, 412.3],
+        [502.1, 408.6],
+        [505, 405.9]
+      ]
     }
   }
 ]

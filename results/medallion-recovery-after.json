@@ -1,0 +1,734 @@
+{
+  "node": "v24.19.0",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "reports": [
+    {
+      "id": "north-trench",
+      "limit": 1000,
+      "width": 1000,
+      "height": 569,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.7990543735224587,
+          "matched": true
+        },
+        "first-tie-west": {
+          "iou": 0.7578947368421053,
+          "matched": true
+        },
+        "upper-north-diamond": {
+          "iou": 0.8567335243553008,
+          "matched": true
+        },
+        "east-wall-inset": {
+          "iou": 0.6,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 59.8768,
+      "timesMs": [
+        76.07410000000004,
+        70.03469999999993,
+        72.88419999999996,
+        77.54230000000007,
+        63.15910000000008,
+        59.55989999999997,
+        58.86799999999994,
+        58.81660000000011,
+        59.73559999999998,
+        58.50829999999996,
+        70.58750000000009,
+        60.122699999999895,
+        59.8768,
+        58.02639999999974,
+        57.81820000000016
+      ]
+    },
+    {
+      "id": "north-trench",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1137,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.8863503222026948,
+          "matched": true
+        },
+        "first-tie-west": {
+          "iou": 0.8925294888597641,
+          "matched": true
+        },
+        "upper-north-diamond": {
+          "iou": 0.8619505494505495,
+          "matched": true
+        },
+        "east-wall-inset": {
+          "iou": 0.575,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 210.5631000000003,
+      "timesMs": [
+        207.66239999999925,
+        223.33190000000013,
+        207.46870000000035,
+        222.40719999999965,
+        206.5612000000001,
+        222.90660000000025,
+        207.28909999999996,
+        221.77769999999964,
+        208.89179999999942,
+        222.8765000000003,
+        208.08159999999953,
+        223.2545,
+        208.52279999999973,
+        222.35490000000027,
+        210.5631000000003
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 1000,
+      "width": 1000,
+      "height": 697,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0.9181313598519889,
+          "matched": true
+        },
+        "medallion-center": {
+          "iou": 0.6317567567567568,
+          "matched": true
+        },
+        "corner-post-panel": {
+          "iou": 0.7733333333333333,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.827482447342026,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.891860465116279,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8634361233480177,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 58.104699999999866,
+      "timesMs": [
+        58.02599999999984,
+        60.46010000000024,
+        59.191499999999905,
+        57.6824000000006,
+        58.75170000000071,
+        56.415100000000166,
+        58.104699999999866,
+        57.4419999999991,
+        57.05879999999888,
+        57.86650000000009,
+        58.802700000000186,
+        57.24459999999999,
+        73.38839999999982,
+        61.52769999999873,
+        59.62620000000061
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1393,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0.9458834412580943,
+          "matched": true
+        },
+        "medallion-center": {
+          "iou": 0.5178571428571429,
+          "matched": false
+        },
+        "corner-post-panel": {
+          "iou": 0.7990196078431373,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.8108371979497193,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.9301246738184981,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8842337375964718,
+          "matched": true
+        },
+        "medallion-inner-ring": {
+          "iou": 0.882179675994109,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 220.08079999999973,
+      "timesMs": [
+        222.05619999999908,
+        248.14340000000084,
+        218.5537000000004,
+        227.1963999999989,
+        220.45640000000094,
+        210.73840000000018,
+        221.23099999999977,
+        204.5070999999989,
+        220.01789999999892,
+        206.7572,
+        221.13110000000052,
+        204.96459999999934,
+        220.08079999999973,
+        206.81830000000082,
+        220.95800000000054
+      ]
+    },
+    {
+      "id": "boiler-fronts",
+      "limit": 1000,
+      "width": 1000,
+      "height": 599,
+      "loops": {
+        "plate-miter-outline": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-center-inset": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-right-inset": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-left-inset": {
+          "iou": 0.8591756624141315,
+          "matched": true
+        },
+        "beveled-bottom-section": {
+          "iou": 0.7912457912457912,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-front-insets": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "pilot-measurement-dash": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 58.5658999999996,
+      "timesMs": [
+        58.434400000000096,
+        58.349599999999555,
+        57.90009999999893,
+        57.76730000000134,
+        57.94850000000042,
+        58.999799999999595,
+        58.888999999999214,
+        58.40970000000016,
+        59.51789999999892,
+        59.0650999999998,
+        58.5658999999996,
+        59.119300000000294,
+        57.73439999999937,
+        58.97729999999865,
+        60.27939999999944
+      ]
+    },
+    {
+      "id": "boiler-fronts",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1198,
+      "loops": {
+        "plate-miter-outline": {
+          "iou": 0,
+          "matched": false
+        },
+        "front-center-inset": {
+          "iou": 0.06802272914436301,
+          "matched": false
+        },
+        "front-right-inset": {
+          "iou": 0.8523706896551724,
+          "matched": true
+        },
+        "front-left-inset": {
+          "iou": 0.1561878600274697,
+          "matched": false
+        },
+        "beveled-bottom-section": {
+          "iou": 0.8516129032258064,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-front-insets": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "pilot-measurement-dash": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 203.57400000000052,
+      "timesMs": [
+        212.48170000000027,
+        199.14420000000246,
+        199.23349999999846,
+        210.5619000000006,
+        202.95030000000042,
+        211.62289999999848,
+        203.1827000000012,
+        197.08719999999812,
+        200.742000000002,
+        205.04060000000027,
+        201.46340000000055,
+        212.4297000000006,
+        203.57400000000052,
+        212.51120000000083,
+        203.634399999999
+      ]
+    },
+    {
+      "id": "cellar-guards",
+      "limit": 1000,
+      "width": 1000,
+      "height": 678,
+      "loops": {
+        "nested-window-inner": {
+          "iou": 0.951473136915078,
+          "matched": true
+        },
+        "nested-window-outer": {
+          "iou": 0.7717900656044986,
+          "matched": true
+        },
+        "guard-middle-pane": {
+          "iou": 0.2773722627737226,
+          "matched": false
+        },
+        "wide-guard-middle-pane": {
+          "iou": 0.5510204081632653,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "nested-window-top-clearance": {
+          "endpoints": 0,
+          "connected": false
+        },
+        "guard-below-pickets": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 63.401200000000244,
+      "timesMs": [
+        63.401200000000244,
+        65.62390000000232,
+        63.163900000003196,
+        63.10159999999814,
+        63.927999999999884,
+        62.0044999999991,
+        63.35490000000209,
+        62.908400000000256,
+        63.802999999999884,
+        63.71450000000186,
+        63.28089999999793,
+        63.25109999999768,
+        63.95669999999882,
+        70.53169999999955,
+        72.6743000000024
+      ]
+    },
+    {
+      "id": "cellar-guards",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1356,
+      "loops": {
+        "nested-window-inner": {
+          "iou": 0.9584988751136854,
+          "matched": true
+        },
+        "nested-window-outer": {
+          "iou": 0.7865901280849734,
+          "matched": true
+        },
+        "guard-middle-pane": {
+          "iou": 0.30141843971631205,
+          "matched": false
+        },
+        "wide-guard-middle-pane": {
+          "iou": 0.7430167597765364,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "nested-window-top-clearance": {
+          "endpoints": 0,
+          "connected": false
+        },
+        "guard-below-pickets": {
+          "endpoints": 0,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 242.26859999999942,
+      "timesMs": [
+        234.61039999999775,
+        256.13270000000193,
+        246.5630999999994,
+        250.98749999999927,
+        229.47379999999976,
+        242.26859999999942,
+        229.37290000000212,
+        245.5558000000019,
+        231.08179999999993,
+        242.75670000000173,
+        239.89140000000043,
+        263.27040000000125,
+        240.54659999999785,
+        243.35959999999977,
+        228.7889000000032
+      ]
+    },
+    {
+      "id": "boiler-skylight",
+      "limit": 1000,
+      "width": 1000,
+      "height": 692,
+      "loops": {
+        "truss-large-port": {
+          "iou": 0.9033333333333333,
+          "matched": true
+        },
+        "truss-middle-port": {
+          "iou": 0.8260869565217391,
+          "matched": true
+        },
+        "truss-small-port": {
+          "iou": 0.746268656716418,
+          "matched": true
+        },
+        "skylight-pane": {
+          "iou": 0.7640625,
+          "matched": true
+        },
+        "elevator-panel": {
+          "iou": 0.4508710801393728,
+          "matched": false
+        }
+      },
+      "gaps": {
+        "separate-truss-ports": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "port-and-lower-beam": {
+          "endpoints": 1,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 115.96730000000025,
+      "timesMs": [
+        122.24310000000332,
+        123.94470000000001,
+        133.99920000000202,
+        117.71769999999742,
+        116.79160000000047,
+        114.03020000000106,
+        114.66489999999976,
+        114.90020000000004,
+        116.42119999999704,
+        136.24470000000292,
+        113.7631999999976,
+        114.33699999999953,
+        115.96730000000025,
+        113.01429999999891,
+        115.68419999999969
+      ]
+    },
+    {
+      "id": "boiler-skylight",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1383,
+      "loops": {
+        "truss-large-port": {
+          "iou": 0.9539473684210527,
+          "matched": true
+        },
+        "truss-middle-port": {
+          "iou": 0.9421338155515371,
+          "matched": true
+        },
+        "truss-small-port": {
+          "iou": 0.7464788732394366,
+          "matched": true
+        },
+        "skylight-pane": {
+          "iou": 0.8392993145468393,
+          "matched": true
+        },
+        "elevator-panel": {
+          "iou": 0.08226810881678139,
+          "matched": false
+        }
+      },
+      "gaps": {
+        "separate-truss-ports": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "port-and-lower-beam": {
+          "endpoints": 1,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 387.1935999999987,
+      "timesMs": [
+        389.02730000000156,
+        367.8305999999975,
+        387.1935999999987,
+        376.6166999999987,
+        379.38580000000366,
+        383.84939999999915,
+        366.3689999999988,
+        413.86439999999857,
+        391.3387999999977,
+        389.1281000000017,
+        415.004399999998,
+        410.70130000000063,
+        399.9522999999972,
+        376.1579999999958,
+        380.3073000000004
+      ]
+    },
+    {
+      "id": "roof-ironwork",
+      "limit": 1000,
+      "width": 1000,
+      "height": 609,
+      "loops": {
+        "upper-plan-panel": {
+          "iou": 0.8660130718954249,
+          "matched": true
+        },
+        "lower-plan-bay": {
+          "iou": 0.6920731707317073,
+          "matched": true
+        },
+        "brace-and-upper-rail": {
+          "iou": 0,
+          "matched": false
+        }
+      },
+      "gaps": {
+        "adjacent-plan-rails": {
+          "endpoints": 0,
+          "connected": false
+        },
+        "separate-roof-rails": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 85.35800000000017,
+      "timesMs": [
+        86.44129999999859,
+        84.44259999999485,
+        84.59719999999652,
+        87.08550000000105,
+        84.61099999999715,
+        85.43379999999888,
+        102.34619999999995,
+        95.51030000000173,
+        97.76399999999558,
+        83.82530000000406,
+        85.35800000000017,
+        85.00279999999475,
+        83.95630000000529,
+        84.95040000000154,
+        85.45730000000185
+      ]
+    },
+    {
+      "id": "roof-ironwork",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1218,
+      "loops": {
+        "upper-plan-panel": {
+          "iou": 0.8584278451310129,
+          "matched": true
+        },
+        "lower-plan-bay": {
+          "iou": 0.7115091463414634,
+          "matched": true
+        },
+        "brace-and-upper-rail": {
+          "iou": 0.2754770604953309,
+          "matched": false
+        }
+      },
+      "gaps": {
+        "adjacent-plan-rails": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-roof-rails": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 290.72639999999956,
+      "timesMs": [
+        294.27530000000115,
+        274.8672000000006,
+        291.38359999999375,
+        275.7872999999963,
+        291.2882000000027,
+        276.1435999999958,
+        290.72639999999956,
+        275.62139999999636,
+        292.55680000000575,
+        275.23619999999937,
+        293.9979000000021,
+        277.1955999999991,
+        293.3413999999975,
+        272.47699999999895,
+        292.2042000000001
+      ]
+    }
+  ]
+}

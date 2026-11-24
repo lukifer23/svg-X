@@ -70,6 +70,9 @@ The [weak-stroke benchmark](../results/WEAK-STROKE-SPANS.md) documents the
 reference corrections, trace timings, and source provenance.
 The [loop recheck](../results/LOOP-RECHECK.md) audits the original misses
 and qualifies the corner and close-outline changes on two further scans.
+The [medallion qualification](../results/MEDALLION-RECOVERY.md) covers
+the inner frame at both working sizes, the separately reviewed inner rim
+at 2,000 pixels, and two additional archival holdouts.
 
 The [Velocipede rim benchmark](../results/VELOCIPEDE-RIM.md) measures the
 best individual closed subpath as well as the complete SVG. Fork

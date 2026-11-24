@@ -98,39 +98,47 @@ export const traceScanInk = (
   const minimumRun = MINIMUM_RUN * resolutionScale;
   const wideMinimumRun = WIDE_MINIMUM_RUN * resolutionScale;
   const contrast = new Uint8Array(tones.length);
-  // Interpolate between tile centers to keep tile boundaries out of the mask.
-  const xTile = new Int32Array(width);
-  const xFraction = new Float32Array(width);
-  for (let x = 0; x < width; x += 1) {
+  // Tile-center interpolation is dyadic. Carry the exact fractions as
+  // integers and increment the interpolation within each horizontal span.
+  const fractionBits = Math.log2(TILE_SIZE) + 1;
+  const fractionScale = 1 << fractionBits;
+  const shift = fractionBits * 2;
+  const round = 1 << (shift - 1);
+  const paperRow = new Uint16Array(columns);
+  const firstCenter = Math.min(width, TILE_SIZE / 2);
+  const lastCenter = Math.min(width, (columns - 0.5) * TILE_SIZE);
+  for (let y = 0; y < height; y += 1) {
     const blend = Math.max(
       0,
-      Math.min(columns - 1, (x + 0.5) / TILE_SIZE - 0.5),
+      Math.min((rows - 1) * fractionScale, 2 * y + 1 - TILE_SIZE),
     );
-    xTile[x] = Math.floor(blend);
-    xFraction[x] = blend - xTile[x];
-  }
-  const paperRow = new Float32Array(columns + 1);
-  for (let y = 0; y < height; y += 1) {
-    const blend = Math.max(0, Math.min(rows - 1, (y + 0.5) / TILE_SIZE - 0.5));
-    const y0 = Math.floor(blend);
+    const y0 = blend >> fractionBits;
     const y1 = Math.min(rows - 1, y0 + 1);
-    const fy = blend - y0;
+    const fy = blend - y0 * fractionScale;
+    const row0 = y0 * columns;
+    const row1 = y1 * columns;
     for (let column = 0; column < columns; column += 1) {
-      const top = paper[y0 * columns + column];
-      paperRow[column] = top + (paper[y1 * columns + column] - top) * fy;
+      const top = paper[row0 + column];
+      paperRow[column] =
+        top * fractionScale + (paper[row1 + column] - top) * fy;
     }
-    paperRow[columns] = paperRow[columns - 1];
-    for (let x = 0; x < width; x += 1) {
-      const x0 = xTile[x];
-      const top = paperRow[x0];
-      const index = y * width + x;
-      contrast[index] = Math.max(
-        0,
-        Math.round(
-          top + (paperRow[x0 + 1] - top) * xFraction[x] - tones[index],
-        ),
-      );
+    const row = y * width;
+    const left = (paperRow[0] + fractionScale / 2) >> fractionBits;
+    const right = (paperRow[columns - 1] + fractionScale / 2) >> fractionBits;
+    let x = 0;
+    for (; x < firstCenter; x += 1)
+      contrast[row + x] = Math.max(0, left - tones[row + x]);
+    for (let column = 0; x < lastCenter; column += 1) {
+      const gradient = paperRow[column + 1] - paperRow[column];
+      let value = paperRow[column] * fractionScale + gradient + round;
+      const end = Math.min(x + TILE_SIZE, lastCenter);
+      for (; x < end; x += 1) {
+        contrast[row + x] = Math.max(0, (value >> shift) - tones[row + x]);
+        value += 2 * gradient;
+      }
     }
+    for (; x < width; x += 1)
+      contrast[row + x] = Math.max(0, right - tones[row + x]);
   }
   const minimumContrast = Math.max(10, Math.round((255 - inkThreshold) / 8));
   const solidContrast = Math.max(32, 255 - inkThreshold);
@@ -142,6 +150,7 @@ export const traceScanInk = (
   const inside = (x: number, y: number) =>
     x >= 0 && y >= 0 && x < width && y < height;
   const acrossOffsets = AXES.map(([dx, dy]) => dx * width - dy);
+  const alongOffsets = AXES.map(([dx, dy]) => dy * width + dx);
   const rightEdge = width - narrowRadius;
   const bottomEdge = height - narrowRadius;
   // In small native scans, a one-pixel valley can be an antialias
@@ -251,17 +260,27 @@ export const traceScanInk = (
     if (!ridges[index]) continue;
     const x = index % width;
     const y = (index - x) / width;
+    const interior =
+      x >= minimumRun &&
+      y >= minimumRun &&
+      x < width - minimumRun &&
+      y < height - minimumRun;
+    const directions = ridges[index];
     for (let axis = 0; axis < AXES.length; axis += 1) {
       const bit = 1 << axis;
-      if (!(ridges[index] & bit)) continue;
+      if (!(directions & bit)) continue;
       const [dx, dy] = AXES[axis];
+      const offset = alongOffsets[axis];
       let run = 1;
       for (const direction of DIRECTIONS) {
+        const delta = offset * direction;
         for (let step = 1; step < minimumRun && run < minimumRun; step += 1) {
-          const nx = x + dx * step * direction;
-          const ny = y + dy * step * direction;
-          if (!inside(nx, ny)) break;
-          const next = ny * width + nx;
+          if (
+            !interior &&
+            !inside(x + dx * step * direction, y + dy * step * direction)
+          )
+            break;
+          const next = index + delta * step;
           if (!(ridges[next] & bit) && contrast[next] < solidContrast) break;
           run += 1;
         }
@@ -320,17 +339,24 @@ export const traceScanInk = (
     distance: number;
   }> = [];
   for (const start of anchors) {
-    if (!ridges[start]) continue;
+    const directions = ridges[start];
+    if (!directions) continue;
     const x = start % width;
     const y = (start - x) / width;
+    const interior = x >= 5 && y >= 5 && x < width - 5 && y < height - 5;
     for (let axis = 0; axis < AXES.length; axis += 1) {
       const bit = 1 << axis;
-      if (!(ridges[start] & bit)) continue;
+      if (!(directions & bit)) continue;
       const [dx, dy] = AXES[axis];
-      const offset = dy * width + dx;
+      const offset = alongOffsets[axis];
       for (const sign of DIRECTIONS) {
-        for (let distance = 1; distance <= 5; distance += 1) {
-          if (!inside(x + sign * dx * distance, y + sign * dy * distance))
+        const first = start + sign * offset;
+        if (mask[first] || contrast[first] < minimumContrast) continue;
+        for (let distance = 2; distance <= 5; distance += 1) {
+          if (
+            !interior &&
+            !inside(x + sign * dx * distance, y + sign * dy * distance)
+          )
             break;
           const end = start + sign * offset * distance;
           if (contrast[end] < minimumContrast) break;
@@ -340,11 +366,10 @@ export const traceScanInk = (
           const sameAxis = (ridges[end] & bit) !== 0;
           const perpendicular =
             axis < 2 && (ridges[end] & (1 << (1 - axis))) !== 0;
-          if (
-            distance > 1 &&
-            (sameAxis || perpendicular) &&
-            root(start) !== root(end)
-          )
+          // Collinear bridges are visited from both ends. Keep the first
+          // visit so the distance sort retains its original tie order.
+          if (sameAxis && end < start) break;
+          if ((sameAxis || perpendicular) && root(start) !== root(end))
             proposals.push({ start, end, offset: sign * offset, distance });
           break;
         }
@@ -375,9 +400,9 @@ export const traceScanInk = (
       const across = dx * width - dy;
       const first = start + along;
       if (
-        !inside(x + dx, y + dy) ||
         connected[first] ||
-        contrast[first] < gapFloor
+        contrast[first] < gapFloor ||
+        !inside(x + dx, y + dy)
       )
         continue;
       for (let length = 2; length <= 3; length += 1) {
