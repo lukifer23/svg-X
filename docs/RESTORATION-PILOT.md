@@ -85,4 +85,65 @@ model within its VRAM budget. Improving transfer to real scans is the
 next bottleneck. Collect independently annotated real scan crops for
 training and validation, retain the seven archival scans as a test set,
 and compare a model feeding the existing repair stages with production
-alone. This run qualified only the plain centerline route after restoration.
+alone. The first run evaluated only the plain centerline route after
+restoration.
+
+## Real-scan adaptation and complete run
+
+```powershell
+New-Item -ItemType Directory -Force artifacts | Out-Null
+npm run restoration:pilot -- artifacts/restoration-run-2 cuda
+```
+
+The command generates and audits the procedural pairs, trains the synthetic
+checkpoint, adapts it using the reviewed crops, scores the procedural
+holdout, then runs the CPU archival test against production. Results include
+both NumPy checkpoints, model logs, the archival gate report, source and
+restored PNGs, and actual SVGs for the production and three learned routes.
+Pass `cpu` for training on a machine that lacks CUDA.
+
+The [reviewed crop manifest](../examples/training-data/real-scans/manifest.json)
+pins six crops from three historical patent sheets by document, PDF page,
+source and crop hashes, and bounds. The sewing machine and circuit controller
+are training documents. The hydraulic governor is a separate validation
+document. All seven archival qualification scans stay outside both sets.
+Ink bands and blank-paper rectangles were marked by inspecting the original
+sheets. Only dark source pixels inside the marked ink bands receive a
+positive label. Paper rectangles provide negative labels, and every other
+pixel is excluded from the real-crop loss. This is sparse supervision from
+reviewed regions. It leaves faint ink outside the marked bands unlabelled.
+[Tesla circuit controller](https://patents.google.com/patent/US609251A/en) ·
+[Cornely sewing machine](https://patents.google.com/patent/US219225A/en) ·
+[Gray hydraulic governor](https://patents.google.com/patent/US402015A/en)
+
+At batch size 12, adaptation uses three reviewed patches alongside twelve
+procedural patches per step, weighting the real-crop loss at 25%.
+The 300-step run reduced validation loss on the reviewed document from
+0.2073 to 0.1686 and increased ink recall from 98.25% to 99.56%, with zero
+predicted ink pixels in the reviewed paper rectangles in either checkpoint.
+The adapted model scored 0.867 F1 on the single-family procedural holdout,
+down from 0.883. [Adaptation report](../results/scan-restoration-adapted-training.json) ·
+[Procedural holdout report](../results/scan-restoration-adapted-pairs.json)
+
+| Route                                                  | Matched archival loop checks | Outcome                                                                        |
+| ------------------------------------------------------ | ---------------------------: | ------------------------------------------------------------------------------ |
+| Production scan cleanup and repair                     |                           18 | Reference                                                                      |
+| Original model followed by existing cleanup and repair |                           16 | Recovered fewer loops and added ink in a paper zone                            |
+| Adapted model followed by plain centerline             |                           14 | Recovered fewer loops and added ink in a paper zone                            |
+| Adapted model followed by existing cleanup and repair  |                           17 | Recovered fewer loops and closed an annotated gap                              |
+| Adapted model as a guide for supplemental repair       |                           18 | Preserved all measured production geometry checks and recovered no extra loops |
+
+Guided repair starts with the production skeleton and runs its normal repairs
+first. For a supplemental bridge it requires a weak ridge in the original
+scan, a confident and narrow ridge in the model output, aligned endpoints,
+and a collision-free route. The learned hint can support a faint stroke
+without replacing the input raster. A regression test covers both a real
+signal in an otherwise weak gap and an erased gap. On the archival test
+the guide preserved the production loop, gap, paper and ink checkpoints.
+It added latency without recovering an additional verified loop, so the
+production setting continues to use the established pipeline. Five of
+the 14 guided SVGs differ byte-for-byte from production, with identical
+scores on the measured checkpoints. Median
+added CPU time was 146 ms at 1,000 px and 587 ms at 2,000 px.
+[Original hybrid report](../results/scan-restoration-hybrid-control.json) ·
+[Adapted archival report](../results/scan-restoration-adapted-guidance.json)

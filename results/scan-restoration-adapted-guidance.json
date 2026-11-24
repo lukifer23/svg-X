@@ -1,0 +1,2342 @@
+{
+  "schemaVersion": 2,
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "platform": "win32",
+  "node": "v24.19.0",
+  "checkpointStep": 300,
+  "threads": 4,
+  "tile": 256,
+  "inferenceMs": {
+    "bell-optical-sketch-1000": [
+      150.37510002730414,
+      170.39720003958791,
+      141.25120005337521
+    ],
+    "bell-optical-sketch-2000": [
+      668.3492999873124,
+      675.4925000132062,
+      607.8435000381432
+    ],
+    "bell-relay-alt-1000": [
+      175.6734999944456,
+      145.82889998564497,
+      130.5986000224948
+    ],
+    "bell-relay-alt-2000": [
+      651.8670000368729,
+      551.4061999856494,
+      575.8027999545448
+    ],
+    "bell-telephone-relay-1000": [
+      115.85689999628812,
+      120.15510001219809,
+      139.4092999980785
+    ],
+    "bell-telephone-relay-2000": [
+      587.6061999588273,
+      605.1621999940835,
+      534.7476999741048
+    ],
+    "edison-meter-1000": [
+      141.21410000370815,
+      111.38920002849773,
+      157.10340003715828
+    ],
+    "edison-meter-2000": [
+      516.2939999718219,
+      532.4079000274651,
+      535.8326000277884
+    ],
+    "multiple-telegraph-1000": [
+      150.36579995648935,
+      150.70649998961017,
+      149.74470000015572
+    ],
+    "multiple-telegraph-2000": [
+      637.4926000135019,
+      640.0079000159167,
+      690.4375999583863
+    ],
+    "photophone-1000": [
+      82.6504000579007,
+      80.15710004838184,
+      83.32050003809854
+    ],
+    "photophone-2000": [
+      99.27140001673251,
+      78.68890004465356,
+      84.61770002031699
+    ],
+    "telephone-1000": [
+      104.87079998711124,
+      103.66560000693426,
+      121.26050004735589
+    ],
+    "telephone-2000": [
+      453.68799997959286,
+      454.7008000081405,
+      419.9722000048496
+    ]
+  },
+  "checkpointSha256": "3f4ab7654b878192a6e90290262a08be86b0ab5dff09ec0d2f50d0826e543993",
+  "loops": {
+    "raw": 12,
+    "current": 18,
+    "learned": 14,
+    "hybrid": 17,
+    "guided": 18
+  },
+  "gates": {
+    "learned": {
+      "gainsLoops": false,
+      "preservesMatchedLoops": false,
+      "preservesOpenGaps": true,
+      "addsNoPaperInk": false,
+      "preservesInk": false,
+      "fitsCpuBudget": true
+    },
+    "hybrid": {
+      "gainsLoops": false,
+      "preservesMatchedLoops": false,
+      "preservesOpenGaps": false,
+      "addsNoPaperInk": false,
+      "preservesInk": false,
+      "fitsCpuBudget": false
+    },
+    "guided": {
+      "gainsLoops": false,
+      "preservesMatchedLoops": true,
+      "preservesOpenGaps": true,
+      "addsNoPaperInk": true,
+      "preservesInk": true,
+      "fitsCpuBudget": true
+    }
+  },
+  "qualified": {
+    "learned": false,
+    "hybrid": false,
+    "guided": false
+  },
+  "report": [
+    {
+      "name": "photophone-1000",
+      "limit": 1000,
+      "sourceSha256": "1e43bfea68f1328383c218146712be0a17c806d05a9a66c13cf73635adb2d04f",
+      "width": 1000,
+      "height": 468,
+      "raw": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.0060763540090096125,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 16.285799999997835,
+        "samplesMs": [
+          29.03820000000269,
+          13.330299999997806,
+          16.285799999997835
+        ]
+      },
+      "current": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.3654403567447046,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 64.44540000000052,
+        "samplesMs": [
+          134.4478999999992,
+          61.558099999998376,
+          64.44540000000052
+        ]
+      },
+      "learned": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.6198218262806237,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 14.1974999999984,
+        "samplesMs": [
+          13.898799999999028,
+          15.536299999999756,
+          14.1974999999984
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.46948775055679287,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 39.56299999999828,
+        "samplesMs": [
+          39.18660000000091,
+          45.11880000000019,
+          39.56299999999828
+        ]
+      },
+      "guided": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.3654403567447046,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 51.412100000001374,
+        "samplesMs": [
+          45.16820000000007,
+          52.376399999997375,
+          51.412100000001374
+        ]
+      },
+      "addedMs": 32.40250005789858,
+      "hybridAddedMs": 57.76800005789846,
+      "guidedAddedMs": 69.61710005790155
+    },
+    {
+      "name": "photophone-2000",
+      "limit": 2000,
+      "sourceSha256": "1e43bfea68f1328383c218146712be0a17c806d05a9a66c13cf73635adb2d04f",
+      "width": 1024,
+      "height": 479,
+      "raw": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.006173958091274807,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 11.77889999999752,
+        "samplesMs": [
+          11.77889999999752,
+          12.549499999997352,
+          9.5724999999984
+        ]
+      },
+      "current": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.33726067746686306,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 37.33549999999741,
+        "samplesMs": [
+          36.52509999999893,
+          37.81910000000062,
+          37.33549999999741
+        ]
+      },
+      "learned": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.6453305351521511,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 13.15809999999692,
+        "samplesMs": [
+          14.445800000001327,
+          13.15809999999692,
+          12.684000000001106
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.4551941238195173,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 35.29690000000119,
+        "samplesMs": [
+          36.444500000001426,
+          35.29690000000119,
+          34.70280000000275
+        ]
+      },
+      "guided": {
+        "loops": {
+          "receiver-outer-ring": {
+            "iou": 0.33726067746686306,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          3
+        ],
+        "open": {
+          "contact-gap": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 45.07969999999841,
+        "samplesMs": [
+          38.736799999998766,
+          47.08039999999892,
+          45.07969999999841
+        ]
+      },
+      "addedMs": 60.4403000203165,
+      "hybridAddedMs": 82.57910002032077,
+      "guidedAddedMs": 92.36190002031799
+    },
+    {
+      "name": "telephone-1000",
+      "limit": 1000,
+      "sourceSha256": "3d459932a20a24c539a9caa1bbf88ee753a39976e37c395842f4c632f121657e",
+      "width": 608,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.3804347826086957,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8522483940042827,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 15.525700000001962,
+        "samplesMs": [
+          16.513200000001234,
+          15.525700000001962,
+          15.481599999999162
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.6802575107296137,
+            "matched": true
+          },
+          "lower-box-face": {
+            "iou": 0.49767441860465117,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          45
+        ],
+        "open": {
+          "horn-mouth-gap": false
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 73.89819999999963,
+        "samplesMs": [
+          73.89819999999963,
+          74.24449999999706,
+          73.26610000000073
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.375,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          31
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 19.631199999999808,
+        "samplesMs": [
+          19.631199999999808,
+          19.223900000000867,
+          20.359200000002602
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.3880778588807786,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8361702127659575,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          38
+        ],
+        "open": {
+          "horn-mouth-gap": false
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 65.78979999999865,
+        "samplesMs": [
+          66.2465000000011,
+          65.78979999999865,
+          65.33829999999944
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.6802575107296137,
+            "matched": true
+          },
+          "lower-box-face": {
+            "iou": 0.49767441860465117,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          45
+        ],
+        "open": {
+          "horn-mouth-gap": false
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 78.6749000000018,
+        "samplesMs": [
+          78.6749000000018,
+          77.7989000000016,
+          78.86620000000039
+        ]
+      },
+      "addedMs": 50.603799987111415,
+      "hybridAddedMs": 96.76239998711026,
+      "guidedAddedMs": 109.6474999871134
+    },
+    {
+      "name": "telephone-2000",
+      "limit": 2000,
+      "sourceSha256": "3d459932a20a24c539a9caa1bbf88ee753a39976e37c395842f4c632f121657e",
+      "width": 1200,
+      "height": 1975,
+      "raw": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.35564730168092007,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8594997339010112,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 60.02520000000004,
+        "samplesMs": [
+          60.02520000000004,
+          60.29320000000007,
+          57.64969999999812
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.41602465331278893,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.9403620873269436,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          75
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 354.92059999999765,
+        "samplesMs": [
+          354.92059999999765,
+          397.95590000000084,
+          247.52569999999832
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.34454574033322855,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.04062326099053979,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          69
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 74.4842000000026,
+        "samplesMs": [
+          73.55949999999939,
+          74.4842000000026,
+          83.47699999999895
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.36420302760463047,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.8599574014909478,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          102
+        ],
+        "open": {
+          "horn-mouth-gap": false
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 291.1226999999999,
+        "samplesMs": [
+          291.1226999999999,
+          303.0069000000003,
+          286.5472000000009
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-box": {
+            "iou": 0.41602465331278893,
+            "matched": false
+          },
+          "lower-box-face": {
+            "iou": 0.9403620873269436,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          75
+        ],
+        "open": {
+          "horn-mouth-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "traceMs": 262.7013999999981,
+        "samplesMs": [
+          265.1472999999969,
+          248.62869999999748,
+          262.7013999999981
+        ]
+      },
+      "addedMs": 173.2515999795978,
+      "hybridAddedMs": 389.8900999795951,
+      "guidedAddedMs": 361.4687999795933
+    },
+    {
+      "name": "multiple-telegraph-1000",
+      "limit": 1000,
+      "sourceSha256": "3544d3fe71152e154f91b120c9944dd33cf554c93a2b7c54e3e4bc9588af1ac3",
+      "width": 812,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006544069341671717,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009095492485778744,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 17.581700000002456,
+        "samplesMs": [
+          17.26589999999851,
+          17.666799999999057,
+          17.581700000002456
+        ]
+      },
+      "current": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.8707865168539326,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9437669376693767,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 81.02059999999983,
+        "samplesMs": [
+          83.10250000000087,
+          81.02059999999983,
+          80.87930000000051
+        ]
+      },
+      "learned": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006303739378199148,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009287087644152876,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 27.076199999999517,
+        "samplesMs": [
+          30.244199999997363,
+          27.076199999999517,
+          26.79359999999724
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.8621973929236499,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9547814207650274,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 73.23890000000029,
+        "samplesMs": [
+          73.29479999999967,
+          73.23890000000029,
+          71.77899999999863
+        ]
+      },
+      "guided": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.8707865168539326,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9437669376693767,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 85.07270000000062,
+        "samplesMs": [
+          85.07270000000062,
+          83.86219999999958,
+          85.27669999999853
+        ]
+      },
+      "addedMs": 96.42139995648904,
+      "hybridAddedMs": 142.5840999564898,
+      "guidedAddedMs": 154.41789995649015
+    },
+    {
+      "name": "multiple-telegraph-2000",
+      "limit": 2000,
+      "sourceSha256": "3544d3fe71152e154f91b120c9944dd33cf554c93a2b7c54e3e4bc9588af1ac3",
+      "width": 1623,
+      "height": 2000,
+      "raw": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.0006448180037007777,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.009051053238942201,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "traceMs": 89.53610000000481,
+        "samplesMs": [
+          91.90509999999631,
+          89.53610000000481,
+          85.86480000000302
+        ]
+      },
+      "current": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.9148737137511693,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9667234332425068,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 277.34539999999834,
+        "samplesMs": [
+          277.34539999999834,
+          276.07530000000406,
+          279.2508999999991
+        ]
+      },
+      "learned": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.410346976937461,
+            "matched": false
+          },
+          "receiver-block": {
+            "iou": 0.018145891019779124,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 106.25879999999597,
+        "samplesMs": [
+          111.0060999999987,
+          105.32219999999506,
+          106.25879999999597
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.9145658263305322,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9668725052028249,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 408.91419999999925,
+        "samplesMs": [
+          376.4380999999994,
+          408.91419999999925,
+          417.80280000000494
+        ]
+      },
+      "guided": {
+        "loops": {
+          "lower-transmitter-terminal": {
+            "iou": 0.9148737137511693,
+            "matched": true
+          },
+          "receiver-block": {
+            "iou": 0.9667234332425068,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "switch-gap": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 302.68099999999686,
+        "samplesMs": [
+          302.68099999999686,
+          313.7393000000011,
+          301.5538000000015
+        ]
+      },
+      "addedMs": 468.9213000159143,
+      "hybridAddedMs": 771.5767000159176,
+      "guidedAddedMs": 665.3435000159152
+    },
+    {
+      "name": "bell-optical-sketch-1000",
+      "limit": 1000,
+      "sourceSha256": "46a04635460030f2c5032662034c280948fface6b9ad3b1310f57d4e83b0673b",
+      "width": 1000,
+      "height": 816,
+      "raw": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8476714100905562,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 28.12120000000141,
+        "samplesMs": [
+          28.12120000000141,
+          31.18409999999858,
+          27.635699999998906
+        ]
+      },
+      "current": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8495145631067961,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          8,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 52.050100000000384,
+        "samplesMs": [
+          52.050100000000384,
+          51.37619999999879,
+          57.35090000000491
+        ]
+      },
+      "learned": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8670763260025873,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          5,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 27.06210000000283,
+        "samplesMs": [
+          26.34019999999873,
+          27.144899999999325,
+          27.06210000000283
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8555735056542811,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          9,
+          3
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 52.98880000000645,
+        "samplesMs": [
+          54.051699999996345,
+          52.98880000000645,
+          50.34060000000318
+        ]
+      },
+      "guided": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8495145631067961,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          8,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 54.47729999999865,
+        "samplesMs": [
+          55.28029999999853,
+          52.98780000000261,
+          54.47729999999865
+        ]
+      },
+      "addedMs": 125.38710002730659,
+      "hybridAddedMs": 151.3138000273102,
+      "guidedAddedMs": 152.8023000273024
+    },
+    {
+      "name": "bell-optical-sketch-2000",
+      "limit": 2000,
+      "sourceSha256": "46a04635460030f2c5032662034c280948fface6b9ad3b1310f57d4e83b0673b",
+      "width": 2000,
+      "height": 1631,
+      "raw": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8555295636040978,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 145.04189999999653,
+        "samplesMs": [
+          147.98719999999594,
+          143.19219999999768,
+          145.04189999999653
+        ]
+      },
+      "current": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8590095176641394,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          16,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 204.28450000000157,
+        "samplesMs": [
+          204.28450000000157,
+          203.12100000000646,
+          208.0210999999981
+        ]
+      },
+      "learned": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8505191982612895,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          13,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 95.46280000000115,
+        "samplesMs": [
+          99.92089999999735,
+          95.46280000000115,
+          94.85899999999674
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8509421807054276,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          22,
+          9
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 208.73449999999866,
+        "samplesMs": [
+          214.75940000000264,
+          207.62400000000343,
+          208.73449999999866
+        ]
+      },
+      "guided": {
+        "loops": {
+          "optical-aperture": {
+            "iou": 0.8590095176641394,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          16,
+          0
+        ],
+        "open": {
+          "aperture-and-upper-ray": true
+        },
+        "inkHits": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 214.93819999999687,
+        "samplesMs": [
+          217.46860000000015,
+          214.7378999999928,
+          214.93819999999687
+        ]
+      },
+      "addedMs": 559.527599987312,
+      "hybridAddedMs": 672.7992999873095,
+      "guidedAddedMs": 679.0029999873077
+    },
+    {
+      "name": "bell-telephone-relay-1000",
+      "limit": 1000,
+      "sourceSha256": "09e54c34ad4983f112e3d7c044a915600853f28cbd8178836f93deaa4ce5abb8",
+      "width": 1000,
+      "height": 712,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7941429801894918,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8931297709923665,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 45.01909999999771,
+        "samplesMs": [
+          45.49790000000212,
+          45.01909999999771,
+          44.38269999999466
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7723785166240409,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8256997455470738,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          6,
+          3
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 52.281199999997625,
+        "samplesMs": [
+          52.66949999999633,
+          52.281199999997625,
+          52.07419999999547
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7932816537467701,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8979074191502854,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 20.656600000002072,
+        "samplesMs": [
+          20.41270000000077,
+          22.313200000004144,
+          20.656600000002072
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7822719449225474,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8482142857142857,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 46.43850000000384,
+        "samplesMs": [
+          47.158599999995204,
+          45.235200000002806,
+          46.43850000000384
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7723785166240409,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8256997455470738,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          6,
+          3
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 56.12980000000243,
+        "samplesMs": [
+          57.09870000000228,
+          56.12980000000243,
+          55.00020000000222
+        ]
+      },
+      "addedMs": 88.53050001220254,
+      "hybridAddedMs": 114.31240001220431,
+      "guidedAddedMs": 124.0037000122029
+    },
+    {
+      "name": "bell-telephone-relay-2000",
+      "limit": 2000,
+      "sourceSha256": "09e54c34ad4983f112e3d7c044a915600853f28cbd8178836f93deaa4ce5abb8",
+      "width": 2000,
+      "height": 1423,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.787917737789203,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8945518453427065,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 292.86499999999796,
+        "samplesMs": [
+          292.86499999999796,
+          295.77939999999944,
+          288.0823999999993
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7778252510147404,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8590378775771136,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          4,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 195.9239000000016,
+        "samplesMs": [
+          190.0118999999977,
+          199.36139999999432,
+          195.9239000000016
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.75015879737455,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.9213214171720395,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          7,
+          3
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 80.57069999999658,
+        "samplesMs": [
+          84.40709999999672,
+          80.57069999999658,
+          79.25819999999658
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.749364406779661,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8608890310201471,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          26,
+          14
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 232.6298999999999,
+        "samplesMs": [
+          232.6298999999999,
+          239.19910000000527,
+          230.78369999999995
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7778252510147404,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8590378775771136,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          4,
+          0
+        ],
+        "open": {
+          "between-relay-channels": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 205.31470000000263,
+        "samplesMs": [
+          202.36899999999878,
+          205.5028999999995,
+          205.31470000000263
+        ]
+      },
+      "addedMs": 472.25299995882233,
+      "hybridAddedMs": 624.3121999588257,
+      "guidedAddedMs": 596.9969999588284
+    },
+    {
+      "name": "bell-relay-alt-1000",
+      "limit": 1000,
+      "sourceSha256": "1b8819ae669d7e362b9874c9a97fb889717d6274b884aeb5747f1bdf91f2d370",
+      "width": 1000,
+      "height": 716,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.6810422282120395,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8107861060329068,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 43.849600000001374,
+        "samplesMs": [
+          43.849600000001374,
+          43.56069999999454,
+          44.055599999999686
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.5611164581328201,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.6809480401093893,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          5
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 55.49409999999625,
+        "samplesMs": [
+          55.62479999999778,
+          55.49409999999625,
+          54.703199999996286
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.6177260519247986,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7974217311233885,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 22.815999999998894,
+        "samplesMs": [
+          21.426100000004226,
+          23.4545999999973,
+          22.815999999998894
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.48166431593794073,
+            "matched": false
+          },
+          "lower-terminal": {
+            "iou": 0.7525298988040479,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          11
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 47.92489999999816,
+        "samplesMs": [
+          47.92489999999816,
+          49.49199999999837,
+          47.76799999999639
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.5611164581328201,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.6809480401093893,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          5
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 56.715900000002875,
+        "samplesMs": [
+          56.783400000000256,
+          56.715900000002875,
+          56.70679999999993
+        ]
+      },
+      "addedMs": 113.15079998564761,
+      "hybridAddedMs": 138.25969998564688,
+      "guidedAddedMs": 147.0506999856516
+    },
+    {
+      "name": "bell-relay-alt-2000",
+      "limit": 2000,
+      "sourceSha256": "1b8819ae669d7e362b9874c9a97fb889717d6274b884aeb5747f1bdf91f2d370",
+      "width": 2000,
+      "height": 1431,
+      "raw": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.7117323556370303,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8168406718111666,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "traceMs": 276.3845999999976,
+        "samplesMs": [
+          280.2523999999976,
+          276.3845999999976,
+          276.12919999999576
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.63,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7548930359581247,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          11
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 200.54520000000048,
+        "samplesMs": [
+          200.54520000000048,
+          205.12129999999888,
+          200.23389999999927
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.60975,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.8063276836158192,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          21
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          false,
+          false
+        ],
+        "traceMs": 82.72649999999703,
+        "samplesMs": [
+          81.4971000000005,
+          91.14319999999861,
+          82.72649999999703
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.556920556920557,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7345594913714805,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          47
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "traceMs": 254.36450000000332,
+        "samplesMs": [
+          254.36450000000332,
+          254.95180000000255,
+          240.9472999999998
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-terminal": {
+            "iou": 0.63,
+            "matched": true
+          },
+          "lower-terminal": {
+            "iou": 0.7548930359581247,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          11
+        ],
+        "open": {
+          "channel-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 211.5587000000014,
+        "samplesMs": [
+          210.89340000000084,
+          214.76789999999892,
+          211.5587000000014
+        ]
+      },
+      "addedMs": 457.9840999545413,
+      "hybridAddedMs": 629.6220999545476,
+      "guidedAddedMs": 586.8162999545457
+    },
+    {
+      "name": "edison-meter-1000",
+      "limit": 1000,
+      "sourceSha256": "dbd7e7173c16e82a29b4c74762b31d9ee5bcc11ef5f549a35d275c3414d11ed7",
+      "width": 674,
+      "height": 1000,
+      "raw": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          false,
+          true,
+          false,
+          true
+        ],
+        "traceMs": 18.15439999999944,
+        "samplesMs": [
+          18.39639999999781,
+          18.09440000000177,
+          18.15439999999944
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.8968859231013664,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 80.73410000000149,
+        "samplesMs": [
+          80.73410000000149,
+          80.79409999999916,
+          77.54859999999462
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9246901811248809,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 25.59820000000036,
+        "samplesMs": [
+          27.406499999997322,
+          25.474499999996624,
+          25.59820000000036
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9116619002224341,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 61.03499999999622,
+        "samplesMs": [
+          61.286800000001676,
+          61.03499999999622,
+          59.40249999999651
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.8968859231013664,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 85.3784999999989,
+        "samplesMs": [
+          82.88490000000456,
+          85.47600000000239,
+          85.3784999999989
+        ]
+      },
+      "addedMs": 86.07820000370702,
+      "hybridAddedMs": 121.51500000370288,
+      "guidedAddedMs": 145.85850000370556
+    },
+    {
+      "name": "edison-meter-2000",
+      "limit": 2000,
+      "sourceSha256": "dbd7e7173c16e82a29b4c74762b31d9ee5bcc11ef5f549a35d275c3414d11ed7",
+      "width": 1347,
+      "height": 2000,
+      "raw": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.27475479407216785,
+            "matched": false
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          false,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 79.29729999999836,
+        "samplesMs": [
+          75.14700000000448,
+          84.56869999999617,
+          79.29729999999836
+        ]
+      },
+      "current": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9380488583745809,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 319.1735000000044,
+        "samplesMs": [
+          306.116399999999,
+          332.8396999999968,
+          319.1735000000044
+        ]
+      },
+      "learned": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9384504849718597,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 86.6504000000059,
+        "samplesMs": [
+          89.20860000000539,
+          86.6504000000059,
+          84.35330000000249
+        ]
+      },
+      "hybrid": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9402115346238276,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 251.83750000000146,
+        "samplesMs": [
+          265.10179999999673,
+          251.83750000000146,
+          242.42869999999675
+        ]
+      },
+      "guided": {
+        "loops": {
+          "upper-meter-chamber": {
+            "iou": 0.9380488583745809,
+            "matched": true
+          }
+        },
+        "paperStrokePixels": [
+          0
+        ],
+        "open": {
+          "outer-wire-clearance": true
+        },
+        "inkHits": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "traceMs": 316.12749999999505,
+        "samplesMs": [
+          306.30109999999695,
+          317.4662000000026,
+          316.12749999999505
+        ]
+      },
+      "addedMs": 299.88480002746655,
+      "hybridAddedMs": 465.0719000274621,
+      "guidedAddedMs": 529.3619000274557
+    }
+  ]
+}

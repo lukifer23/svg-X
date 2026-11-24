@@ -1,0 +1,22 @@
+{
+  "manifestSha256": "552ea38e6ea1885cc88a9d390cf50b8ba42fd619bf1cd34fd8f17e88bd2f9480",
+  "checkpointStep": 300,
+  "pairs": 48,
+  "groups": [
+    "svgx-pilot-pin-array"
+  ],
+  "metrics": {
+    "raw": {
+      "inkF1": 0.6842067068450736,
+      "truePositive": 197993,
+      "falsePositive": 1543,
+      "falseNegative": 181223
+    },
+    "learned": {
+      "inkF1": 0.8667701724369412,
+      "truePositive": 377673,
+      "falsePositive": 114560,
+      "falseNegative": 1543
+    }
+  }
+}

@@ -487,7 +487,15 @@ export const traceCenterlines = (
   width: number,
   height: number,
   options: WorkerConversionOptions,
+  repairGuide?: Uint8Array,
 ): VectorDocument => {
+  if (
+    repairGuide &&
+    (repairGuide.length !== width * height || !options.normalizeScanLighting)
+  )
+    throw new Error(
+      "A repair guide requires scan lighting and matching grayscale dimensions",
+    );
   const { mask, strongInk, evidence } = createBinaryMask(
     pixels,
     width,
@@ -531,6 +539,15 @@ export const traceCenterlines = (
         neighborBits(thinned, index, width, height, true),
       )
     : [];
+  if (evidence && repairGuide)
+    repairFadedCurves(
+      thinned,
+      width,
+      height,
+      evidence,
+      (index) => neighborBits(thinned, index, width, height, true),
+      repairGuide,
+    );
   const { subpaths } = walkSkeleton(
     thinned,
     width,

@@ -125,6 +125,107 @@ def loss_for(prediction, target):
     ).mean()
 
 
+def load_reviewed_scans(manifest):
+    contents = manifest.read_bytes()
+    config = json.loads(contents)
+    if config["version"] != 1:
+        raise ValueError("Unsupported reviewed-scan manifest")
+    splits = {"train": [], "validation": []}
+    documents = {}
+    seen = set()
+    for row in config["scans"]:
+        name, split, document = row["image"], row["split"], row["document"]
+        if Path(name).name != name or name in seen:
+            raise ValueError(f"Invalid or repeated crop: {name}")
+        seen.add(name)
+        if documents.setdefault(document, split) != split:
+            raise ValueError(f"Document appears across splits: {document}")
+        file = manifest.parent / name
+        if hashlib.sha256(file.read_bytes()).hexdigest() != row["sha256"]:
+            raise ValueError(f"Reviewed crop has changed: {name}")
+        gray = raster(file).astype(np.float32) / 255
+        height, width = gray.shape
+        labels = np.full(gray.shape, -1, dtype=np.float32)
+        for key, value in (("inkRegions", 1), ("paperRegions", 0)):
+            for x0, y0, x1, y1 in row[key]:
+                if not (0 <= x0 < x1 <= width and 0 <= y0 < y1 <= height):
+                    raise ValueError(f"Annotation outside crop: {name}")
+                zone = labels[y0:y1, x0:x1]
+                valid = (
+                    gray[y0:y1, x0:x1] < 180 / 255
+                    if value
+                    else np.ones(zone.shape, dtype=bool)
+                )
+                if np.any((zone[valid] != -1) & (zone[valid] != value)):
+                    raise ValueError(f"Conflicting reviewed labels: {name}")
+                zone[valid] = value
+        ink = np.argwhere(labels == 1)
+        if not len(ink) or not np.any(labels == 0):
+            raise ValueError(f"Reviewed crop needs both ink and paper: {name}")
+        splits[split].append((gray, labels, ink))
+    if not all(splits.values()):
+        raise ValueError("Reviewed train and validation documents are required")
+    return splits, hashlib.sha256(contents).hexdigest()
+
+
+def reviewed_patch(sample, size, rng):
+    gray, labels, ink = sample
+    height, width = gray.shape
+    if width < size or height < size:
+        pad = ((0, max(0, size - height)), (0, max(0, size - width)))
+        gray = np.pad(gray, pad, mode="edge")
+        labels = np.pad(labels, pad, constant_values=-1)
+    y, x = map(int, ink[rng.integers(len(ink))])
+    y = np.clip(
+        y - rng.integers(size // 4, max(size // 4 + 1, 3 * size // 4)),
+        0,
+        gray.shape[0] - size,
+    )
+    x = np.clip(
+        x - rng.integers(size // 4, max(size // 4 + 1, 3 * size // 4)),
+        0,
+        gray.shape[1] - size,
+    )
+    region = gray[y : y + size, x : x + size]
+    scale = rng.uniform(0.23, 1.0)
+    shadow = np.linspace(
+        rng.uniform(0.72, 1), rng.uniform(0.72, 1), size, dtype=np.float32
+    )
+    transformed = shadow * (1 - (1 - region) * scale)
+    return np.stack((transformed, labels[y : y + size, x : x + size]))
+
+
+def reviewed_loss(logits, labels):
+    ink = labels == 1
+    paper = labels == 0
+    return (
+        (F.softplus(-logits) * ink).sum() / ink.sum().clamp_min(1)
+        + (F.softplus(logits) * paper).sum() / paper.sum().clamp_min(1)
+    ) / 2
+
+
+@torch.inference_mode()
+def reviewed_metrics(model, samples, device):
+    loss = 0
+    ink_hit = ink_total = paper_hit = paper_total = 0
+    for gray, labels, _ in samples:
+        data = torch.from_numpy(gray)[None, None].to(device)
+        target = torch.from_numpy(labels)[None, None].to(device)
+        scores = model(data)
+        loss += reviewed_loss(scores, target).item()
+        ink_hit += ((scores >= 0) & (target == 1)).sum().item()
+        ink_total += (target == 1).sum().item()
+        paper_hit += ((scores >= 0) & (target == 0)).sum().item()
+        paper_total += (target == 0).sum().item()
+    return {
+        "loss": loss / len(samples),
+        "inkRecall": ink_hit / ink_total,
+        "paperFalsePositiveRate": paper_hit / paper_total,
+        "inkPixels": ink_total,
+        "paperPixels": paper_total,
+    }
+
+
 def train(args):
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
@@ -135,14 +236,25 @@ def train(args):
     if device.type == "cuda":
         torch.backends.cudnn.deterministic = True
     data, manifest_hash = load_pairs(args.dataset)
-    model = InkModel().to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.002)
+    reviewed, reviewed_hash = (
+        load_reviewed_scans(args.reviewed) if args.reviewed else (None, None)
+    )
+    model = (load_model(args.initialize)[0] if args.initialize else InkModel()).to(
+        device
+    )
+    model.train()
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=0.0003 if args.initialize else 0.002
+    )
     args.run.mkdir(parents=True, exist_ok=False)
     validation = torch.from_numpy(
         np.stack([patch(pair, args.patch) for pair in data["validation"]])
     )
     history = []
     best = float("inf")
+    reviewed_baseline = (
+        reviewed_metrics(model, reviewed["validation"], device) if reviewed else None
+    )
     start = time.perf_counter()
     for step in range(1, args.steps + 1):
         batch = selection.choices(data["train"], k=args.batch)
@@ -151,6 +263,14 @@ def train(args):
         ).to(device)
         optimizer.zero_grad(set_to_none=True)
         loss = loss_for(model(tensor[:, :1]), tensor[:, 1:])
+        if reviewed:
+            real_batch = selection.choices(reviewed["train"], k=max(1, args.batch // 4))
+            real = torch.from_numpy(
+                np.stack(
+                    [reviewed_patch(sample, args.patch, rng) for sample in real_batch]
+                )
+            ).to(device)
+            loss = 0.75 * loss + 0.25 * reviewed_loss(model(real[:, :1]), real[:, 1:])
         loss.backward()
         optimizer.step()
         if step % args.validate_every != 0 and step != args.steps:
@@ -163,14 +283,21 @@ def train(args):
                 total += loss_for(model(scores[:, :1]), scores[:, 1:]).item() * len(
                     chunk
                 )
-        model.train()
         score = total / len(validation)
-        history.append(
-            {"step": step, "trainLoss": loss.item(), "validationLoss": score}
+        real_score = (
+            reviewed_metrics(model, reviewed["validation"], device)
+            if reviewed
+            else None
         )
+        model.train()
+        record = {"step": step, "trainLoss": loss.item(), "validationLoss": score}
+        if real_score:
+            record["reviewedValidation"] = real_score
+        history.append(record)
         print(json.dumps(history[-1]), flush=True)
-        if score < best:
-            best = score
+        selection_loss = real_score["loss"] if real_score else score
+        if selection_loss < best:
+            best = selection_loss
             weights = {
                 name: tensor.detach().cpu().numpy()
                 for name, tensor in model.state_dict().items()
@@ -180,6 +307,11 @@ def train(args):
             temporary.replace(args.run / "ink-model.npz")
     report = {
         "manifestSha256": manifest_hash,
+        "reviewedManifestSha256": reviewed_hash,
+        "reviewedBaseline": reviewed_baseline,
+        "initializedFrom": hashlib.sha256(args.initialize.read_bytes()).hexdigest()
+        if args.initialize
+        else None,
         "seed": args.seed,
         "steps": args.steps,
         "batch": args.batch,
@@ -346,6 +478,8 @@ if __name__ == "__main__":
     training.add_argument("--batch", type=positive, default=12)
     training.add_argument("--patch", type=positive, default=96)
     training.add_argument("--threads", type=positive, default=4)
+    training.add_argument("--reviewed", type=Path)
+    training.add_argument("--initialize", type=Path)
     training.set_defaults(run_command=train)
     inference = commands.add_parser("restore")
     inference.add_argument("checkpoint", type=Path)

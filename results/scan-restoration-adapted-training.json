@@ -1,0 +1,101 @@
+{
+  "manifestSha256": "552ea38e6ea1885cc88a9d390cf50b8ba42fd619bf1cd34fd8f17e88bd2f9480",
+  "reviewedManifestSha256": "eab7ac07377ad9ca5e8616e6b37bcbe6f8a91d0ad1a915f106fff62c6a716fd2",
+  "reviewedBaseline": {
+    "loss": 0.20732973515987396,
+    "inkRecall": 0.9825021872265967,
+    "paperFalsePositiveRate": 0.0,
+    "inkPixels": 1143,
+    "paperPixels": 714
+  },
+  "initializedFrom": "f74fbb14445e4516ce9e5a3609d2c2a40f085f059a42c58019ea48cfebde8d2a",
+  "seed": 173,
+  "steps": 300,
+  "batch": 12,
+  "patch": 96,
+  "trainPairs": 288,
+  "validationPairs": 96,
+  "torch": "2.5.1+cu121",
+  "python": "3.12.10",
+  "numpy": "1.26.4",
+  "device": "NVIDIA GeForce RTX 2050",
+  "deviceBytes": 4294443008,
+  "peakAllocatedBytes": 104121344,
+  "peakReservedBytes": 111149056,
+  "seconds": 11.387488000036683,
+  "parameters": 4273,
+  "history": [
+    {
+      "step": 50,
+      "trainLoss": 0.16096726059913635,
+      "validationLoss": 0.09305979509372264,
+      "reviewedValidation": {
+        "loss": 0.19524864852428436,
+        "inkRecall": 0.994750656167979,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    },
+    {
+      "step": 100,
+      "trainLoss": 0.0936538428068161,
+      "validationLoss": 0.09061414038296789,
+      "reviewedValidation": {
+        "loss": 0.18944567441940308,
+        "inkRecall": 0.994750656167979,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    },
+    {
+      "step": 150,
+      "trainLoss": 0.1335650086402893,
+      "validationLoss": 0.08975311124231666,
+      "reviewedValidation": {
+        "loss": 0.1833496242761612,
+        "inkRecall": 0.994750656167979,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    },
+    {
+      "step": 200,
+      "trainLoss": 0.1135866791009903,
+      "validationLoss": 0.0895639299415052,
+      "reviewedValidation": {
+        "loss": 0.17725582420825958,
+        "inkRecall": 0.9956255468066492,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    },
+    {
+      "step": 250,
+      "trainLoss": 0.11429469287395477,
+      "validationLoss": 0.08904828887898475,
+      "reviewedValidation": {
+        "loss": 0.17287565767765045,
+        "inkRecall": 0.9956255468066492,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    },
+    {
+      "step": 300,
+      "trainLoss": 0.13338524103164673,
+      "validationLoss": 0.08724216325208545,
+      "reviewedValidation": {
+        "loss": 0.1685573011636734,
+        "inkRecall": 0.9956255468066492,
+        "paperFalsePositiveRate": 0.0,
+        "inkPixels": 1143,
+        "paperPixels": 714
+      }
+    }
+  ]
+}

@@ -37,6 +37,7 @@ export const repairFadedCurves = (
   height: number,
   { contrast, minimumContrast, resolutionScale }: ScanInkEvidence,
   neighborsAt: (index: number) => number,
+  repairGuide?: Uint8Array,
 ): void => {
   const minimumTangentSteps = TANGENT_STEPS - resolutionScale;
   const offsets = NEIGHBORS.map(([dx, dy]) => dx + dy * width);
@@ -116,6 +117,9 @@ export const repairFadedCurves = (
     // Consider it only for a short, continuously ink-backed span.
     if (shortTangent && length > 8) return;
     const requiredInk = shortTangent ? minimumContrast : inkFloor;
+    const minimumObservedContrast = repairGuide
+      ? Math.max(3, requiredInk - 8)
+      : requiredInk;
     const alignmentLeft = (dx * left.dx + dy * left.dy) / length;
     const alignmentRight = -(dx * right.dx + dy * right.dy) / length;
     if (alignmentLeft < MIN_ALIGNMENT || alignmentRight < MIN_ALIGNMENT) return;
@@ -133,6 +137,7 @@ export const repairFadedCurves = (
     const sample = (bias: number): Link | undefined => {
       const pixels: number[] = [];
       let raised = 0;
+      let guided = false;
       let last = left.index;
       for (let step = 1; step < count; step += 1) {
         const t = step / count;
@@ -156,19 +161,35 @@ export const repairFadedCurves = (
         if (!inside(x, y)) return;
         const index = y * width + x;
         if (index === last || index === right.index) continue;
-        if (
-          contrast[index] < requiredInk ||
-          touchesOtherStroke(index, left, right)
-        )
-          return;
+        if (contrast[index] < minimumObservedContrast) return;
+        if (touchesOtherStroke(index, left, right)) return;
         if (!inside(x + nx, y + ny) || !inside(x - nx, y - ny)) return;
-        if (
+        const localRidge =
           contrast[index] -
-            Math.max(
-              contrast[index - flankOffset],
-              contrast[index + flankOffset],
-            ) >=
-            3 ||
+          Math.max(
+            contrast[index - flankOffset],
+            contrast[index + flankOffset],
+          );
+        // A learned hint can support a weak observed ridge. It cannot paint
+        // over blank paper or override the endpoint and collision checks.
+        const supportsWeakRidge =
+          repairGuide !== undefined &&
+          localRidge >= 1 &&
+          repairGuide[index] <= 96 &&
+          Math.min(
+            repairGuide[index - flankOffset],
+            repairGuide[index + flankOffset],
+          ) >=
+            repairGuide[index] + 48;
+        if (contrast[index] < requiredInk && !supportsWeakRidge) return;
+        if (
+          supportsWeakRidge &&
+          (contrast[index] < requiredInk || localRidge < 3)
+        )
+          guided = true;
+        if (
+          localRidge >= 3 ||
+          supportsWeakRidge ||
           (contrast[index] >= minimumContrast &&
             inside(x + wideX, y + wideY) &&
             inside(x - wideX, y - wideY) &&
@@ -185,6 +206,7 @@ export const repairFadedCurves = (
       }
       if (
         !pixels.length ||
+        (repairGuide !== undefined && !guided) ||
         (shortTangent
           ? raised * 3 < pixels.length * 2
           : raised * 4 < pixels.length * 3)
