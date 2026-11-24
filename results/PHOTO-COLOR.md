@@ -66,6 +66,9 @@ through the renderer while preserving overlap between quantization and
 contour assembly. The follow-up local run measured 218.0 ms sequential and
 75.9 ms pooled (2.87× against the unchanged 1.50× floor).
 
+The [Color batch worker follow-up](COLOR-BATCH-WORKERS.md) supersedes the
+split batch pipeline described here.
+
 ## Reproduce
 
 From the repository root, run this in PowerShell:

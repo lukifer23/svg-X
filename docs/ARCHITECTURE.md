@@ -74,4 +74,18 @@ The paths use separate resamplers, so working pixels can differ across decoders.
 
 ### Parallel quantization
 
-For color mode above `MIN_PARALLEL_PIXELS` (`src/core/parallelQuantize.ts`), the renderer splits an interactive image into row bands and runs `precomputePixelLabs` + the four refinement rounds + `labelPixels` in a dedicated worker pool capped at four workers (`src/core/quantizePool.ts`, `src/workers/quantize.worker.ts`). Batch jobs use one quantization worker per image. That worker seeds, refines, and labels in one request before handing off the labels for assembly. A multi-band conversion reserves its complete band set atomically, so concurrent jobs cannot deadlock by each holding a partial set. Queued and active work observes the same `AbortSignal`; aborting active work terminates and replaces the affected worker. Per-candidate channel sums and counts are exact integers, so combining band partials in band order is bit-identical to the single-threaded reduction (`src/core/parallelQuantize.test.ts` verifies this across band counts). The resulting labels and palette are handed back to the existing conversion pool as an `assemble-color` job that runs `assembleColorDocument`; `traceColorDocument` delegates to the same function. Any non-cancellation worker failure falls back to the single-threaded path, and images below the threshold never spawn band workers. Both workers are bundled by Vite (`dist/assets/{quantize,vectorize}.worker-*.js`).
+For interactive Color conversion above `MIN_PARALLEL_PIXELS`, the renderer
+can split an image into row bands. The dedicated quantization pool is capped
+at four workers and reserves the complete band set atomically. Partial sums
+and counts are exact integers. The renderer combines them in band order and
+sends the resulting labels and palette to the vector pool for assembly.
+An interactive conversion falls back to one vector worker if band
+quantization fails. [Quantizer equivalence tests](../src/core/parallelQuantize.test.ts)
+
+Color batches parallelize across files in the vector worker pool. Each
+worker seeds the palette, refines it, labels pixels, traces boundaries, and
+serializes the requested export in one job. This keeps labels and palette
+local to the worker. Queued cancellation removes the job and active
+cancellation replaces the affected worker. Raw RGBA normalization makes
+one owned copy for transfer and blends partial alpha over white.
+[Color batch measurements](../results/COLOR-BATCH-WORKERS.md)

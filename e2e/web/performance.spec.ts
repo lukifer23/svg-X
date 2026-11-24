@@ -77,16 +77,26 @@ test("eight-image production worker batch improves throughput without runaway me
       const prepare = () => ({ ...fixture, pixels: fixture.pixels.slice(0) });
       const convert = (input: ReturnType<typeof prepare>) =>
         module.processImageBatch(input, params, undefined);
-      const measureBatch = async (pooled: boolean) => {
+      const measureBatch = async (pooled: boolean, expectedOutput?: string) => {
         // Prepare inputs before timing so fixture allocation does not compete
         // with worker scheduling.
         const inputs = Array.from({ length: 8 }, prepare);
         const start = performance.now();
-        if (pooled) await Promise.all(inputs.map(convert));
-        else for (const input of inputs) await convert(input);
+        if (pooled) {
+          const output = await Promise.all(inputs.map(convert));
+          const elapsed = performance.now() - start;
+          if (
+            expectedOutput !== undefined &&
+            output.some((svg) => svg !== expectedOutput)
+          ) {
+            throw new Error("Pooled Color output differs from serial output");
+          }
+          return elapsed;
+        }
+        for (const input of inputs) await convert(input);
         return performance.now() - start;
       };
-      await convert(prepare());
+      const serialOutput = await convert(prepare());
       const beforeHeap =
         (performance as Performance & { memory?: { usedJSHeapSize: number } })
           .memory?.usedJSHeapSize ?? 0;
@@ -100,7 +110,7 @@ test("eight-image production worker batch improves throughput without runaway me
       // Warm both schedules, including every worker used by the pooled run.
       // Keep measuring heap across warm-up so worker startup is covered.
       await measureBatch(false);
-      await measureBatch(true);
+      await measureBatch(true, serialOutput);
       const sequentialSamples: number[] = [];
       const concurrentSamples: number[] = [];
       for (let sample = 0; sample < 6; sample += 1) {
@@ -135,6 +145,15 @@ test("eight-image production worker batch improves throughput without runaway me
       };
     });
   const result = await runBenchmark();
+  const workerPaths = page
+    .workers()
+    .map((worker) => new URL(worker.url()).pathname);
+  expect(
+    workerPaths.filter((path) => path.endsWith("/vectorize.worker.ts")),
+  ).toHaveLength(3);
+  expect(workerPaths.some((path) => path.endsWith("/quantize.worker.ts"))).toBe(
+    false,
+  );
 
   console.log(
     `batch benchmark: ${result.sequentialMs.toFixed(1)}ms sequential, ${result.concurrentMs.toFixed(1)}ms pooled, ${(result.sequentialMs / result.concurrentMs).toFixed(2)}x throughput against ${minimumSpeedup.toFixed(2)}x floor, ${(result.peakHeapGrowth / 1024 / 1024).toFixed(1)} MiB peak / ${(result.heapGrowth / 1024 / 1024).toFixed(1)} MiB settled heap growth on ${result.hardwareConcurrency} logical CPUs`,

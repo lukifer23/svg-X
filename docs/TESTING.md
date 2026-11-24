@@ -38,6 +38,10 @@ The benchmark prepares eight independent copies of the same RGBA fixture
 before each timed run. Timings include production worker conversion and
 SVG serialization. Generating the fixture in the timed region makes the
 pooled run contend with unrelated JavaScript on the renderer.
+The warm-up also checks exact serial and pooled SVG equality and confirms
+that the batch creates three vector workers without starting the
+interactive quantization pool on its four-logical-CPU profile.
+[Color batch measurements](../results/COLOR-BATCH-WORKERS.md)
 
 The historical pre-recovery checkout failed before tests because its dependency install did not complete. Do not invent a relative speed or quality claim against it. A future released baseline must store hardware, fixture hashes, settings, raw timings, SSIM, and Delta E values before percentage comparisons become release gates.
 

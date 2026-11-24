@@ -92,8 +92,10 @@ export const compositeRgbaOverWhite = (
     source instanceof Uint8ClampedArray
       ? source
       : new Uint8ClampedArray(source);
-  const output = new Uint8ClampedArray(input.length);
+  // Own the transferable buffer, but only blend pixels that have alpha.
+  const output = new Uint8ClampedArray(input);
   for (let index = 0; index < input.length; index += 4) {
+    if (input[index + 3] === 255) continue;
     const alpha = input[index + 3] / 255;
     output[index] = Math.round(input[index] * alpha + 255 * (1 - alpha));
     output[index + 1] = Math.round(
@@ -273,12 +275,12 @@ const executeConversion = async (
   };
   let result: WorkResult;
   let parallelQuantizeMs = 0;
+  // The batch pool parallelizes across images. Keep quantization and
+  // assembly in the same worker so each image needs only one dispatch.
   if (
+    priority === "interactive" &&
     options.mode === "color" &&
-    canParallelize(
-      decoded.width * decoded.height,
-      priority === "batch" ? 1 : undefined,
-    )
+    canParallelize(decoded.width * decoded.height)
   ) {
     try {
       const quantizeStart = now();
@@ -288,7 +290,6 @@ const executeConversion = async (
         decoded.height,
         options,
         signal,
-        priority === "batch" ? 1 : undefined,
       );
       const quantizeWallMs = now() - quantizeStart;
       result = await getVectorWorkerPool().run(

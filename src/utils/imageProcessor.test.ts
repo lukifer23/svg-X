@@ -7,6 +7,15 @@ import {
 } from "./imageProcessor";
 
 describe("RGBA normalization", () => {
+  test("copies opaque pixels and composites mixed alpha without mutating the caller", () => {
+    const original = [18, 72, 210, 255, 0, 100, 200, 128];
+    const input = new Uint8ClampedArray(original);
+    const output = compositeRgbaOverWhite(input);
+    expect([...output]).toEqual([18, 72, 210, 255, 127, 177, 227, 255]);
+    expect([...input]).toEqual(original);
+    expect(output.buffer).not.toBe(input.buffer);
+  });
+
   test("composites transparent and partial-alpha pixels over white", () => {
     expect([
       ...compositeRgbaOverWhite(new Uint8ClampedArray([20, 40, 60, 0])),
