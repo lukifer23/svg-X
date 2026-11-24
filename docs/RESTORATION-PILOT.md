@@ -267,10 +267,11 @@ took 196 ms and 815 ms respectively. Median per-drawing overhead was
 additional loop and remains experimental.
 
 The heating-trench upper rail had one detectable anchor. The ironwork
-middle crossing had two detectable anchors and no connected route. These
-failures identify two checks for the next tracing experiment: preserve the
-missing anchor in weak-ink extraction, then test whether the crossing’s
-candidate repair can reach both anchors inside the reviewed corridor.
+middle crossing appeared disconnected under the original review corridor.
+The tracing follow-up located the heating-rail loss in thinning and
+corrected the ironwork review corridor to follow the existing trace.
+The historical model reports retain their original annotations and scores.
+[Weak-stroke tracing follow-up](../results/WEAK-STROKE-SPANS.md)
 [Span training](../results/scan-restoration-spans-training.json) ·
 [Prior held-out result](../results/scan-restoration-spans-previous.json) ·
 [New held-out result](../results/scan-restoration-spans.json) ·

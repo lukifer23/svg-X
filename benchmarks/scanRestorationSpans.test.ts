@@ -16,12 +16,10 @@ import { traceCenterlines } from "../src/core/centerline";
 import { rasterizeStroke } from "../tests/fixtures/archivalLoopReview";
 import { centerlineOptions } from "../tests/fixtures/centerlineCorpus";
 
-type Point = [number, number];
-interface PathReference {
-  id: string;
-  points: Point[];
-  radius: number;
-}
+import {
+  measurePath,
+  type PathReference,
+} from "../tests/fixtures/scanSpanReview";
 
 interface ReviewedScan {
   image: string;
@@ -35,75 +33,6 @@ interface ReviewedScan {
 
 const sha256 = (contents: Uint8Array) =>
   createHash("sha256").update(contents).digest("hex");
-
-const distanceToSegment = (
-  x: number,
-  y: number,
-  [ax, ay]: Point,
-  [bx, by]: Point,
-) => {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const at = Math.min(
-    1,
-    Math.max(0, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)),
-  );
-  return Math.hypot(x - ax - at * dx, y - ay - at * dy);
-};
-
-const measurePath = (
-  raster: Buffer,
-  width: number,
-  height: number,
-  reference: PathReference,
-) => {
-  const { points, radius } = reference;
-  const [ax, ay] = points[0];
-  const [bx, by] = points.at(-1)!;
-  const endpointRadius = Math.min(
-    radius + 0.5,
-    Math.hypot(bx - ax, by - ay) / 3,
-  );
-  const allowed = new Uint8Array(width * height);
-  const queue: number[] = [];
-  const segments = points
-    .slice(1)
-    .map((point, index) => [points[index], point] as const);
-  let reachesEnd = false;
-  for (let index = 0; index < raster.length; index += 1) {
-    if (raster[index] < 64) continue;
-    const x = (index % width) + 0.5;
-    const y = Math.floor(index / width) + 0.5;
-    if (
-      !segments.some(
-        ([start, end]) => distanceToSegment(x, y, start, end) <= radius,
-      )
-    )
-      continue;
-    const atEnd = Math.hypot(x - bx, y - by) <= endpointRadius;
-    allowed[index] = atEnd ? 2 : 1;
-    reachesEnd ||= atEnd;
-    if (Math.hypot(x - ax, y - ay) <= endpointRadius) queue.push(index);
-  }
-  const endpoints = Number(queue.length > 0) + Number(reachesEnd);
-  for (let i = 0; i < queue.length; i += 1) {
-    const pixel = queue[i];
-    if (allowed[pixel] === 2) return { endpoints, connected: true };
-    if (!allowed[pixel]) continue;
-    allowed[pixel] = 0;
-    const x = pixel % width;
-    const y = Math.floor(pixel / width);
-    for (let dy = -1; dy <= 1; dy += 1)
-      for (let dx = -1; dx <= 1; dx += 1) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-        const next = ny * width + nx;
-        if (allowed[next]) queue.push(next);
-      }
-  }
-  return { endpoints, connected: false };
-};
 
 const checkpoint = process.env.SVGX_RESTORATION_CHECKPOINT;
 const manifest = process.env.SVGX_SPAN_MANIFEST;

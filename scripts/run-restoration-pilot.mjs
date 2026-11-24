@@ -34,6 +34,7 @@ const references = (
       "references.json",
       "fresh-references.json",
       "perimeter-references.json",
+      "weak-span-references.json",
     ].map(async (file) =>
       JSON.parse(
         await readFile(path.join(qualificationDirectory, file), "utf8"),
@@ -53,6 +54,8 @@ const reservedDigests = new Set(
     ),
   ),
 );
+for (const { masterSha256 } of references)
+  if (masterSha256) reservedDigests.add(masterSha256);
 const scans = (
   await Promise.all(
     (spans ? [reviewed, spans] : [reviewed]).map(

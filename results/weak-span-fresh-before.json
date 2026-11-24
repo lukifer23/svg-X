@@ -1,0 +1,266 @@
+{
+  "node": "v24.19.0",
+  "cpu": "AMD Ryzen 5 7535HS with Radeon Graphics        ",
+  "reports": [
+    {
+      "id": "north-trench",
+      "limit": 1000,
+      "width": 1000,
+      "height": 569,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.3977812995245642,
+          "matched": false
+        },
+        "first-tie-west": {
+          "iou": 0.4666666666666667,
+          "matched": false
+        },
+        "upper-north-diamond": {
+          "iou": 0.38961038961038963,
+          "matched": false
+        },
+        "east-wall-inset": {
+          "iou": 0.6,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 69.52410000000009,
+      "timesMs": [
+        80.21600000000012,
+        70.49630000000002,
+        69.61000000000013,
+        69.49049999999988,
+        67.34480000000008,
+        68.25929999999994,
+        71.48489999999993,
+        77.19540000000006,
+        68.3775999999998,
+        69.62959999999975,
+        69.07400000000007,
+        67.30130000000008,
+        80.60960000000023,
+        69.52410000000009,
+        67.25340000000006
+      ]
+    },
+    {
+      "id": "north-trench",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1137,
+      "loops": {
+        "upper-west-trench": {
+          "iou": 0.44405458089668615,
+          "matched": false
+        },
+        "first-tie-west": {
+          "iou": 0.48693126815101645,
+          "matched": false
+        },
+        "upper-north-diamond": {
+          "iou": 0.8619505494505495,
+          "matched": true
+        },
+        "east-wall-inset": {
+          "iou": 0.575,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "parallel-north-trenches": {
+          "endpoints": 1,
+          "connected": false
+        },
+        "separate-west-ties": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "separate-east-ties": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 251.42190000000028,
+      "timesMs": [
+        255.28030000000035,
+        246.86049999999977,
+        275.52329999999984,
+        250.54879999999957,
+        269.27399999999943,
+        246.0574999999999,
+        256.97400000000016,
+        242.23689999999988,
+        251.42190000000028,
+        244.38979999999992,
+        251.73689999999988,
+        245.20960000000014,
+        253.91470000000027,
+        246.1316999999999,
+        251.55079999999998
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 1000,
+      "width": 1000,
+      "height": 697,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0.23380656610470274,
+          "matched": false
+        },
+        "medallion-center": {
+          "iou": 0.2949526813880126,
+          "matched": false
+        },
+        "corner-post-panel": {
+          "iou": 0.7733333333333333,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.827482447342026,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.891860465116279,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8634361233480177,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 61.425600000000486,
+      "timesMs": [
+        60.36399999999958,
+        61.24669999999969,
+        61.92139999999927,
+        61.38620000000083,
+        61.787899999999354,
+        60.835000000000946,
+        61.95969999999943,
+        61.34690000000046,
+        61.188899999999194,
+        61.656699999999546,
+        61.39930000000095,
+        63.64980000000105,
+        62.068200000001525,
+        61.425600000000486,
+        61.6833000000006
+      ]
+    },
+    {
+      "id": "ornamental-iron",
+      "limit": 2000,
+      "width": 2000,
+      "height": 1393,
+      "loops": {
+        "medallion-inner-frame": {
+          "iou": 0.32857932559425096,
+          "matched": false
+        },
+        "medallion-center": {
+          "iou": 0.2638426626323752,
+          "matched": false
+        },
+        "corner-post-panel": {
+          "iou": 0.7990196078431373,
+          "matched": true
+        },
+        "corner-post-inset": {
+          "iou": 0.8108371979497193,
+          "matched": true
+        },
+        "shelf-first-octagon": {
+          "iou": 0.9301246738184981,
+          "matched": true
+        },
+        "shelf-third-row-octagon": {
+          "iou": 0.8842337375964718,
+          "matched": true
+        }
+      },
+      "gaps": {
+        "adjacent-shelf-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "third-row-octagons": {
+          "endpoints": 2,
+          "connected": false
+        },
+        "panel-right-gap": {
+          "endpoints": 2,
+          "connected": false
+        }
+      },
+      "paperStrokePixels": [
+        0,
+        0,
+        0
+      ],
+      "medianMs": 223.0643,
+      "timesMs": [
+        231.77729999999974,
+        234.74509999999827,
+        224.6152000000002,
+        219.59490000000005,
+        222.9439000000002,
+        223.82340000000113,
+        227.79829999999856,
+        222.72720000000118,
+        217.64830000000075,
+        222.1190999999999,
+        217.21799999999894,
+        223.0643,
+        220.92779999999948,
+        227.1177000000007,
+        224.01909999999953
+      ]
+    }
+  ]
+}

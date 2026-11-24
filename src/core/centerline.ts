@@ -482,6 +482,51 @@ export const walkSkeleton = (
   };
 };
 
+// A two-pixel diagonal ridge looks like a cardinal endpoint during thinning.
+// Require a sustained ridge in the original scan to protect that endpoint.
+const supportsWeakDiagonal = (
+  pixel: number,
+  direction: number,
+  width: number,
+  height: number,
+  mask: Uint8Array,
+  { contrast, minimumContrast, resolutionScale }: ScanInkEvidence,
+) => {
+  if (direction % 2 === 0 || contrast[pixel] < minimumContrast) return false;
+  const x = pixel % width;
+  const y = (pixel - x) / width;
+  const length = 6 * resolutionScale;
+  const radius = 2 * resolutionScale;
+  if (x < radius || x >= width - radius || y < radius || y >= height - radius)
+    return false;
+  for (const diagonal of [(direction + 7) % 8, (direction + 1) % 8]) {
+    const [dx, dy] = NEIGHBORS[diagonal];
+    if (
+      x + dx * length < radius ||
+      x + dx * length >= width - radius ||
+      y + dy * length < radius ||
+      y + dy * length >= height - radius
+    )
+      continue;
+    const along = dx + dy * width;
+    const across = radius * (dx * width - dy);
+    let step = 0;
+    for (; step <= length; step += 1) {
+      const sample = pixel + step * along;
+      if (
+        !mask[sample] ||
+        contrast[sample] < minimumContrast ||
+        contrast[sample] -
+          Math.max(contrast[sample - across], contrast[sample + across]) <
+          8
+      )
+        break;
+    }
+    if (step > length) return true;
+  }
+  return false;
+};
+
 export const traceCenterlines = (
   pixels: Uint8ClampedArray,
   width: number,
@@ -526,7 +571,24 @@ export const traceCenterlines = (
       const across = dy * width + dx;
       return !mask[pixel - across] || !mask[pixel + across];
     });
-  const thinned = thinBinaryMask(mask, width, height, supportsTip ?? true);
+  const thinned = thinBinaryMask(
+    mask,
+    width,
+    height,
+    evidence && supportsTip
+      ? (pixel, direction) =>
+          supportsTip(pixel, direction) ||
+          (!strongInk?.[pixel] &&
+            supportsWeakDiagonal(
+              pixel,
+              direction,
+              width,
+              height,
+              mask,
+              evidence,
+            ))
+      : (supportsTip ?? true),
+  );
   if (evidence)
     repairFadedCurves(thinned, width, height, evidence, (index) =>
       neighborBits(thinned, index, width, height, true),

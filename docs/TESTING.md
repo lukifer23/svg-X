@@ -60,6 +60,11 @@ The [archival loop benchmark](../results/ARCHIVAL-LOOPS.md) uses manually
 marked source-image polygons, open gaps, and empty paper zones. The regular
 test suite gates the recovered loops and checks these negative controls.
 
+`npm run test:archival` also checks the heating rail and ironwork crossing,
+plus separate 1,000- and 2,000-pixel scans of two architectural sheets.
+The [weak-stroke benchmark](../results/WEAK-STROKE-SPANS.md) documents the
+reference corrections, trace timings, and source provenance.
+
 The [Velocipede rim benchmark](../results/VELOCIPEDE-RIM.md) measures the
 best individual closed subpath as well as the complete SVG. Fork
 checkpoints and nearby paper boxes are measured separately. The regular

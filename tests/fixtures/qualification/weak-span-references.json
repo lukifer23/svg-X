@@ -1,0 +1,156 @@
+[
+  {
+    "id": "north-trench",
+    "source": "https://www.loc.gov/item/2022642694/",
+    "sha256": "646059a5d1a362d75d6353ae7050cf06b5ec3a19c9ec585c43722f627df23a0d",
+    "loops": {
+      "upper-west-trench": [
+        [473, 158],
+        [528, 158],
+        [528, 167],
+        [485, 167],
+        [485, 171],
+        [473, 171]
+      ],
+      "first-tie-west": [
+        [502, 192],
+        [515, 192],
+        [515, 208],
+        [502, 208]
+      ],
+      "upper-north-diamond": [
+        [133, 60],
+        [145, 74],
+        [134, 87],
+        [120, 75]
+      ],
+      "east-wall-inset": [
+        [591, 190],
+        [601, 190],
+        [601, 199],
+        [591, 199]
+      ]
+    },
+    "gaps": [
+      {
+        "id": "parallel-north-trenches",
+        "points": [
+          [95, 38],
+          [106, 41]
+        ],
+        "radius": 2
+      },
+      {
+        "id": "separate-west-ties",
+        "points": [
+          [497, 181],
+          [497, 192]
+        ],
+        "radius": 2
+      },
+      {
+        "id": "separate-east-ties",
+        "points": [
+          [558, 181],
+          [558, 194]
+        ],
+        "radius": 2
+      }
+    ],
+    "paper": [
+      [464, 190, 469, 221],
+      [517, 210, 529, 217],
+      [385, 185, 430, 209]
+    ],
+    "masterUrl": "https://tile.loc.gov/storage-services/master/pnp/ppmsca/67400/67473u.tif",
+    "masterSha256": "686acc100f4cc0edde8a169722b5be807f0ee6db32fdd7bbbbbdeb0f319cd3f9"
+  },
+  {
+    "id": "ornamental-iron",
+    "source": "https://www.loc.gov/pictures/item/2022639421/",
+    "sha256": "68575aed14789e04e4c32c16bae8b8fca91c647ac774b3f1071a2b5b6b393d49",
+    "loops": {
+      "medallion-inner-frame": [
+        [487, 386],
+        [533, 386],
+        [533, 435],
+        [487, 435]
+      ],
+      "medallion-center": [
+        [507, 403],
+        [514, 406],
+        [518, 413],
+        [514, 420],
+        [507, 423],
+        [500, 420],
+        [496, 413],
+        [500, 406]
+      ],
+      "corner-post-panel": [
+        [787, 152],
+        [817, 152],
+        [817, 237],
+        [787, 237]
+      ],
+      "corner-post-inset": [
+        [791, 157],
+        [813, 157],
+        [813, 233],
+        [791, 233]
+      ],
+      "shelf-first-octagon": [
+        [156, 192],
+        [174, 192],
+        [181, 200],
+        [181, 216],
+        [174, 223],
+        [156, 223],
+        [150, 216],
+        [150, 200]
+      ],
+      "shelf-third-row-octagon": [
+        [235, 270],
+        [252, 270],
+        [260, 279],
+        [260, 295],
+        [252, 302],
+        [235, 302],
+        [228, 295],
+        [228, 279]
+      ]
+    },
+    "gaps": [
+      {
+        "id": "adjacent-shelf-octagons",
+        "points": [
+          [181, 205],
+          [190, 205]
+        ],
+        "radius": 2
+      },
+      {
+        "id": "third-row-octagons",
+        "points": [
+          [220, 284],
+          [228, 284]
+        ],
+        "radius": 2
+      },
+      {
+        "id": "panel-right-gap",
+        "points": [
+          [813, 209],
+          [817, 209]
+        ],
+        "radius": 1
+      }
+    ],
+    "paper": [
+      [794, 170, 809, 218],
+      [446, 453, 465, 470],
+      [650, 530, 700, 550]
+    ],
+    "masterUrl": "https://tile.loc.gov/storage-services/master/pnp/ppmsca/67300/67309u.tif",
+    "masterSha256": "2588c4d56a3f8f5f77accb613be8e6acb9dc0e92a028a7f49f2706f9143a5728"
+  }
+]

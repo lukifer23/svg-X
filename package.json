@@ -32,7 +32,7 @@
     "bench:preview": "npm run build && cross-env SVGX_PREVIEW_BENCHMARK=1 playwright test e2e/web/previewLatency.spec.ts --project=chromium --workers=1 --retries=0",
     "bench:centerline": "vitest run --config benchmarks/vitest.config.ts benchmarks/centerline.test.ts",
     "bench:scan-lighting": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanLighting.test.ts",
-    "test:archival": "vitest run --config benchmarks/vitest.config.ts benchmarks/archivalQualification.test.ts",
+    "test:archival": "vitest run --no-file-parallelism --config benchmarks/vitest.config.ts benchmarks/archivalQualification.test.ts benchmarks/weakStrokeQualification.test.ts",
     "test:restoration": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanRestoration.test.ts",
     "test:restoration:spans": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanRestorationSpans.test.ts",
     "restoration:pilot": "node scripts/run-restoration-pilot.mjs",
