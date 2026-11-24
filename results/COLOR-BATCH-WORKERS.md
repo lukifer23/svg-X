@@ -40,6 +40,8 @@ used fitted paths and SVG optimization, and its pooled median was 3%
 higher in this run. All paired SVGs were byte-identical, including the
 RGBA bicycle and the three photo fixtures. The browser export test
 also checks exact SVG, EPS, DXF, and JSON parity on the produce photo.
+The [fitted batch follow-up](FITTED-PHOTO-BATCH.md) reran these four inputs
+with a larger balanced sample and profiled the fitted route.
 
 The independent regression test passed all ten runs at the unchanged
 1.50× local floor. Across-run pooled medians dropped from 92.5 ms on

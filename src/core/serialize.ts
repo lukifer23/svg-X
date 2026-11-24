@@ -26,11 +26,25 @@ export const shapePathData = (shape: VectorShape): string =>
     .flatMap((subpath) => subpath.commands.map(commandToString))
     .join(" ");
 
+// Rounded coordinates use at most three decimal places. Share their
+// fractional suffixes across every fitted path in the worker.
+const fractionText = Array.from({ length: 1000 }, (_, mills) =>
+  String(mills / 1000).slice(1),
+);
+
 const compactNumber = (value: number): string => {
-  const text = String(value);
-  if (text.startsWith("0.")) return text.slice(1);
-  if (text.startsWith("-0.")) return `-${text.slice(2)}`;
-  return text;
+  if (Number.isInteger(value)) return String(value);
+  const magnitude = Math.abs(value);
+  // Keep the scaled coordinate in the range where it rounds to an exact
+  // thousandth and the bitwise integer conversion is safe.
+  if (!(magnitude < 2 ** 21)) return String(value);
+  const mills = Math.round(magnitude * 1000);
+  const whole = (mills / 1000) | 0;
+  return (
+    (value < 0 ? "-" : "") +
+    (whole === 0 ? "" : String(whole)) +
+    fractionText[mills - whole * 1000]
+  );
 };
 
 // A minus sign starts a new SVG number without a separator.
@@ -66,10 +80,14 @@ const compactPathData = (shape: VectorShape): string => {
     let y = 0;
     let startX = 0;
     let startY = 0;
-    const segment = (command: string, values: string): string =>
-      command === previous
-        ? `${values.startsWith("-") ? "" : " "}${values}`
-        : command + values;
+    // The leading sign is already known. Inspecting the concatenated
+    // string would flatten it before we even choose an encoding.
+    const segment = (
+      command: string,
+      values: string,
+      negative: boolean,
+    ): string =>
+      (command === previous ? (negative ? "" : " ") : command) + values;
     for (const command of commands) {
       if (command.type === "Z") {
         result += "Z";
@@ -96,7 +114,11 @@ const compactPathData = (shape: VectorShape): string => {
         const x2 = roundCoordinate(command.x2);
         const y2 = roundCoordinate(command.y2);
         let type = "C";
-        let encoded = segment(type, cubicValues(x1, y1, x2, y2, endX, endY));
+        let encoded = segment(
+          type,
+          cubicValues(x1, y1, x2, y2, endX, endY),
+          x1 < 0,
+        );
         // Integer anchors do not accumulate rounding across curves. Check
         // that both float and double readers reconstruct the same controls.
         if (integerEndpoints) {
@@ -113,6 +135,7 @@ const compactPathData = (shape: VectorShape): string => {
             const relative = segment(
               "c",
               cubicValues(dx1, dy1, dx2, dy2, endX - x, endY - y),
+              dx1 < 0,
             );
             if (relative.length < encoded.length) {
               type = "c";
@@ -123,25 +146,27 @@ const compactPathData = (shape: VectorShape): string => {
         result += encoded;
         previous = type;
       } else {
-        let type = endY === y ? "H" : endX === x ? "V" : "L";
+        const horizontal = endY === y;
+        const vertical = !horizontal && endX === x;
+        let type = horizontal ? "H" : vertical ? "V" : "L";
         let encoded = segment(
           type,
-          type === "H"
+          horizontal
             ? compactNumber(endX)
-            : type === "V"
+            : vertical
               ? compactNumber(endY)
               : pair(endX, endY),
+          (vertical ? endY : endX) < 0,
         );
         // Relative integer moves preserve the rounded endpoints exactly.
         if (integerEndpoints) {
-          const relativeType = type.toLowerCase();
+          const relativeType = horizontal ? "h" : vertical ? "v" : "l";
+          const dx = endX - x;
+          const dy = endY - y;
           const relative = segment(
             relativeType,
-            type === "H"
-              ? String(endX - x)
-              : type === "V"
-                ? String(endY - y)
-                : pair(endX - x, endY - y),
+            horizontal ? String(dx) : vertical ? String(dy) : pair(dx, dy),
+            (vertical ? dy : dx) < 0,
           );
           if (relative.length < encoded.length) {
             type = relativeType;

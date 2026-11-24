@@ -114,6 +114,12 @@ test("profiles photo conversion and checks serialized and rasterized output", as
         traceColorDocument(pixels, width, height, options);
       const document = conversion();
       const svg = serializeVectorDocument(document);
+      if (optCurve && process.env.SVGX_PHOTO_PROFILE_DIR)
+        await profile(
+          process.env.SVGX_PHOTO_PROFILE_DIR,
+          `${file}.serialize`,
+          () => serializeVectorDocument(document, { compact: true }),
+        );
       const raster = await sharp(Buffer.from(svg))
         .ensureAlpha()
         .raw()

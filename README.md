@@ -92,6 +92,8 @@ Above a size threshold, color quantization runs across a renderer-side pool capp
 
 Use `npm run bench:pipeline` for core stage timings, `npm run bench:photo` for photo tracing and optional exact-output comparison, and `npm run bench:preview` for real browser uploads. See the [testing guide](docs/TESTING.md).
 
+The [fitted photo batch benchmark](results/FITTED-PHOTO-BATCH.md) records pooled and sequential timings, SVG sizes, and exact output hashes for the bicycle illustration, still-life, USDA produce photo, and USFWS hummingbird photo.
+
 See the [competitive review](docs/COMPETITIVE-REVIEW.md) for the measured VTracer comparison and product gaps, and the [training-data guide](docs/TRAINING-DATA.md) for building and auditing supervised pairs.
 
 ## Batch and desktop security

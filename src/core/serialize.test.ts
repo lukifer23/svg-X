@@ -87,3 +87,35 @@ test("compact SVG preserves compound paths, paint and rounded cubic geometry", a
   ]);
   expect(rendered.equals(reference)).toBe(true);
 });
+
+test("compact SVG preserves rounded decimal text on both sides of the fast range", () => {
+  const document: VectorDocument = {
+    version: 1,
+    mode: "color",
+    width: 1,
+    height: 1,
+    shapes: [
+      {
+        id: "decimal-test",
+        fill: "#000",
+        stroke: "none",
+        strokeWidth: 0,
+        opacity: 1,
+        fillRule: "evenodd",
+        subpaths: [
+          {
+            closed: false,
+            commands: [
+              { type: "M", x: 0.001, y: -0.01 },
+              { type: "M", x: 20.1, y: -20.01 },
+              { type: "M", x: 2097151.999, y: -2097152.001 },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  expect(serializeVectorDocument(document, { compact: true })).toContain(
+    'd="M.001-.01M20.1-20.01M2097151.999-2097152.001"',
+  );
+});
