@@ -25,6 +25,7 @@ release*/
 playwright-report
 test-results
 artifacts/
+__pycache__/
 
 # Specifically exclude large files
 *.exe

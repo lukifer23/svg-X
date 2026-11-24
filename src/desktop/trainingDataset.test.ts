@@ -63,6 +63,15 @@ test("restoration pilot rejects a qualification document before starting trainin
         reviewed,
       ]),
     ).rejects.toThrow(/Reserved archival qualification source/);
+    await expect(
+      run(process.execPath, [
+        "scripts/run-restoration-pilot.mjs",
+        path.join(directory, "run"),
+        "cpu",
+        "examples/training-data/real-scans/faint-manifest.json",
+        reviewed,
+      ]),
+    ).rejects.toThrow(/Reserved archival qualification source/);
     expect(await readdir(directory)).toEqual(["reviewed.json"]);
   } finally {
     await rm(directory, { recursive: true, force: true });

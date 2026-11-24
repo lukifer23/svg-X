@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw
 import torch
 from torch import nn
 from torch.nn import functional as F
+from restoration_spans import load_spans, span_loss
 
 
 class InkModel(nn.Module):
@@ -334,6 +335,26 @@ def evaluate_reviewed(args):
     print(json.dumps(report))
 
 
+def audit_spans(args):
+    data, digest = load_spans(args.spans)
+    print(
+        json.dumps(
+            {
+                "manifestSha256": digest,
+                "coverage": {
+                    split: {
+                        "crops": len(samples),
+                        "strokes": sum(len(strokes) for _, strokes, _ in samples),
+                        "gaps": sum(len(gaps) for _, _, gaps in samples),
+                    }
+                    for split, samples in data.items()
+                },
+            },
+            indent=2,
+        )
+    )
+
+
 def train(args):
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
@@ -347,6 +368,16 @@ def train(args):
     reviewed, reviewed_hash = (
         load_reviewed_scans(args.reviewed) if args.reviewed else (None, None)
     )
+    span_data, span_hash = load_spans(args.spans) if args.spans else (None, None)
+    if args.spans and args.reviewed:
+        sources = {}
+        for manifest in (args.reviewed, args.spans):
+            for row in json.loads(manifest.read_bytes())["scans"]:
+                for key in (row["sourceSha256"], row["source"]):
+                    if sources.setdefault(key, row["split"]) != row["split"]:
+                        raise ValueError(
+                            f"Source crosses pixel and span splits: {row['source']}"
+                        )
     model = (load_model(args.initialize)[0] if args.initialize else InkModel()).to(
         device
     )
@@ -388,6 +419,10 @@ def train(args):
                 )
             ).to(device)
             loss = 0.75 * loss + 0.25 * reviewed_loss(model(real[:, :1]), real[:, 1:])
+        if span_data:
+            span_sample = selection.choice(span_data["train"])
+            continuity = span_loss(model, span_sample, device, rng.uniform(0.50, 1.0))
+            loss = 0.75 * loss + 0.25 * continuity
         loss.backward()
         optimizer.step()
         if step % args.validate_every != 0 and step != args.steps:
@@ -411,17 +446,28 @@ def train(args):
             if stress_review
             else None
         )
+        if span_data:
+            with torch.inference_mode():
+                span_score = sum(
+                    span_loss(model, sample, device, fade).item()
+                    for sample in span_data["validation"]
+                    for fade in (1.0, 0.60)
+                ) / (2 * len(span_data["validation"]))
         model.train()
         record = {"step": step, "trainLoss": loss.item(), "validationLoss": score}
         if real_score:
             record["reviewedValidation"] = real_score
         if stress_score:
             record["stressedReviewedValidation"] = stress_score
+        if span_data:
+            record["spanValidationLoss"] = span_score
         history.append(record)
         print(json.dumps(history[-1]), flush=True)
         selection_loss = real_score["loss"] if real_score else score
         if stress_score:
             selection_loss = (selection_loss + stress_score["loss"]) / 2
+        if span_data:
+            selection_loss = (selection_loss + span_score) / 2
         if selection_loss < best:
             best = selection_loss
             weights = {
@@ -434,6 +480,7 @@ def train(args):
     report = {
         "manifestSha256": manifest_hash,
         "reviewedManifestSha256": reviewed_hash,
+        "spanManifestSha256": span_hash,
         "reviewedBaseline": reviewed_baseline,
         "stressedReviewedBaseline": stress_baseline,
         "initializedFrom": hashlib.sha256(args.initialize.read_bytes()).hexdigest()
@@ -595,6 +642,10 @@ def positive(value):
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description=__doc__)
     commands = cli.add_subparsers(required=True)
+    span_audit = commands.add_parser("audit-spans")
+    span_audit.add_argument("spans", type=Path)
+    span_audit.add_argument("--threads", type=positive, default=4)
+    span_audit.set_defaults(run_command=audit_spans)
     audit = commands.add_parser("audit-reviewed")
     audit.add_argument("reviewed", type=Path)
     audit.add_argument("--threads", type=positive, default=4)
@@ -616,6 +667,7 @@ if __name__ == "__main__":
     training.add_argument("--patch", type=positive, default=96)
     training.add_argument("--threads", type=positive, default=4)
     training.add_argument("--reviewed", type=Path)
+    training.add_argument("--spans", type=Path)
     training.add_argument("--initialize", type=Path)
     training.set_defaults(run_command=train)
     inference = commands.add_parser("restore")

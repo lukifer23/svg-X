@@ -34,6 +34,7 @@
     "bench:scan-lighting": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanLighting.test.ts",
     "test:archival": "vitest run --config benchmarks/vitest.config.ts benchmarks/archivalQualification.test.ts",
     "test:restoration": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanRestoration.test.ts",
+    "test:restoration:spans": "vitest run --config benchmarks/vitest.config.ts benchmarks/scanRestorationSpans.test.ts",
     "restoration:pilot": "node scripts/run-restoration-pilot.mjs",
     "test:export-consumers": "cross-env SVGX_EXPORT_CONSUMERS=1 vitest run --config benchmarks/vitest.config.ts benchmarks/exportConsumers.test.ts",
     "dataset:build": "node scripts/build-training-dataset.mjs",

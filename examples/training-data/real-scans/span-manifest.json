@@ -1,0 +1,574 @@
+{
+  "version": 1,
+  "scans": [
+    {
+      "image": "fitch-0.png",
+      "document": "mcc.072",
+      "source": "https://www.loc.gov/item/mcc.072/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:072:0001/full/pct:50/0/default.jpg",
+      "sourceSha256": "b014d4782f7fc3ddcc59b61ce9667f79dae1617abea19441db386d1ece154536",
+      "crop": [129, 401, 307, 506],
+      "sha256": "c11e813e80b30b85416207e726c6c05c9f3ec5473b5e80983e83bae5dbc4b62e",
+      "paperRegions": [[72, 70, 144, 74]],
+      "split": "train",
+      "strokes": [
+        {
+          "id": "fitch-upper",
+          "points": [
+            [66, 54],
+            [102, 54],
+            [150, 54]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "fitch-middle",
+          "points": [
+            [69, 65],
+            [108, 65],
+            [150, 65]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "fitch-lower",
+          "points": [
+            [72, 78],
+            [115, 78],
+            [150, 79]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "fitch-upper-gap",
+          "points": [
+            [98, 54],
+            [98, 65]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "fitch-lower-gap",
+          "points": [
+            [140, 65],
+            [140, 79]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "fitch-1.png",
+      "document": "mcc.072",
+      "source": "https://www.loc.gov/item/mcc.072/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:072:0001/full/pct:50/0/default.jpg",
+      "sourceSha256": "b014d4782f7fc3ddcc59b61ce9667f79dae1617abea19441db386d1ece154536",
+      "crop": [243, 537, 446, 640],
+      "sha256": "d4205acdf18059608a87a27608882d1ad0db44fc4ec6e1d449e9300e72f15678",
+      "paperRegions": [[32, 25, 74, 30]],
+      "split": "train",
+      "strokes": [
+        {
+          "id": "fitch-piston-top",
+          "points": [
+            [12, 63],
+            [80, 63],
+            [137, 63],
+            [190, 63]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "fitch-piston-bottom",
+          "points": [
+            [13, 82],
+            [79, 82],
+            [135, 82],
+            [187, 82]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "fitch-piston-gap",
+          "points": [
+            [81, 63],
+            [81, 82]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "fitch-edge-gap",
+          "points": [
+            [145, 51],
+            [145, 63]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "morse-0.png",
+      "document": "mcc.039",
+      "source": "https://www.loc.gov/item/mcc.039/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:039:0001/full/pct:25/0/default.jpg",
+      "sourceSha256": "9f6bcac4e99af9b3d59366bad41670caf50c09ad12335dc27317846cd6ccfccc",
+      "crop": [120, 204, 310, 291],
+      "sha256": "a1e87e2473e119ec416b6e3b0b700e79bc1350b41664a784d4e7458f43a55de5",
+      "paperRegions": [[4, 54, 36, 69]],
+      "split": "train",
+      "strokes": [
+        {
+          "id": "morse-pencil-curve",
+          "points": [
+            [55, 59],
+            [60, 65],
+            [68, 71],
+            [77, 76],
+            [84, 78]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "morse-rail",
+          "points": [
+            [72, 39],
+            [95, 39],
+            [109, 39]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "morse-rail-gap",
+          "points": [
+            [94, 27],
+            [94, 39]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "morse-rail-right-gap",
+          "points": [
+            [122, 28],
+            [122, 39]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "morse-1.png",
+      "document": "mcc.039",
+      "source": "https://www.loc.gov/item/mcc.039/",
+      "sourceImage": "https://tile.loc.gov/image-services/iiif/service:mss:mssmcc:039:0001/full/pct:25/0/default.jpg",
+      "sourceSha256": "9f6bcac4e99af9b3d59366bad41670caf50c09ad12335dc27317846cd6ccfccc",
+      "crop": [347, 472, 495, 627],
+      "sha256": "7a0337464fa7bec834417d3beaff86fac221bda8cbd5a91a3680a8bde3f132bc",
+      "paperRegions": [[93, 64, 108, 70]],
+      "split": "train",
+      "strokes": [
+        {
+          "id": "morse-upright",
+          "points": [
+            [18, 24],
+            [18, 48],
+            [18, 78]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "morse-inner-upright",
+          "points": [
+            [39, 45],
+            [39, 57],
+            [39, 71],
+            [40, 81]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "morse-upright-gap",
+          "points": [
+            [18, 53],
+            [39, 53]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "morse-upright-low-gap",
+          "points": [
+            [18, 71],
+            [39, 71]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "floor-0.png",
+      "document": "2022642651",
+      "source": "https://www.loc.gov/item/2022642651/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67430v.jpg",
+      "sourceSha256": "a6109bcd996b9578645860ba07c20952ec87797494d7b5b611c419bfeedcd457",
+      "crop": [187, 67, 387, 130],
+      "sha256": "7c657bdce89718783b1b466271379171f68b6731b5657a5ca5ccc70adfa6e7da",
+      "paperRegions": [[51, 29, 79, 34]],
+      "split": "validation",
+      "strokes": [
+        {
+          "id": "floor-finger-west",
+          "points": [
+            [24, 11],
+            [24, 24]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "floor-finger-east",
+          "points": [
+            [99, 11],
+            [99, 25]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "floor-finger-south",
+          "points": [
+            [116, 45],
+            [116, 58]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "opposed-floor-west",
+          "points": [
+            [24, 24],
+            [24, 46]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "opposed-floor-east",
+          "points": [
+            [99, 25],
+            [99, 46]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "floor-1.png",
+      "document": "2022642651",
+      "source": "https://www.loc.gov/item/2022642651/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67430v.jpg",
+      "sourceSha256": "a6109bcd996b9578645860ba07c20952ec87797494d7b5b611c419bfeedcd457",
+      "crop": [699, 143, 766, 260],
+      "sha256": "ff37460ae7c2f0a41ce8f4067b22e0d8a89e931fa4855c1a153da6ae6b68142d",
+      "paperRegions": [[7, 35, 13, 59]],
+      "split": "validation",
+      "strokes": [
+        {
+          "id": "floor-wing-upper",
+          "points": [
+            [22, 23],
+            [34, 23],
+            [37, 23]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "floor-wing-lower",
+          "points": [
+            [22, 82],
+            [33, 82],
+            [38, 82]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "floor-opposed-upper",
+          "points": [
+            [37, 23],
+            [60, 23]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "floor-opposed-lower",
+          "points": [
+            [38, 82],
+            [60, 82]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "heating-0.png",
+      "document": "2022642695",
+      "split": "test",
+      "source": "https://www.loc.gov/item/2022642695/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67474v.jpg",
+      "sourceSha256": "c4c23a7b6cf5ec407718c7661b6b855795a29531201b5436a61629e1e748d5b3",
+      "crop": [54, 160, 155, 325],
+      "sha256": "f6b296e3826fbe7a4b03c78cc6ea28a84e88c740b7ca2ffaca4f2b016abb6cb9",
+      "paperRegions": [
+        [3, 55, 18, 73],
+        [4, 106, 16, 130]
+      ],
+      "strokes": [
+        {
+          "id": "valve-upper",
+          "points": [
+            [36, 59],
+            [36, 44],
+            [61, 44],
+            [61, 60]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "valve-lower",
+          "points": [
+            [36, 94],
+            [36, 77],
+            [62, 77],
+            [62, 94]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "valve-top-outline",
+          "points": [
+            [34, 26],
+            [33, 10],
+            [44, 10],
+            [44, 13],
+            [62, 13]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "valve-upper-gap",
+          "points": [
+            [49, 30],
+            [49, 44]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "valve-lower-gap",
+          "points": [
+            [48, 61],
+            [48, 77]
+          ],
+          "radius": 2
+        }
+      ]
+    },
+    {
+      "image": "heating-1.png",
+      "document": "2022642695",
+      "split": "test",
+      "source": "https://www.loc.gov/item/2022642695/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/67400/67474v.jpg",
+      "sourceSha256": "c4c23a7b6cf5ec407718c7661b6b855795a29531201b5436a61629e1e748d5b3",
+      "crop": [57, 40, 151, 156],
+      "sha256": "3db55b71081dc2824dcfc02aba9c8219c39e7df56fa35dc4a839c4cfaad90217",
+      "paperRegions": [[22, 4, 63, 17]],
+      "strokes": [
+        {
+          "id": "trench-upper-rail",
+          "points": [
+            [9, 37],
+            [18, 26],
+            [41, 25],
+            [77, 25]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "trench-lower-rail",
+          "points": [
+            [13, 41],
+            [21, 32],
+            [43, 32],
+            [77, 32]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "trench-step",
+          "points": [
+            [18, 70],
+            [18, 49],
+            [27, 49],
+            [27, 41],
+            [49, 42]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "trench-rail-gap",
+          "points": [
+            [45, 25],
+            [45, 32]
+          ],
+          "radius": 1
+        },
+        {
+          "id": "trench-rail-east-gap",
+          "points": [
+            [68, 25],
+            [68, 32]
+          ],
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "image": "ironwork-0.png",
+      "document": "2021635642",
+      "split": "test",
+      "source": "https://www.loc.gov/item/2021635642/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/66700/66749v.jpg",
+      "sourceSha256": "7f14e1145d05267b66d3b4824364d79a56f6a5672ff649f79cfd2659efba637a",
+      "crop": [376, 216, 442, 305],
+      "sha256": "b9442eb1e211ecd85372969e39b85920418b4621ddc00e63d353cd53cf20f5ea",
+      "paperRegions": [
+        [13, 8, 32, 21],
+        [14, 67, 26, 77]
+      ],
+      "strokes": [
+        {
+          "id": "iron-top-rail",
+          "points": [
+            [10, 27],
+            [26, 30],
+            [43, 32],
+            [54, 34]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "iron-second-rail",
+          "points": [
+            [10, 31],
+            [26, 33],
+            [43, 35],
+            [54, 37]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "iron-bottom-rail",
+          "points": [
+            [8, 52],
+            [24, 54],
+            [34, 56],
+            [45, 58]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "iron-rail-gap-left",
+          "points": [
+            [16, 28],
+            [16, 31]
+          ],
+          "radius": 1
+        },
+        {
+          "id": "iron-rail-gap-mid",
+          "points": [
+            [32, 31],
+            [32, 34]
+          ],
+          "radius": 1
+        }
+      ]
+    },
+    {
+      "image": "ironwork-1.png",
+      "document": "2021635642",
+      "split": "test",
+      "source": "https://www.loc.gov/item/2021635642/",
+      "sourceImage": "https://tile.loc.gov/storage-services/service/pnp/ppmsca/66700/66749v.jpg",
+      "sourceSha256": "7f14e1145d05267b66d3b4824364d79a56f6a5672ff649f79cfd2659efba637a",
+      "crop": [529, 209, 597, 386],
+      "sha256": "744901e0ba7d4972e442b48525d8bef20187aba173687202e0c8b2c79636488e",
+      "paperRegions": [
+        [18, 9, 29, 24],
+        [45, 72, 54, 86]
+      ],
+      "strokes": [
+        {
+          "id": "iron-upper-crossing",
+          "points": [
+            [8, 36],
+            [25, 38],
+            [45, 40],
+            [59, 42]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "iron-middle-crossing",
+          "points": [
+            [8, 61],
+            [24, 62],
+            [43, 65],
+            [61, 67]
+          ],
+          "radius": 2
+        },
+        {
+          "id": "iron-lower-crossing",
+          "points": [
+            [8, 121],
+            [24, 126],
+            [44, 133],
+            [61, 138]
+          ],
+          "radius": 2
+        }
+      ],
+      "gaps": [
+        {
+          "id": "iron-middle-gap",
+          "points": [
+            [24, 62],
+            [24, 67]
+          ],
+          "radius": 1
+        },
+        {
+          "id": "iron-lower-gap",
+          "points": [
+            [44, 133],
+            [44, 138]
+          ],
+          "radius": 1
+        }
+      ]
+    }
+  ]
+}

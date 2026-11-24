@@ -85,6 +85,15 @@ crop hashes, label conflicts, and document separation before training.
 The audit reports how many faint-ink labels would have been excluded by
 the earlier grayscale cutoff.
 
+The [reviewed span manifest](../examples/training-data/real-scans/span-manifest.json)
+adds paths between visible ink anchors and gaps between nearby strokes.
+Use `python scripts/scan-restoration.py audit-spans MANIFEST` before training.
+Assign whole source documents to train, validation, or test before selecting
+crops. Mark both ends of each span and gap on visible ink and include reviewed
+paper regions for measuring grain. Keep the test documents out of checkpoint
+selection. The [pilot guide](RESTORATION-PILOT.md#complete-weak-strokes-and-neighboring-gaps)
+shows the full training and qualification run.
+
 Use the 32-design corpus to validate loading, deterministic batching and
 reproducibility. Its two icon collections and shared styles across splits
 limit what it can establish about generalization to scanned plans,

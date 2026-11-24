@@ -207,3 +207,71 @@ to the next experiment evaluating **complete weak stroke spans together
 with their neighboring gaps** on independent drawings, so a model that
 improves individual pixels also has to preserve the right connections.
 [Archival report](../results/scan-restoration-faint-archive.json)
+
+## Complete weak strokes and neighboring gaps
+
+The [span manifest](../examples/training-data/real-scans/span-manifest.json)
+records 26 complete intervals between observed ink anchors and 20
+nearby gaps across ten real crops. The Morse and Fitch crops supply nine
+training spans and eight gaps. The floor-plan crops supply five validation
+spans and four gaps. Four new crops from two architectural sheets supply
+12 test spans and eight gaps. The test documents are excluded from
+training and checkpoint selection. The seven archival qualification
+drawings also stay reserved. [Heating trench sheet](https://www.loc.gov/item/2022642695/) ·
+[Ironwork sheet](https://www.loc.gov/item/2021635642/)
+
+```powershell
+python scripts/scan-restoration.py audit-spans examples/training-data/real-scans/span-manifest.json
+npm run restoration:pilot -- artifacts/restoration-span-run cuda examples/training-data/real-scans/faint-manifest.json examples/training-data/real-scans/span-manifest.json
+```
+
+The span stage starts from the faint-ink checkpoint. It samples narrow
+cross-sections along the reviewed stroke and applies loss to the weakest
+quarter of their responses. On gap annotations it penalizes the strongest
+false-ink responses in the middle of the gap and excludes the ink anchors.
+Span supervision contributes one quarter of the adaptation loss. The rest
+retains the procedural and real-pixel losses. Checkpoint selection uses
+validation-document loss on original and faded inputs.
+
+The held-out test rasterizes the actual centerline SVG and checks for a
+connected route between the anchors inside each hand-marked corridor.
+A gap with a missing anchor is reported separately, since a vanished
+stroke cannot demonstrate that the gap survived. Paper-region pixels
+measure grain. The archived seven-sheet test supplies independent loop,
+ink, gap, paper and warmed CPU timing checks. The one-command run saves
+both evaluation reports and prints the combined guided qualification decision.
+
+The span stage completed 300 steps in 14.1 seconds on an RTX 2050 with
+138 MiB reserved by PyTorch. Validation selected step 50. On the two
+held-out documents, the model as a guide matched production and the
+prior faint-pixel guide on every measured check.
+
+| Held-out crop checks                  | Production | Prior guide | Span-trained guide | Span-trained model and plain tracing |
+| ------------------------------------- | ---------: | ----------: | -----------------: | -----------------------------------: |
+| Connected strokes out of 12           |         10 |          10 |                 10 |                                    9 |
+| False joins among six assessable gaps |          0 |           0 |                  0 |                                    0 |
+| Gaps with a missing anchor            |          2 |           2 |                  2 |                                    2 |
+| Stroke pixels in paper zones          |          3 |           3 |                  3 |                                   19 |
+
+Across the 14 archival runs, production and the span-trained guide each
+recovered 18 loop checks, left the same 13 measured openings, and placed
+179 stroke pixels in the reviewed paper zones. Model-only tracing recovered
+16 loops, closed the aperture-to-upper-ray gap on Bell’s optical sketch at
+2,000 px, and placed 1,087 pixels in the paper zones. The hybrid route also
+recovered 16 loops and placed 4,558 pixels in paper zones.
+
+On the Ryzen 5 7535HS with four inference threads, median production trace
+time was 67 ms at 1,000 px and 206 ms at 2,000 px. The guide plus trace
+took 196 ms and 815 ms respectively. Median per-drawing overhead was
+136 ms and 570 ms, within the pilot budgets. The guide recovered no
+additional loop and remains experimental.
+
+The heating-trench upper rail had one detectable anchor. The ironwork
+middle crossing had two detectable anchors and no connected route. These
+failures identify two checks for the next tracing experiment: preserve the
+missing anchor in weak-ink extraction, then test whether the crossing’s
+candidate repair can reach both anchors inside the reviewed corridor.
+[Span training](../results/scan-restoration-spans-training.json) ·
+[Prior held-out result](../results/scan-restoration-spans-previous.json) ·
+[New held-out result](../results/scan-restoration-spans.json) ·
+[Archival comparison](../results/scan-restoration-spans-archive.json)

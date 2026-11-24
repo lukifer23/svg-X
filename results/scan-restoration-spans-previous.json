@@ -1,0 +1,430 @@
+{
+  "spanManifestSha256": "c4835bf67a8db170ed2c63719ade64a0f2c962ca9c9c646eb9481a51d875ce5d",
+  "checkpointSha256": "2125965130a078c0a21a50dff115420fc36d4db8aeae3841e31226fbe59e592b",
+  "production": {
+    "connectedStrokes": 10,
+    "falseJoins": 0,
+    "missingGapAnchors": 2,
+    "grain": 3
+  },
+  "guided": {
+    "connectedStrokes": 10,
+    "falseJoins": 0,
+    "missingGapAnchors": 2,
+    "grain": 3
+  },
+  "learned": {
+    "connectedStrokes": 7,
+    "falseJoins": 0,
+    "missingGapAnchors": 2,
+    "grain": 15
+  },
+  "gates": {
+    "preservesStrokes": true,
+    "preservesGapAnchors": true,
+    "addsNoFalseJoins": true,
+    "addsNoGrain": true
+  },
+  "report": [
+    {
+      "image": "heating-0.png",
+      "document": "2022642695",
+      "production": {
+        "strokes": [
+          {
+            "id": "valve-upper",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-lower",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-top-outline",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "valve-upper-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "valve-lower-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "guided": {
+        "strokes": [
+          {
+            "id": "valve-upper",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-lower",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-top-outline",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "valve-upper-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "valve-lower-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "learned": {
+        "strokes": [
+          {
+            "id": "valve-upper",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-lower",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "valve-top-outline",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "valve-upper-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "valve-lower-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 15
+      }
+    },
+    {
+      "image": "heating-1.png",
+      "document": "2022642695",
+      "production": {
+        "strokes": [
+          {
+            "id": "trench-upper-rail",
+            "endpoints": 1,
+            "connected": false
+          },
+          {
+            "id": "trench-lower-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "trench-step",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "trench-rail-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "trench-rail-east-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "guided": {
+        "strokes": [
+          {
+            "id": "trench-upper-rail",
+            "endpoints": 1,
+            "connected": false
+          },
+          {
+            "id": "trench-lower-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "trench-step",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "trench-rail-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "trench-rail-east-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "learned": {
+        "strokes": [
+          {
+            "id": "trench-upper-rail",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "trench-lower-rail",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "trench-step",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "trench-rail-gap",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "trench-rail-east-gap",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      }
+    },
+    {
+      "image": "ironwork-0.png",
+      "document": "2021635642",
+      "production": {
+        "strokes": [
+          {
+            "id": "iron-top-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-second-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-bottom-rail",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-rail-gap-left",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-rail-gap-mid",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "guided": {
+        "strokes": [
+          {
+            "id": "iron-top-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-second-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-bottom-rail",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-rail-gap-left",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-rail-gap-mid",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      },
+      "learned": {
+        "strokes": [
+          {
+            "id": "iron-top-rail",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-second-rail",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-bottom-rail",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-rail-gap-left",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-rail-gap-mid",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      }
+    },
+    {
+      "image": "ironwork-1.png",
+      "document": "2021635642",
+      "production": {
+        "strokes": [
+          {
+            "id": "iron-upper-crossing",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-middle-crossing",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-lower-crossing",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-middle-gap",
+            "endpoints": 1,
+            "connected": false
+          },
+          {
+            "id": "iron-lower-gap",
+            "endpoints": 1,
+            "connected": false
+          }
+        ],
+        "grain": 3
+      },
+      "guided": {
+        "strokes": [
+          {
+            "id": "iron-upper-crossing",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-middle-crossing",
+            "endpoints": 2,
+            "connected": false
+          },
+          {
+            "id": "iron-lower-crossing",
+            "endpoints": 2,
+            "connected": true
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-middle-gap",
+            "endpoints": 1,
+            "connected": false
+          },
+          {
+            "id": "iron-lower-gap",
+            "endpoints": 1,
+            "connected": false
+          }
+        ],
+        "grain": 3
+      },
+      "learned": {
+        "strokes": [
+          {
+            "id": "iron-upper-crossing",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-middle-crossing",
+            "endpoints": 2,
+            "connected": true
+          },
+          {
+            "id": "iron-lower-crossing",
+            "endpoints": 2,
+            "connected": false
+          }
+        ],
+        "gaps": [
+          {
+            "id": "iron-middle-gap",
+            "endpoints": 1,
+            "connected": false
+          },
+          {
+            "id": "iron-lower-gap",
+            "endpoints": 1,
+            "connected": false
+          }
+        ],
+        "grain": 0
+      }
+    }
+  ]
+}
