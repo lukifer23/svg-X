@@ -6,6 +6,7 @@ import type {
   ConversionMode,
   ConversionProgress,
   ConversionResult,
+  ExportFormat,
   WorkerConversionOptions,
 } from "../core/vectorDocument";
 
@@ -214,8 +215,9 @@ const toWorkerOptions = (params: TracingParams): WorkerConversionOptions => ({
 let sequence = 0;
 const nextJobId = (): string => `conversion-${Date.now()}-${++sequence}`;
 
-type InternalConversionResult = Omit<ConversionResult, "document"> & {
+type InternalConversionResult = Omit<ConversionResult, "document" | "svg"> & {
   document?: ConversionResult["document"];
+  content: string;
 };
 
 const executeConversion = async (
@@ -226,6 +228,7 @@ const executeConversion = async (
   signal?: AbortSignal,
   priority: "interactive" | "batch" = "interactive",
   includeDocument = true,
+  outputFormat: ExportFormat = "svg",
 ): Promise<InternalConversionResult> => {
   const totalStart = now();
   progressCallback("loading");
@@ -263,6 +266,7 @@ const executeConversion = async (
         options,
         includeDocument,
         optimizeSvg: params.svgoOptimize,
+        outputFormat,
       },
       { jobId: nextJobId(), priority, signal, onProgress },
     );
@@ -297,6 +301,7 @@ const executeConversion = async (
           options,
           includeDocument,
           optimizeSvg: params.svgoOptimize,
+          outputFormat,
         },
         { jobId: nextJobId(), priority, signal, onProgress },
       );
@@ -314,7 +319,7 @@ const executeConversion = async (
   } else {
     result = await runSequential();
   }
-  const { svg, optimizeMs } = result;
+  const { content, optimizeMs } = result;
   const totalMs = now() - totalStart;
   const quantizeMs = parallelQuantizeMs + result.quantizeMs;
   progressCallback("done");
@@ -338,7 +343,7 @@ const executeConversion = async (
   log("DONE", `Completed in ${Math.round(totalMs)}ms`, detailedLogCallback);
   return {
     document: result.document,
-    svg,
+    content,
     metrics: {
       decodeMs,
       quantizeMs,
@@ -372,13 +377,15 @@ export const processImageDetailed = async (
   );
   if (!result.document)
     throw new Error("Vector worker did not return authoritative geometry");
-  return { ...result, document: result.document };
+  const { content, document, metrics, diagnostics } = result;
+  return { svg: content, document, metrics, diagnostics };
 };
 
 export const processImageBatch = async (
   imageData: RawImageInput,
   params: TracingParams,
   signal?: AbortSignal,
+  outputFormat: ExportFormat = "svg",
 ): Promise<string> =>
   (
     await executeConversion(
@@ -389,8 +396,9 @@ export const processImageBatch = async (
       signal,
       "batch",
       false,
+      outputFormat,
     )
-  ).svg;
+  ).content;
 
 export const processImage = async (
   imageData: string,

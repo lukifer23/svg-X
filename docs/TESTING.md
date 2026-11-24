@@ -82,7 +82,9 @@ the DEB-installed app under Xvfb. To run it on an unpacked build, install
 `SVGX_NATIVE_BATCH=1 SVGX_GTK_PICKER=1 xvfb-run -a npm run test:e2e:package`
 after packaging. The test selects real directories in GTK and covers
 mixed formats, a truncated PNG, cancel and resume, collision handling,
-and retry after fixing the bad file. On an interactive desktop, set only
+report saves, and retry after fixing the bad file. It also opens a second
+input folder and checks files written by the EPS, DXF, and JSON batch paths.
+On an interactive desktop, set only
 `SVGX_NATIVE_BATCH=1` and use the native pickers when prompted. The
 smoke reports queue time, cancel-to-drain latency, retry time, and peak
 sampled aggregate Electron working set. The samples can count shared

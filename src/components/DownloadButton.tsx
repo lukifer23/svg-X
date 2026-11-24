@@ -5,9 +5,7 @@ import {
   serializeEps,
   serializePathJson,
 } from "../core/vectorExport";
-import type { VectorDocument } from "../core/vectorDocument";
-
-type ExportFormat = "svg" | "eps" | "dxf" | "json";
+import type { ExportFormat, VectorDocument } from "../core/vectorDocument";
 
 interface FormatInfo {
   label: string;

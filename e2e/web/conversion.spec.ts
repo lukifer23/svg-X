@@ -168,6 +168,8 @@ test("batch and interactive color workers preserve export geometry and match SVG
   const result = await page.evaluate(async () => {
     const { DEFAULT_PARAMS, processImageBatch, processImageDetailed } =
       await import("/src/utils/imageProcessor.ts");
+    const { serializeDxf, serializeEps, serializePathJson } =
+      await import("/src/core/vectorExport.ts");
     const response = await fetch(
       "/tests/fixtures/review/usda-fresh-produce.jpg",
     );
@@ -202,6 +204,23 @@ test("batch and interactive color workers preserve export geometry and match SVG
       () => {},
     );
     const compactBatch = await processImageBatch(input(), compactParams);
+    const formatsMatch = await Promise.all(
+      (
+        [
+          ["eps", serializeEps],
+          ["dxf", serializeDxf],
+          ["json", serializePathJson],
+        ] as const
+      ).map(
+        async ([format, serialize]) =>
+          (await processImageBatch(
+            input(),
+            compactParams,
+            undefined,
+            format,
+          )) === serialize(compact.document),
+      ),
+    );
     return {
       identical: batch === interactive.svg,
       identicalCompact: compactBatch === compact.svg,
@@ -209,6 +228,7 @@ test("batch and interactive color workers preserve export geometry and match SVG
         JSON.stringify(compact.document) ===
         JSON.stringify(interactive.document),
       smaller: compact.svg.length < interactive.svg.length,
+      formatsMatch,
       paths: interactive.metrics.outputPaths,
     };
   });
@@ -216,6 +236,7 @@ test("batch and interactive color workers preserve export geometry and match SVG
   expect(result.identicalCompact).toBe(true);
   expect(result.identicalGeometry).toBe(true);
   expect(result.smaller).toBe(true);
+  expect(result.formatsMatch).toEqual([true, true, true]);
   expect(result.paths).toBeGreaterThan(0);
 });
 

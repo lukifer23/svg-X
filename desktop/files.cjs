@@ -82,7 +82,7 @@ const writeUniqueOutput = async (
   } finally {
     await fs.promises.unlink(staged).catch((error) => {
       if (error.code !== "ENOENT")
-        console.warn("Unable to remove staged SVG", error.code);
+        console.warn("Unable to remove staged export", error.code);
     });
   }
 };

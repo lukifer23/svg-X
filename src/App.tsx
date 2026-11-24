@@ -9,12 +9,10 @@ import ProcessingLogs from "./components/ProcessingLogs";
 import BatchConversion from "./components/BatchConversion";
 import {
   processImageDetailed,
-  processImageBatch,
   DEFAULT_PARAMS,
   PROGRESS_STEPS,
   getOptimizedFilename,
   TracingParams,
-  type RawImageInput,
   simplifyForComplexImages,
 } from "./utils/imageProcessor";
 import type {
@@ -262,17 +260,6 @@ function App() {
     setStatus("idle");
     setError("");
   };
-
-  const processImageForBatch = useCallback(
-    async (
-      imageData: RawImageInput,
-      params: TracingParams,
-      signal?: AbortSignal,
-    ) => {
-      return processImageBatch(imageData, params, signal);
-    },
-    [],
-  );
 
   const handleBatchButtonClick = () => {
     if (isElectronAvailable) {
@@ -535,7 +522,6 @@ function App() {
         <BatchConversion
           potraceParams={potraceParams}
           onClose={() => setShowBatchConversion(false)}
-          processImage={processImageForBatch}
         />
       )}
     </div>

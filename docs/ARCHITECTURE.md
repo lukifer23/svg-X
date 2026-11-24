@@ -16,7 +16,7 @@ The versioned worker messages carry a job ID. A result is accepted only for the 
 
 `desktop/batch.cjs` owns one abort signal and tracks every accepted read or write. The main process retains the run until its pending operations settle, including during a normal window close or quit. BMP file reads honor the signal. A Sharp decode already submitted drains in the native library, and cancellation discards its result before copying the RGBA buffer for IPC.
 
-Each SVG is staged in its output directory. Cancellation is checked before each exclusive publication attempt. A submitted hard link or exclusive-copy fallback can finish after cancellation. The returned filename records that successful write, and run completion waits for staging cleanup. Existing names always take precedence, including those created by other processes.
+The batch worker serializes the selected format directly from the vector document and returns output text. Batch results omit the geometry payload. The main process validates the run's format and stages each output in its granted directory. Cancellation is checked before each exclusive publication attempt. A submitted hard link or exclusive-copy fallback can finish after cancellation. The returned filename records that successful write, and run completion waits for staging cleanup. Existing names always take precedence, including those created by other processes. Failure reports use a fixed JSON filename and the same exclusive publication in the granted output directory.
 
 ## Mode ownership
 

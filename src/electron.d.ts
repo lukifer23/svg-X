@@ -1,4 +1,4 @@
-export {};
+import type { ExportFormat } from "./core/vectorDocument";
 
 interface DirectoryGrant {
   grantId: string;
@@ -23,6 +23,7 @@ declare global {
       beginBatch: (request: {
         inputGrantId: string;
         outputGrantId: string;
+        format: ExportFormat;
       }) => Promise<string>;
       cancelBatch: (id: string) => Promise<void>;
       finishBatch: (id: string) => Promise<void>;
@@ -37,9 +38,13 @@ declare global {
         baseName: string;
         content: string;
       }) => Promise<{ success: true; name: string }>;
+      saveBatchFailureReport: (request: {
+        outputGrantId: string;
+        content: string;
+      }) => Promise<{ success: true; name: string }>;
       saveExport: (request: {
         defaultName: string;
-        format: "svg" | "eps" | "dxf" | "json";
+        format: ExportFormat;
         content: string;
       }) => Promise<{ success: true } | null>;
       openGrantedDirectory: (grantId: string) => Promise<void>;

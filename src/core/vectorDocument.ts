@@ -1,4 +1,5 @@
 export type ConversionMode = "bw" | "color" | "centerline";
+export type ExportFormat = "svg" | "eps" | "dxf" | "json";
 
 export type VectorCommand =
   | { type: "M"; x: number; y: number }
@@ -102,6 +103,7 @@ export type VectorWorkerRequest = {
   options: WorkerConversionOptions;
   includeDocument: boolean;
   optimizeSvg: boolean;
+  outputFormat: ExportFormat;
 };
 
 /** Palette entry as it crosses the worker boundary (structurally PaletteColor). */
@@ -131,6 +133,7 @@ export type AssembleColorWorkerRequest = {
   options: WorkerConversionOptions;
   includeDocument: boolean;
   optimizeSvg: boolean;
+  outputFormat: ExportFormat;
 };
 
 export type VectorWorkerCancelRequest = {
@@ -151,7 +154,7 @@ export type VectorWorkerResponse =
       version: 1;
       jobId: string;
       document?: VectorDocument | string;
-      svg: string;
+      content: string;
       publishedAt: number;
       outputPaths: number;
       vectorizeMs: number;

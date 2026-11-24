@@ -12,20 +12,16 @@ const {
 const { collectNetworkUrls } = require("./desktop/network.cjs");
 const {
   createBatchRun,
+  getExportFormat,
   IMAGE_EXTENSIONS,
   MAX_OUTPUT_BYTES,
+  writeBatchFailureReport,
 } = require("./desktop/batch.cjs");
 
 const expressApp = express();
 const grants = new Map();
 let batchRun;
 let quitPending = false;
-const EXPORT_FORMATS = new Map([
-  ["svg", { extension: "svg", name: "SVG Files" }],
-  ["eps", { extension: "eps", name: "EPS Files" }],
-  ["dxf", { extension: "dxf", name: "DXF Files" }],
-  ["json", { extension: "json", name: "JSON Path Files" }],
-]);
 const PORT = Number(process.env.SVGX_PORT || process.env.PORT || 3001);
 const LAN_ENABLED = process.env.SVGX_LAN === "1";
 const HOST = LAN_ENABLED ? "::" : "127.0.0.1";
@@ -133,15 +129,18 @@ const setupIpc = () => {
       .map((entry) => ({ id: entry.name, name: entry.name }));
   });
 
-  ipcMain.handle("begin-batch", (event, { inputGrantId, outputGrantId }) => {
-    requireRenderer(event);
-    if (quitPending) throw new Error("SVG-X is closing");
-    if (batchRun) throw new Error("A batch is already running");
-    const input = resolveGrant(inputGrantId, "input");
-    const output = resolveGrant(outputGrantId, "output");
-    batchRun = createBatchRun(input.root, output.root);
-    return batchRun.id;
-  });
+  ipcMain.handle(
+    "begin-batch",
+    (event, { inputGrantId, outputGrantId, format }) => {
+      requireRenderer(event);
+      if (quitPending) throw new Error("SVG-X is closing");
+      if (batchRun) throw new Error("A batch is already running");
+      const input = resolveGrant(inputGrantId, "input");
+      const output = resolveGrant(outputGrantId, "output");
+      batchRun = createBatchRun(input.root, output.root, format);
+      return batchRun.id;
+    },
+  );
 
   ipcMain.handle("cancel-batch", (event, id) => {
     requireRenderer(event);
@@ -170,12 +169,20 @@ const setupIpc = () => {
   );
 
   ipcMain.handle(
+    "save-batch-failure-report",
+    (event, { outputGrantId, content }) => {
+      requireRenderer(event);
+      const { root } = resolveGrant(outputGrantId, "output");
+      return writeBatchFailureReport(root, content);
+    },
+  );
+
+  ipcMain.handle(
     "save-export",
     async (event, { defaultName, format, content }) => {
       requireRenderer(event);
       validateText(content, MAX_OUTPUT_BYTES);
-      const info = typeof format === "string" && EXPORT_FORMATS.get(format);
-      if (!info) throw new Error("Unsupported export format");
+      const info = getExportFormat(format);
       const base =
         path
           .basename(String(defaultName || "image"))

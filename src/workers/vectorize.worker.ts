@@ -9,6 +9,11 @@ import {
   type PaletteColor,
 } from "../core/colorTrace";
 import { countSubpaths, serializeVectorDocument } from "../core/serialize";
+import {
+  serializeDxf,
+  serializeEps,
+  serializePathJson,
+} from "../core/vectorExport";
 import type {
   AssembleColorWorkerRequest,
   VectorDocument,
@@ -30,10 +35,12 @@ const complete = async (
 ): Promise<void> => {
   const serializationStart = performance.now();
   const vectorizeMs = serializationStart - started;
+  const svgOutput = request.outputFormat === "svg";
+  const optimizeSvg = svgOutput && request.optimizeSvg;
   // Color paths can be compacted directly without reparsing a large SVG
   // or independently rounding either side of a shared boundary.
-  const compact = document.mode === "color" && request.optimizeSvg;
-  if (request.optimizeSvg) {
+  const compact = document.mode === "color" && optimizeSvg;
+  if (optimizeSvg) {
     post({
       type: "progress",
       version: 1,
@@ -45,16 +52,29 @@ const complete = async (
       },
     });
   }
-  const rawSvg = serializeVectorDocument(document, { compact });
+  let content: string;
+  switch (request.outputFormat) {
+    case "svg":
+      content = serializeVectorDocument(document, { compact });
+      break;
+    case "eps":
+      content = serializeEps(document);
+      break;
+    case "dxf":
+      content = serializeDxf(document);
+      break;
+    case "json":
+      content = serializePathJson(document);
+      break;
+  }
   const serializeMs = performance.now() - serializationStart;
-  let svg = rawSvg;
   let optimizeMs = 0;
-  if (request.optimizeSvg && !compact) {
+  if (optimizeSvg && !compact) {
     const optimizeStart = performance.now();
     try {
       const { optimize } = await import("svgo");
       if (cancelled.delete(request.jobId)) return;
-      svg = optimize(rawSvg, {
+      content = optimize(content, {
         plugins: [
           {
             name: "preset-default",
@@ -90,7 +110,7 @@ const complete = async (
         ? JSON.stringify(document)
         : document
       : undefined,
-    svg,
+    content,
     publishedAt,
     outputPaths,
     vectorizeMs,

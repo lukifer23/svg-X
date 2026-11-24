@@ -12,6 +12,7 @@ const { createBatchRun } = require("../../desktop/batch.cjs") as {
   createBatchRun: (
     inputRoot: string,
     outputRoot: string,
+    format?: string,
   ) => {
     read: (input: { fileId: string }) => Promise<{
       pixels: ArrayBuffer;
@@ -41,6 +42,13 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await rm(root, { recursive: true, force: true });
+});
+
+test("rejects unsupported formats before touching the output directory", async () => {
+  expect(() => createBatchRun(scans, root, "../other")).toThrow(
+    "Unsupported export format",
+  );
+  expect(await readdir(root)).toEqual([]);
 });
 
 test("finish drains a submitted Sharp decode and rejects later work", async () => {

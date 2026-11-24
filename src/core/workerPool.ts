@@ -2,6 +2,7 @@ import type {
   AssembleColorWorkerRequest,
   ConversionDiagnostics,
   ConversionProgress,
+  ExportFormat,
   VectorDocument,
   VectorWorkerRequest,
   VectorWorkerResponse,
@@ -17,6 +18,7 @@ export interface ConvertPayload {
   options: WorkerConversionOptions;
   includeDocument: boolean;
   optimizeSvg: boolean;
+  outputFormat: ExportFormat;
 }
 
 export interface AssembleColorPayload {
@@ -28,13 +30,14 @@ export interface AssembleColorPayload {
   options: WorkerConversionOptions;
   includeDocument: boolean;
   optimizeSvg: boolean;
+  outputFormat: ExportFormat;
 }
 
 export type WorkPayload = ConvertPayload | AssembleColorPayload;
 
 export interface WorkResult {
   document?: VectorDocument;
-  svg: string;
+  content: string;
   outputPaths: number;
   vectorizeMs: number;
   quantizeMs: number;
@@ -106,7 +109,7 @@ export class VectorWorkerPool {
             : message.document;
         item.resolve({
           document,
-          svg: message.svg,
+          content: message.content,
           outputPaths: message.outputPaths,
           vectorizeMs: message.vectorizeMs,
           quantizeMs: message.quantizeMs,
@@ -220,6 +223,7 @@ export class VectorWorkerPool {
           options: payload.options,
           includeDocument: payload.includeDocument,
           optimizeSvg: payload.optimizeSvg,
+          outputFormat: payload.outputFormat,
         };
         slot.worker.postMessage(request, [payload.pixels]);
       } else {
@@ -234,6 +238,7 @@ export class VectorWorkerPool {
           options: payload.options,
           includeDocument: payload.includeDocument,
           optimizeSvg: payload.optimizeSvg,
+          outputFormat: payload.outputFormat,
         };
         slot.worker.postMessage(request, [
           payload.labels.buffer as ArrayBuffer,

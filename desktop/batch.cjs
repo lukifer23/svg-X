@@ -21,6 +21,23 @@ const IMAGE_EXTENSIONS = new Set([
 ]);
 const MAX_INPUT_BYTES = 50 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 25 * 1024 * 1024;
+const EXPORT_FORMATS = new Map([
+  ["svg", { extension: "svg", name: "SVG Files" }],
+  ["eps", { extension: "eps", name: "EPS Files" }],
+  ["dxf", { extension: "dxf", name: "DXF Files" }],
+  ["json", { extension: "json", name: "JSON Path Files" }],
+]);
+
+const getExportFormat = (format) => {
+  const info = EXPORT_FORMATS.get(format);
+  if (!info) throw new Error("Unsupported export format");
+  return info;
+};
+
+const writeBatchFailureReport = (outputRoot, content) => {
+  validateText(content, MAX_OUTPUT_BYTES);
+  return writeUniqueOutput(outputRoot, "svg-x-batch-failures", "json", content);
+};
 
 const decodeInput = async (inputPath, resizeOptions, signal) => {
   const extension = path.extname(inputPath).toLowerCase();
@@ -34,7 +51,8 @@ const decodeInput = async (inputPath, resizeOptions, signal) => {
   return decodeToRgba({ path: inputPath }, resizeOptions, signal);
 };
 
-const createBatchRun = (inputRoot, outputRoot) => {
+const createBatchRun = (inputRoot, outputRoot, format = "svg") => {
+  const { extension } = getExportFormat(format);
   const controller = new AbortController();
   const { signal } = controller;
   const pending = new Set();
@@ -71,7 +89,13 @@ const createBatchRun = (inputRoot, outputRoot) => {
     write: ({ baseName, content }) =>
       perform(() => {
         validateText(content, MAX_OUTPUT_BYTES);
-        return writeUniqueOutput(outputRoot, baseName, "svg", content, signal);
+        return writeUniqueOutput(
+          outputRoot,
+          baseName,
+          extension,
+          content,
+          signal,
+        );
       }),
     cancel: () => controller.abort(),
     finish: () => {
@@ -82,4 +106,10 @@ const createBatchRun = (inputRoot, outputRoot) => {
   };
 };
 
-module.exports = { createBatchRun, IMAGE_EXTENSIONS, MAX_OUTPUT_BYTES };
+module.exports = {
+  createBatchRun,
+  getExportFormat,
+  IMAGE_EXTENSIONS,
+  MAX_OUTPUT_BYTES,
+  writeBatchFailureReport,
+};

@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readBatchInput: (request) => ipcRenderer.invoke("read-batch-input", request),
   writeBatchOutput: (request) =>
     ipcRenderer.invoke("write-batch-output", request),
+  saveBatchFailureReport: (request) =>
+    ipcRenderer.invoke("save-batch-failure-report", request),
   saveExport: (request) => ipcRenderer.invoke("save-export", request),
   openGrantedDirectory: (grantId) =>
     ipcRenderer.invoke("open-granted-directory", grantId),

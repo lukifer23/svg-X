@@ -18,18 +18,15 @@ import {
 import {
   TracingParams,
   getOptimizedFilename,
+  processImageBatch,
   type RawImageInput,
 } from "../utils/imageProcessor";
+import type { ExportFormat } from "../core/vectorDocument";
 import ModalFrame from "./ModalFrame";
 
 interface BatchConversionProps {
   potraceParams: TracingParams;
   onClose: () => void;
-  processImage: (
-    imageData: RawImageInput,
-    params: TracingParams,
-    signal?: AbortSignal,
-  ) => Promise<string>;
 }
 
 interface BatchStats {
@@ -44,13 +41,11 @@ interface ProcessingItem {
   fileName: string;
   status: "pending" | "processing" | "completed" | "failed" | "skipped";
   error?: string;
+  outputName?: string;
   retryCount: number;
 }
 
-interface FailureRecord {
-  fileName: string;
-  error: string;
-}
+const outputFormats: readonly ExportFormat[] = ["svg", "eps", "dxf", "json"];
 
 interface ResizeOptions {
   enabled: boolean;
@@ -118,7 +113,6 @@ function formatDuration(ms: number): string {
 const BatchConversion: React.FC<BatchConversionProps> = ({
   potraceParams,
   onClose,
-  processImage,
 }) => {
   const [inputDirectory, setInputDirectory] = useState<DirectoryGrant | null>(
     null,
@@ -129,6 +123,9 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isSelectingInput, setIsSelectingInput] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<ExportFormat>("svg");
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  const [savedReport, setSavedReport] = useState<string | null>(null);
   const [processingItems, setProcessingItems] = useState<ProcessingItem[]>([]);
   const [stats, setStats] = useState<BatchStats>({
     total: 0,
@@ -159,7 +156,6 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
   // ETA tracking
   const [avgMsPerFile, setAvgMsPerFile] = useState<number | null>(null);
   const [etaMs, setEtaMs] = useState<number | null>(null);
-  const [failureReport, setFailureReport] = useState<FailureRecord[]>([]);
 
   const resizeOptionsRef = useRef<ResizeOptions>(resizeOptions);
   const skipFailedRef = useRef(skipFailed);
@@ -220,7 +216,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       }
 
       setProcessingItems(items);
-      setFailureReport([]);
+      setSavedReport(null);
       setStats({ total: items.length, completed: 0, failed: 0, skipped: 0 });
       completedTimes.current = [];
       setAvgMsPerFile(null);
@@ -238,7 +234,10 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     if (!window.electronAPI) return;
     try {
       const selectedDir = await window.electronAPI.selectOutputDirectory();
-      if (selectedDir) setOutputDirectory(selectedDir);
+      if (selectedDir) {
+        setOutputDirectory(selectedDir);
+        setSavedReport(null);
+      }
     } catch (error) {
       setErrorMessage(
         `Error selecting directory: ${error instanceof Error ? error.message : String(error)}`,
@@ -279,17 +278,18 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             );
             if (abortController.signal.aborted)
               throw new DOMException("Conversion cancelled", "AbortError");
-            const svgData = await processImage(
+            const content = await processImageBatch(
               fileData,
               potraceParams,
               abortController.signal,
+              outputFormat,
             );
             if (abortController.signal.aborted)
               throw new DOMException("Conversion cancelled", "AbortError");
-            await electronApi.writeBatchOutput({
+            const output = await electronApi.writeBatchOutput({
               runId,
               baseName: getOptimizedFilename(item.fileName),
-              content: svgData,
+              content,
             });
             const elapsed = performance.now() - started;
             completedTimes.current.push(elapsed);
@@ -297,7 +297,10 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             const average =
               recent.reduce((sum, value) => sum + value, 0) / recent.length;
             setAvgMsPerFile(average);
-            updateItemAtIndex(itemIndex, { status: "completed" });
+            updateItemAtIndex(itemIndex, {
+              status: "completed",
+              outputName: output.name,
+            });
             setStats((previous) => {
               const completed = previous.completed + 1;
               const remaining = Math.max(
@@ -327,10 +330,6 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
               ...previous,
               failed: previous.failed + 1,
             }));
-            setFailureReport((previous) => [
-              ...previous,
-              { fileName: item.fileName, error: message },
-            ]);
             if (!skipFailedRef.current) {
               halted = true;
               for (const controller of activeAbortControllers.current.values())
@@ -347,6 +346,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         const runId = await electronApi.beginBatch({
           inputGrantId: inputDirectory.grantId,
           outputGrantId: outputDirectory.grantId,
+          format: outputFormat,
         });
         activeRun.current = runId;
         try {
@@ -370,8 +370,8 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     [
       inputDirectory,
       outputDirectory,
+      outputFormat,
       potraceParams,
-      processImage,
       updateItemAtIndex,
     ],
   );
@@ -391,10 +391,11 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       pendingIndices.length > 0 &&
       pendingIndices.length < processingItems.length;
     const confirmed = await showConfirm(
-      `Process ${resuming ? pendingIndices.length : processingItems.length} images from:\n${inputDirectory.displayPath}\n\nSVGs will be saved to:\n${outputDirectory.displayPath}`,
+      `Process ${resuming ? pendingIndices.length : processingItems.length} images from:\n${inputDirectory.displayPath}\n\n${outputFormat.toUpperCase()} files will be saved to:\n${outputDirectory.displayPath}`,
     );
     setConfirm(null);
     if (!confirmed) return;
+    setSavedReport(null);
     isCancelled.current = false;
     completedTimes.current = [];
     setAvgMsPerFile(null);
@@ -411,11 +412,11 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       failed: 0,
       skipped: 0,
     });
-    setFailureReport([]);
     const resetItems = processingItems.map((item) => ({
       ...item,
       status: "pending" as const,
       error: undefined,
+      outputName: undefined,
     }));
     processingItemsRef.current = resetItems;
     setProcessingItems(resetItems);
@@ -463,7 +464,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     );
     processingItemsRef.current = retryItems;
     setProcessingItems(retryItems);
-    setFailureReport([]);
+    setSavedReport(null);
     setStats((previous) => ({ ...previous, failed: 0 }));
     setIsProcessing(true);
     setCurrentFileIndex(failedIndices[0]);
@@ -507,7 +508,43 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
     currentFileIndex === -1 &&
     stats.total > 0 &&
     stats.completed + stats.failed + stats.skipped === stats.total;
-  const hasFailed = processingItems.some((i) => i.status === "failed");
+  const failures = processingItems.filter((item) => item.status === "failed");
+  const hasFailed = failures.length > 0;
+  const formatLocked =
+    isProcessing || hasFailed || (!batchDone && stats.completed > 0);
+  const saveFailureReport = async () => {
+    const electronApi = window.electronAPI;
+    if (!electronApi || !outputDirectory || !hasFailed || isSavingReport)
+      return;
+    setIsSavingReport(true);
+    setErrorMessage(null);
+    try {
+      const content = JSON.stringify(
+        {
+          version: 1,
+          outputFormat,
+          failures: failures.map(({ fileName, error, retryCount }) => ({
+            fileName,
+            error,
+            retryCount,
+          })),
+        },
+        null,
+        2,
+      );
+      const result = await electronApi.saveBatchFailureReport({
+        outputGrantId: outputDirectory.grantId,
+        content: content + "\n",
+      });
+      setSavedReport(result.name);
+    } catch (error) {
+      setErrorMessage(
+        `Could not save failure report: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setIsSavingReport(false);
+    }
+  };
   const currentlyProcessing = isProcessing
     ? processingItems.find((i) => i.status === "processing")
     : null;
@@ -524,7 +561,9 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         : "B&W",
     `threshold ${potraceParams.threshold}`,
     `speckle ${potraceParams.turdSize}`,
-    potraceParams.svgoOptimize ? "SVG optimization on" : "",
+    outputFormat === "svg" && potraceParams.svgoOptimize
+      ? "SVG optimization on"
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -548,7 +587,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
       <ModalFrame
         label="Batch conversion"
         onClose={() => {
-          if (!isProcessing) onClose();
+          if (!isProcessing && !isSavingReport) onClose();
         }}
         panelClassName="bg-white rounded-lg w-full max-w-3xl max-h-[85vh] overflow-y-auto p-4 sm:p-6 shadow-xl"
       >
@@ -562,7 +601,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
           </div>
           <button
             onClick={onClose}
-            disabled={isProcessing}
+            disabled={isProcessing || isSavingReport}
             className="p-1.5 rounded-full hover:bg-gray-200 transition-colors disabled:opacity-40"
             aria-label="Close batch conversion"
           >
@@ -571,7 +610,10 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          <div
+            role="alert"
+            className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"
+          >
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <div>
@@ -592,6 +634,23 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
         <div className="space-y-5">
           {/* Batch options row */}
           <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-2 text-gray-700">
+              Output format
+              <select
+                value={outputFormat}
+                onChange={(event) =>
+                  setOutputFormat(event.target.value as ExportFormat)
+                }
+                disabled={formatLocked || isSavingReport}
+                className="min-h-11 rounded border border-gray-300 bg-white px-2 disabled:bg-gray-100"
+              >
+                {outputFormats.map((format) => (
+                  <option key={format} value={format}>
+                    {format.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label
               className="flex items-center gap-2 cursor-pointer"
               title="Continue processing remaining files when one fails"
@@ -730,7 +789,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
               <button
                 onClick={handleSelectInputDirectory}
                 aria-busy={isSelectingInput}
-                disabled={isProcessing || isSelectingInput}
+                disabled={isProcessing || isSelectingInput || isSavingReport}
                 className="btn btn-primary flex items-center gap-2"
               >
                 <FolderInput className="w-4 h-4" /> Select Input Directory
@@ -749,7 +808,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button
                 onClick={handleSelectOutputDirectory}
-                disabled={isProcessing}
+                disabled={isProcessing || isSavingReport}
                 className="btn btn-primary flex items-center gap-2"
               >
                 <FolderOutput className="w-4 h-4" /> Select Output Directory
@@ -850,6 +909,14 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
                           (retry {item.retryCount})
                         </span>
                       )}
+                      {item.outputName && (
+                        <span
+                          className="block truncate text-xs text-gray-600"
+                          title={item.outputName}
+                        >
+                          {item.outputName}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {item.status === "pending" && (
@@ -896,25 +963,34 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
           )}
 
           {/* Action buttons */}
-          {!isProcessing && failureReport.length > 0 && (
+          {!isProcessing && hasFailed && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
               <div className="font-semibold mb-1">
-                Failure Report ({failureReport.length})
+                Failure Report ({failures.length})
               </div>
               <div className="max-h-24 overflow-y-auto space-y-1">
-                {failureReport.map((f, idx) => (
-                  <div key={`${f.fileName}-${idx}`}>
+                {failures.map((f) => (
+                  <div key={f.fileId}>
                     {f.fileName}: {f.error}
                   </div>
                 ))}
               </div>
+              <button
+                type="button"
+                className="btn btn-secondary mt-2"
+                onClick={saveFailureReport}
+                disabled={isSavingReport}
+              >
+                Save Failure Report
+              </button>
+              {savedReport && <p role="status">Saved {savedReport}</p>}
             </div>
           )}
           <div className="flex flex-wrap justify-end gap-2">
             {!isProcessing && hasFailed && (
               <button
                 onClick={retryFailed}
-                disabled={isSelectingInput}
+                disabled={isSelectingInput || isSavingReport}
                 className="btn btn-secondary flex items-center gap-2"
               >
                 <RotateCw className="w-4 h-4" /> Retry Failed ({stats.failed})
@@ -949,6 +1025,7 @@ const BatchConversion: React.FC<BatchConversionProps> = ({
                   !inputDirectory ||
                   !outputDirectory ||
                   isSelectingInput ||
+                  isSavingReport ||
                   processingItems.length === 0
                 }
                 className="btn btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"

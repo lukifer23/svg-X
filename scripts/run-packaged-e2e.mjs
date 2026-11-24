@@ -250,6 +250,8 @@ const nativeBatch = async (window) => {
     name: "Batch conversion",
     exact: true,
   });
+  const outputFormat = batch.getByRole("combobox", { name: "Output format" });
+  await expect(outputFormat).toHaveValue("svg");
   await batch
     .getByRole("button", { name: "Select Input Directory" })
     .evaluate((button) => button.click());
@@ -326,6 +328,28 @@ const nativeBatch = async (window) => {
     exact: true,
   });
   await expect(retry).toBeVisible();
+  await expect(outputFormat).toBeDisabled();
+  const saveReport = batch.getByRole("button", { name: "Save Failure Report" });
+  await saveReport.click();
+  const reportName = "svg-x-batch-failures.json";
+  await expect(
+    batch.getByText(`Saved ${reportName}`, { exact: true }),
+  ).toBeVisible();
+  const report = await readFile(path.join(output, reportName), "utf8");
+  expect(JSON.parse(report)).toEqual({
+    version: 1,
+    outputFormat: "svg",
+    failures: [
+      { fileName: brokenName, error: expect.any(String), retryCount: 0 },
+    ],
+  });
+  await saveReport.click();
+  await expect(
+    batch.getByText("Saved svg-x-batch-failures-1.json", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await readFile(path.join(output, "svg-x-batch-failures-1.json"), "utf8"),
+  ).toBe(report);
   await copyFile("tests/fixtures/review/color-bicycle.png", brokenPath);
   const retryStarted = performance.now();
   await retry.click();
@@ -336,13 +360,66 @@ const nativeBatch = async (window) => {
   expect(await readFile(path.join(output, "000-broken.svg"), "utf8")).toMatch(
     /<svg[\s\S]*<path/,
   );
-  expect(await readdir(output)).toHaveLength(names.length + 2);
+  expect(await readdir(output)).toHaveLength(names.length + 4);
   for (const [name, saved] of completed)
     expect(await readFile(path.join(output, name), "utf8")).toBe(saved);
   await expect(retry).toHaveCount(0);
+  await expect(saveReport).toHaveCount(0);
+  expect(await readFile(path.join(output, reportName), "utf8")).toBe(report);
   console.log(
     `Native batch passed: ${paused.length - 1} complete at cancellation, ${names.length} after resume, one repaired retry; queue ${queueMs.toFixed(0)} ms, cancel drain ${cancelMs.toFixed(0)} ms, retry ${retryMs.toFixed(0)} ms.`,
   );
+
+  const formatInput = path.join(userDataDir, "format-input");
+  await mkdir(formatInput);
+  await copyFile(
+    "tests/fixtures/formats/artwork.jpg",
+    path.join(formatInput, "sample.jpg"),
+  );
+  await batch
+    .getByRole("button", { name: "Select Input Directory" })
+    .evaluate((button) => button.click());
+  await chooseDirectory(
+    formatInput,
+    "Select Input Directory Containing Images",
+  );
+  await expect(batch.getByTitle(formatInput, { exact: true })).toBeVisible({
+    timeout: pickerTimeout,
+  });
+  await writeFile(path.join(output, "sample.dxf"), "preserve me");
+  for (const [format, name] of [
+    ["eps", "sample.eps"],
+    ["dxf", "sample-1.dxf"],
+    ["json", "sample.json"],
+  ]) {
+    await outputFormat.selectOption(format);
+    await start("Start Batch Processing");
+    await expect(batch.getByTitle(name, { exact: true })).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(outputFormat).toBeEnabled();
+    const content = await readFile(path.join(output, name), "utf8");
+    if (format === "eps") expect(content).toMatch(/^%!PS-Adobe-[\s\S]*moveto/);
+    else if (format === "dxf")
+      expect(content).toMatch(/\nENTITIES\n[\s\S]*\nPOLYLINE\n/);
+    else
+      expect(JSON.parse(content)).toMatchObject({
+        mode: "color",
+        shapes: expect.arrayContaining([
+          expect.objectContaining({
+            subpaths: expect.arrayContaining([
+              expect.objectContaining({
+                commands: expect.any(Array),
+              }),
+            ]),
+          }),
+        ]),
+      });
+  }
+  expect(await readFile(path.join(output, "sample.dxf"), "utf8")).toBe(
+    "preserve me",
+  );
+  console.log("Native EPS, DXF, JSON and failure report exports passed.");
 };
 const launchArgs = [`--user-data-dir=${userDataDir}`];
 if (process.platform === "linux") launchArgs.push("--no-sandbox");
@@ -475,6 +552,9 @@ try {
     );
   }
 
+  await window.getByRole("button", { name: "Open settings panel" }).click();
+  await window.getByRole("radio", { name: /Color/ }).click();
+  await window.getByRole("button", { name: "Close settings panel" }).click();
   const batchTrigger = window.getByRole("button", {
     name: "Open batch conversion",
   });
@@ -532,9 +612,6 @@ try {
   await expect(
     window.getByRole("dialog", { name: "Batch conversion" }),
   ).toBeHidden();
-  await window.getByRole("button", { name: "Open settings panel" }).click();
-  await window.getByRole("radio", { name: /Color/ }).click();
-  await window.getByRole("button", { name: "Close settings panel" }).click();
   await window
     .locator('input[type="file"]')
     .setInputFiles(path.resolve("tests/fixtures/review/color-bicycle.png"));
